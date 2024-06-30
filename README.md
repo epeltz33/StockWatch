@@ -1,20 +1,19 @@
 
-
 ---
 
-# StockWatch
+# 📈 StockWatch
 
 ## Overview
 
-The Stock Tracker App is a web-based application designed to help users monitor and manage their stock portfolios. Built with Flask for the backend and Plotly Dash for the frontend, this app allows users to track their favorite stocks, view historical data, and maintain a personalized watchlist.
+The **StockWatch App** is a web-based application designed to help users monitor and manage their stock portfolios. Built with **Flask** for the backend and **Plotly Dash** for the frontend, this app allows users to track their favorite stocks, view historical data, and maintain a personalized watchlist.
 
 ## Features
 
-- **User Authentication**: Secure registration and login functionalities.
-- **Stock Data Integration**: Fetch delayed stock data using the Polygon.io API.
-- **Watchlist Management**: Add, view, and remove stocks from your personalized watchlist.
-- **Data Visualization**: Interactive charts and graphs to visualize stock performance.
-- **Responsive Design**: Accessible on both desktop and mobile devices.
+- 🔐 **User Authentication**: Secure registration and login functionalities.
+- 📊 **Stock Data Integration**: Fetch delayed stock data using the Polygon.io API.
+- 📈 **Watchlist Management**: Add, view, and remove stocks from your personalized watchlist.
+- 📉 **Data Visualization**: Interactive charts and graphs to visualize stock performance.
+- 📱 **Responsive Design**: Accessible on both desktop and mobile devices.
 
 ## Technology Stack
 
@@ -64,6 +63,7 @@ The Stock Tracker App is a web-based application designed to help users monitor 
    ```bash
    pipenv run flask run
    ```
+   
 
 ## Usage
 
@@ -79,13 +79,12 @@ The Stock Tracker App is a web-based application designed to help users monitor 
 
 4. **View Data**:
    - Access historical data visualized through interactive charts.
+     
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Contact
 
-For questions or feedback, please contact erpeltz@gmail.com
+For questions or feedback, please contact [erpeltz@gmail.com](mailto:erpeltz@gmail.com).
 
 ---
+
