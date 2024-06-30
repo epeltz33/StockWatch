@@ -5,9 +5,30 @@ name = "pypi"
 
 [packages]
 flask = "*"
+install = "*"
+flask-sqlalchemy = "*"
+mysqlclient = "*"
+flask-migrate = "*"
+flask-wtf = "*"
+flask-login = "*"
+requests = "*"
+flask-cors = "*"
+python-dotenv = "*"
+plotly = "*"
+dash = "*"
+dash-bootstrap-components = "*"
+polygon-api-client = "*"
+numpy = "*"
+stockstats = "*"
+dash-html-components = "*"
+dash-table = "*"
+dash-core-components = "*"
+requests-html = "*"
 
 [dev-packages]
+pytest = "*"
+flake8 = "*"
 
 [requires]
-python_version = "3.9"
-python_full_version = "3.9.6"
+python_version = "3.12.4"
+python_full_version = "3.12.4"
