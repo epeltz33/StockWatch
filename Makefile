@@ -51,11 +51,17 @@ requirements:
 shell:
 	flask shell
 
+# Test Polygon.io connection
+test-polygon:
+	python test_polygon_connection.py
+
+
 # Display help information
 help:
 	@echo "Available commands:"
 	@echo "  make run              - Run the development server"
 	@echo "  make test             - Run tests"
+	@echo "  make test-polygon     - Test Polygon.io connection"
 	@echo "  make lint             - Run the linter"
 	@echo "  make format           - Format the code"
 	@echo "  make type-check       - Run type checking"
