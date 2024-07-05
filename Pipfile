@@ -24,6 +24,7 @@ dash-html-components = "*"
 dash-table = "*"
 dash-core-components = "*"
 requests-html = "*"
+werkzeug = "*"
 
 [dev-packages]
 pytest = "*"
