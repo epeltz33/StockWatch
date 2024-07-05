@@ -1,6 +1,6 @@
 {
-    "name": "Python 3.12",
-    "image": "mcr.microsoft.com/devcontainers/python:0-3.12",
+    "name": "Python 3",
+    "image": "mcr.microsoft.com/devcontainers/python:3.12",
     "features": {
         "ghcr.io/devcontainers/features/node:1": {
             "version": "lts"
@@ -20,6 +20,9 @@
             ]
         }
     },
-    "forwardPorts": [5000, 3306],
+    "forwardPorts": [
+        5000,
+        3306
+    ],
     "remoteUser": "vscode"
 }
