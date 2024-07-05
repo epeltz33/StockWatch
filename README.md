@@ -13,7 +13,7 @@ The **StockWatch App** is a web-based application designed to help users monitor
 - 📊 **Stock Data Integration**: Fetch delayed stock data using the Polygon.io API.
 - 📈 **Watchlist Management**: Add, view, and remove stocks from your personalized watchlist.
 - 📉 **Data Visualization**: Interactive charts and graphs to visualize stock performance.
-- 📱 **Responsive Design**: Accessible on both desktop and mobile devices.
+- 📱 **Responsive Design**: Accessible on desktop.
 
 ## Technology Stack
 
