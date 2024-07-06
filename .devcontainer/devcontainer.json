@@ -1,28 +1,31 @@
 {
-    "name": "Python 3",
-    "image": "mcr.microsoft.com/devcontainers/python:3.12",
-    "features": {
-        "ghcr.io/devcontainers/features/node:1": {
-            "version": "lts"
-        },
-        "ghcr.io/devcontainers/features/mysql:1": {}
-    },
-    "postCreateCommand": "pip install pipenv && pipenv install --dev",
-    "customizations": {
-        "vscode": {
-            "extensions": [
-                "ms-python.python",
-                "ms-python.vscode-pylance",
-                "ms-toolsai.jupyter",
-                "ms-toolsai.jupyter-keymap",
-                "ms-toolsai.jupyter-renderers",
-                "ms-python.flake8"
-            ]
-        }
-    },
-    "forwardPorts": [
-        5000,
-        3306
-    ],
-    "remoteUser": "vscode"
+  "name": "Python 3",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    }
+  },
+  "postCreateCommand": "pip install --user pipenv && pipenv install --dev",
+  "postStartCommand": "pipenv shell",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "ms-toolsai.jupyter-keymap",
+        "ms-toolsai.jupyter-renderers",
+        "ms-python.flake8"
+      ],
+      "settings": {
+        "python.pythonPath": "/usr/local/bin/python",
+        "python.venvPath": "${workspaceFolder}/.venv"
+      }
+    }
+  },
+  "forwardPorts": [
+    5000
+  ],
+  "remoteUser": "vscode"
 }
