@@ -15,8 +15,7 @@
         "ms-python.vscode-pylance",
         "ms-toolsai.jupyter",
         "ms-toolsai.jupyter-keymap",
-        "ms-toolsai.jupyter-renderers",
-        "ms-python.flake8"
+        "ms-toolsai.jupyter-renderers"
       ],
       "settings": {
         "python.pythonPath": "/usr/local/bin/python",

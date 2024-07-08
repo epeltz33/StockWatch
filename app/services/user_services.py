@@ -59,4 +59,4 @@ def authenticate_user(username, password):
         return user
     return None
 
-# Add more user-related services as needed
+# more user-related services as needed
