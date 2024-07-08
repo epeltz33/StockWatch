@@ -3,6 +3,12 @@
 run:
 	python dev_server.py
 
+test:
+	pytest tests/
+
+test-stock-routes:
+	python -m unittest tests/test_stock_routes.py
+
 db-init:
 	flask db init
 
