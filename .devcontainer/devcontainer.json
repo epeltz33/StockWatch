@@ -7,7 +7,7 @@
     }
   },
   "postCreateCommand": "pip install --user pipenv && pipenv install --dev",
-  "postStartCommand": "pipenv shell",
+  "postStartCommand": "pipenv run python -c 'print(\"Environment activated\")'",
   "customizations": {
     "vscode": {
       "extensions": [
