@@ -16,6 +16,10 @@ dash = "*"
 dash-bootstrap-components = "*"
 polygon-api-client = "*"
 pytz = "*"
+stockstats = "*"
+pandas = "*"
+numpy = "*"
+requests-html = "*"
 
 [dev-packages]
 pytest = "*"
