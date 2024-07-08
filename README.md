@@ -30,7 +30,7 @@ The **StockWatch App** is a web-based application designed to help users monitor
 
 - Python 3.12
 - Pipenv
-- tbd
+  
 
 ### Steps
 
