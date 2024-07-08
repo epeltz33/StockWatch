@@ -42,15 +42,14 @@ def delete_stock(symbol):
 
 
 def get_most_recent_trading_day():
-    eastern = pytz.timezone('US/Eastern')
-    # Convert current time to Eastern Time
-    now = datetime.now(pytz.utc).astimezone(eastern)
+    now = datetime.now()
     market_close_time = now.replace(
-        hour=16, minute=0, second=0, microsecond=0)  # 4 PM ET
+        hour=16, minute=0, second=0, microsecond=0)  # Market close time is 4 PM
 
-    # If it's before market close and today is a weekday, use today's date, otherwise adjust accordingly
+    # If it's before market close and today is a weekday, use yesterday's date if the market is closed today, otherwise use today's date
     if now <= market_close_time and now.weekday() < 5:
-        most_recent_trading_day = now
+        most_recent_trading_day = now - \
+            timedelta(days=1) if now.weekday() < 5 else now
     else:
         # If it's past market close or a weekend, move to the previous trading day
         if now.weekday() == 5:  # Saturday
@@ -61,7 +60,14 @@ def get_most_recent_trading_day():
             days_to_subtract = 1
         most_recent_trading_day = now - timedelta(days=days_to_subtract)
 
+    # Ensure that if today is Monday, we adjust to the previous Friday
+    if most_recent_trading_day.weekday() == 5:  # Saturday
+        most_recent_trading_day -= timedelta(days=1)
+    elif most_recent_trading_day.weekday() == 6:  # Sunday
+        most_recent_trading_day -= timedelta(days=2)
+
     return most_recent_trading_day.strftime('%Y-%m-%d')
+
 
 # Polygon.io API-related functions
 
