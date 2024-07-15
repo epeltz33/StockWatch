@@ -1,7 +1,5 @@
+from app import models
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from flask_login import LoginManager
 from config import Config
 from app.extensions import db, migrate, login
 
@@ -23,5 +21,7 @@ def create_app():
     return app
 
 
+# Initialize the Flask app
+server = create_app()
+
 # Import models at the bottom to avoid circular imports
-from app import models
