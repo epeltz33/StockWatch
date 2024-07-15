@@ -1,3 +1,4 @@
+import html
 from flask import Flask, render_template
 import dash
 import dash_bootstrap_components as dbc
