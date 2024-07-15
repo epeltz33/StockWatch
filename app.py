@@ -1,5 +1,6 @@
+import frontend.callbacks
 import html
-from flask import Flask, render_template
+from flask import Flask, redirect, render_template
 import dash
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output
@@ -13,8 +14,8 @@ server = Flask(__name__)
 
 
 @server.route('/')
-def hello_world():
-    return 'Hello World!'
+def index():
+    return redirect('/dash/')
 
 
 # Load ticker list
