@@ -1,11 +1,8 @@
-import dash
-import dash_bootstrap_components as dbc
-from flask import Flask
+import frontend.callbacks
+from .dash_app import app, server, set_layout
+from frontend.layout import create_layout
 
-server = Flask(__name__)
-app = dash.Dash(__name__, server=server, external_stylesheets=[dbc.themes.BOOTSTRAP])
+# Set the layout
+set_layout(create_layout())
 
-from frontend.layout import layout
-from frontend import callbacks
-
-app.layout = layout
+# Import and register callbacks

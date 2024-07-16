@@ -1,7 +1,5 @@
+from app import models
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from flask_login import LoginManager
 from config import Config
 from app.extensions import db, migrate, login
 
@@ -15,13 +13,21 @@ def create_app():
     login.init_app(app)
     login.login_view = 'auth.login'
 
+    from app.blueprints.auth import auth_bp
+    app.register_blueprint(auth_bp)
+
     from app.blueprints.stock import bp as stock_bp
     app.register_blueprint(stock_bp, url_prefix='/stock')
+
+    from app.blueprints.user import bp as user_bp
+    app.register_blueprint(user_bp, url_prefix='/user')
 
     # Register other blueprints here
 
     return app
 
 
+# Initialize the Flask app
+server = create_app()
+
 # Import models at the bottom to avoid circular imports
-from app import models

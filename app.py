@@ -1,7 +1,7 @@
-from flask import Flask, render_template
+import frontend.callbacks
+import html
+from flask import Flask, redirect, render_template
 import dash
-from dash import dcc
-from dash import html
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output
 import pandas as pd
@@ -9,14 +9,13 @@ import requests
 import pickle
 from components import navbar, layout
 
-
 # Flask setup
 server = Flask(__name__)
 
 
 @server.route('/')
-def hello_world():
-    return 'Hello World!'
+def index():
+    return redirect('/dash/')
 
 
 # Load ticker list
@@ -30,28 +29,11 @@ except FileNotFoundError:
 app = dash.Dash(__name__, server=server, url_base_pathname='/dash/',
                 external_stylesheets=[dbc.themes.BOOTSTRAP])
 
-app.layout = html.Div([
-    dbc.NavbarSimple(
-        brand="StockWatch",
-        brand_href="#",
-        color="primary",
-        dark=True,
-    ),
-    dcc.Dropdown(
-        id='ticker-dropdown',
-        options=[{'label': name, 'value': ticker}
-                 for ticker, name in ticker_list.items()],
-        value='AAPL' if 'AAPL' in ticker_list else None,
-        multi=False
-    ),
-    dcc.Graph(id='price-graph'),
-    html.Div(id='ticker-data')
-])
+app.layout = layout.create_layout()
 
 
 @app.callback(
-    [Output('price-graph', 'figure'),
-     Output('ticker-data', 'children')],
+    [Output('price-graph', 'figure'), Output('ticker-data', 'children')],
     [Input('ticker-dropdown', 'value')]
 )
 def update_graph(ticker):
