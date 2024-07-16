@@ -11,6 +11,9 @@ def get_all_users():
 def get_user_by_id(user_id):
     return User.query.get(user_id)
 
+def get_user_by_email(email):
+    return User.query.filter_by(email=email).first()
+
 
 def get_user_by_username(username):
     return User.query.filter_by(username=username).first()
@@ -60,3 +63,5 @@ def authenticate_user(username, password):
     return None
 
 # more user-related services as needed
+def verify_password(user, password):
+    return check_password_hash(user.password_hash, password)
