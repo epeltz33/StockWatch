@@ -1,21 +1,21 @@
+
+from flask import redirect
 import frontend.callbacks
-from app import create_app, db
+from app import server  # Import the Flask app
 from frontend.layout import create_layout
 from dash import Dash
 
+# Create Dash app and integrate it with the Flask app
+app = Dash(__name__, server=server, url_base_pathname='/dash/')
+app.layout = create_layout()
 
-# Flask app
-app = create_app()
+# Register callbacks
 
-# Make sure db is created
-with app.pp_context():
-    db.create_all()
 
-# Create Dash app and intergrate with Flask backend
-dash_app = Dash(__name__, server=app, url_base_pathname='/dash/')
-dash_app.layout = create_layout()
+@server.route('/')
+def index():
+    return redirect('/dash/')
 
-# Import and register Dash callbacks
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    server.run(debug=True, port=5000)
