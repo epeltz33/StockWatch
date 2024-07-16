@@ -13,8 +13,14 @@ def create_app():
     login.init_app(app)
     login.login_view = 'auth.login'
 
+    from app.blueprints.auth import auth_bp
+    app.register_blueprint(auth_bp)
+
     from app.blueprints.stock import bp as stock_bp
     app.register_blueprint(stock_bp, url_prefix='/stock')
+
+    from app.blueprints.user import bp as user_bp
+    app.register_blueprint(user_bp, url_prefix='/user')
 
     # Register other blueprints here
 
