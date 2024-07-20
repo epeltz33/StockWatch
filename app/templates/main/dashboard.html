@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - StockWatch{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h1 class="mb-4">Welcome to Your StockWatch Dashboard</h1>
+
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card mb-4">
+        <div class="card-header">
+          Your Watchlist
+        </div>
+        <div class="card-body">
+          <!-- This will be populated dynamically in the future -->
+          <p>You don't have any stocks in your watchlist yet. Add some to get started!</p>
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-header">
+          Market Overview
+        </div>
+        <div class="card-body">
+          <!-- This will be populated with real data in the future -->
+          <p>Market data will be displayed here.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card mb-4">
+        <div class="card-header">
+          Quick Actions
+        </div>
+        <div class="card-body">
+          <a href="#" class="btn btn-primary btn-block mb-2">Add Stock to Watchlist</a>
+          <a href="#" class="btn btn-secondary btn-block">View All Stocks</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          Recent Activity
+        </div>
+        <div class="card-body">
+          <!-- This will be populated with real data in the future -->
+          <p>Your recent activity will be shown here.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
