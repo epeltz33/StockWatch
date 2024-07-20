@@ -2,6 +2,7 @@ from app import models
 from flask import Flask
 from config import Config
 from app.extensions import db, migrate, login
+from app.models import User
 
 
 def create_app(test_config=None):
@@ -17,6 +18,11 @@ def create_app(test_config=None):
     login.init_app(app)
     login.login_view = 'auth.login'
 
+    # Add the user_loader function
+    @login.user_loader
+    def load_user(user_id):
+        return User.query.get(int(user_id))
+
     from app.blueprints.auth import auth_bp
     app.register_blueprint(auth_bp)
 
@@ -25,6 +31,9 @@ def create_app(test_config=None):
 
     from app.blueprints.user import bp as user_bp
     app.register_blueprint(user_bp, url_prefix='/user')
+
+    from app.blueprints.main import bp as main_bp
+    app.register_blueprint(main_bp)
 
     # Register other blueprints here
 
