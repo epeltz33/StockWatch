@@ -3,6 +3,7 @@ from flask import Flask
 from config import Config
 from app.extensions import db, migrate, login
 from app.models import User
+import os
 
 
 def create_app(test_config=None):
@@ -10,15 +11,17 @@ def create_app(test_config=None):
 
     if test_config is None:
         app.config.from_object(Config)
+        app.secret_key = os.environ.get('SECRET_KEY', 'fallback_secret_key')
     else:
         app.config.from_mapping(test_config)
+
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     db.init_app(app)
     migrate.init_app(app, db)
     login.init_app(app)
     login.login_view = 'auth.login'
 
-    # Add the user_loader function
     @login.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
@@ -34,8 +37,6 @@ def create_app(test_config=None):
 
     from app.blueprints.main import bp as main_bp
     app.register_blueprint(main_bp)
-
-    # Register other blueprints here
 
     return app
 
