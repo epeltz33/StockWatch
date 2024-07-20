@@ -4,9 +4,13 @@ from config import Config
 from app.extensions import db, migrate, login
 
 
-def create_app():
-    app = Flask(__name__)
-    app.config.from_object(Config)
+def create_app(test_config=None):
+    app = Flask(__name__, template_folder='templates')
+
+    if test_config is None:
+        app.config.from_object(Config)
+    else:
+        app.config.from_mapping(test_config)
 
     db.init_app(app)
     migrate.init_app(app, db)

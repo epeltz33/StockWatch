@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 from app.services.user_services import create_user, get_user_by_email, verify_password
 
-auth_bp = Blueprint('auth', __name__, template_folder='../templates/auth')
+auth_bp = Blueprint('auth', __name__, template_folder='../../templates')
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
