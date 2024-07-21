@@ -1,5 +1,5 @@
 from app import models
-from flask import Flask
+from flask import Flask, redirect, url_for
 from config import Config
 from app.extensions import db, migrate, login
 from app.models import User
@@ -44,10 +44,15 @@ def create_app(test_config=None):
     from app.blueprints.main import bp as main_bp
     app.register_blueprint(main_bp)
 
+    @app.route('/')
+    def index():
+        return redirect(url_for('auth.login'))
+
+    from app.cli import delete_user
+    app.cli.add_command(delete_user)
+
     return app
 
 
 # Initialize the Flask app
 server = create_app()
-
-# Import models at the bottom to avoid circular imports
