@@ -4,6 +4,9 @@ from config import Config
 from app.extensions import db, migrate, login
 from app.models import User
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def create_app(test_config=None):
@@ -11,9 +14,12 @@ def create_app(test_config=None):
 
     if test_config is None:
         app.config.from_object(Config)
-        app.secret_key = os.environ.get('SECRET_KEY', 'fallback_secret_key')
     else:
         app.config.from_mapping(test_config)
+
+    # Set SECRET_KEY regardless of whether it's a test config I think ??
+    app.config['SECRET_KEY'] = os.environ.get(
+        'SECRET_KEY', 'fallback_secret_key')
 
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 

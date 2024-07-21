@@ -9,7 +9,8 @@ class AuthTestCase(unittest.TestCase):
         self.app = create_app({
             'TESTING': True,
             'WTF_CSRF_ENABLED': False,
-            'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:'
+            'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
+            'SECRET_KEY': 'test_secret_key'
         })
         self.app_context = self.app.app_context()
         self.app_context.push()

@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+import os
 import frontend.callbacks
 import html
 from flask import Flask, redirect, render_template
@@ -8,6 +10,9 @@ import pandas as pd
 import requests
 import pickle
 from components import navbar, layout
+
+# Load environment variables
+load_dotenv()
 
 # Flask setup
 server = Flask(__name__)
@@ -40,7 +45,7 @@ def update_graph(ticker):
     if not ticker:
         return {}, "No ticker selected"
 
-    api_key = 'Aod7ULP46zqcMsvlxoBNWbhkW9nRDlmd'
+    api_key = os.getenv('POLYGON_API_KEY')
     url = f'https://api.polygon.io/v1/open-close/{
         ticker}/2023-01-01?adjusted=true&apiKey={api_key}'
     response = requests.get(url).json()

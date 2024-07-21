@@ -1,8 +1,12 @@
+from dotenv import load_dotenv
+import os
 from .dash_app import app  # Import the Dash app instance
 from dash.dependencies import Input, Output
 import pandas as pd
 import requests
 from dash import html
+
+load_dotenv()
 
 
 @app.callback(
@@ -14,7 +18,7 @@ def update_graph(ticker):
     if not ticker:
         return {}, "No ticker selected"
 
-    api_key = 'Aod7ULP46zqcMsvlxoBNWbhkW9nRDlmd'
+    api_key = os.getenv('POLYGON_API_KEY')
     url = f'https://api.polygon.io/v1/open-close/{
         ticker}/2023-01-01?adjusted=true&apiKey={api_key}'
     response = requests.get(url).json()

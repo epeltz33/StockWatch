@@ -13,8 +13,24 @@
 
 <body>
   <header>
-    <!-- Add your navigation bar here -->
+    <!-- Add navigation bar here -->
   </header>
+
+  <!-- Add section for flash messages -->
+  <div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+  </div>
 
   <main>
     {% block content %}
@@ -22,12 +38,12 @@
   </main>
 
   <footer>
-    <!-- Add your footer content here -->
+    <!-- Add footer content here -->
   </footer>
 
-  <!-- Add your JavaScript links here -->
+  <!-- Add  JavaScript links here -->
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-  <!-- If using Bootstrap -->
+  <!--  Bootstrap -->
   <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
