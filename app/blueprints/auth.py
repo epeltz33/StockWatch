@@ -39,7 +39,7 @@ def login():
 
         if user and user.check_password(password):
             login_user(user)
-            flash('Logged in successfully.')
+            flash('Logged in successfully.', 'success')
             return redirect(url_for('main.dashboard'))
         else:
             flash('Invalid username or password')
