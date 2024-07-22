@@ -20,6 +20,9 @@ stockstats = "*"
 pandas = "*"
 numpy = "*"
 requests-html = "*"
+flask-caching = "*"
+dash-table = "*"
+dash-html-components = "*"
 
 [dev-packages]
 pytest = "*"

@@ -1,13 +1,6 @@
-import frontend.callbacks
-from app import server  # Import the Flask app
-from frontend.layout import create_layout
-from dash import Dash
+from app import create_app
 
-# Create Dash app and integrate it with the Flask app
-app = Dash(__name__, server=server, url_base_pathname='/dash/')
-app.layout = create_layout()
-
-# Register callbacks
+app = create_app()
 
 if __name__ == '__main__':
-    server.run(debug=True, port=5000)
+    app.run(debug=True)
