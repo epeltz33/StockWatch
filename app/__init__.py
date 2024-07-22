@@ -1,5 +1,5 @@
-from app import models
 from flask import Flask, redirect, url_for
+from flask_caching import Cache
 from config import Config
 from app.extensions import db, migrate, login
 from app.models import User
@@ -7,6 +7,8 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+
+cache = Cache()
 
 
 def create_app(test_config=None):
@@ -17,21 +19,24 @@ def create_app(test_config=None):
     else:
         app.config.from_mapping(test_config)
 
-    # Set SECRET_KEY regardless of whether it's a test config I think ??
+    # Set SECRET_KEY regardless of whether it's a test config
     app.config['SECRET_KEY'] = os.environ.get(
         'SECRET_KEY', 'fallback_secret_key')
-
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+    # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
     login.init_app(app)
+    cache.init_app(app)
+
     login.login_view = 'auth.login'
 
     @login.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
 
+    # Register blueprints
     from app.blueprints.auth import auth_bp
     app.register_blueprint(auth_bp)
 
@@ -50,6 +55,11 @@ def create_app(test_config=None):
 
     from app.cli import delete_user
     app.cli.add_command(delete_user)
+
+    # Initialize Dash
+    with app.app_context():
+        from frontend.dash_app import create_dash_app
+        dash_app = create_dash_app(app)
 
     return app
 
