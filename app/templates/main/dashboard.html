@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="container mt-4">
-  <h1 class="mb-4">Welcome to Your StockWatch Dashboard</h1>
+  <h1 class="mb-4">Welcome to Your StockWatch Dashboard, {{user.username}}</h1>
   <iframe src="{{ dash_url }}" width=" 100%" height="800px"></iframe>
 
   <div class="row">
@@ -53,4 +53,15 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+
+{% block scripts %}
+<script src="{{ dash_url }}dash-renderer"></script>
+<script id="_dash-config" type="application/json">
+        {
+            "url_base_pathname": "{{ dash_url }}"
+        }
+    </script>
+
 {% endblock %}
