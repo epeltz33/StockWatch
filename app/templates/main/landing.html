@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="landing-container">
+  <h1>Welcome to StockWatch</h1>
+  <p>Your personal stock tracking assistant</p>
+  <div class="cta-buttons">
+    <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Login</a>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-secondary">Register</a>
+  </div>
+</div>
+{% endblock %}

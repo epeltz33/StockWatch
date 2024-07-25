@@ -5,6 +5,11 @@ from app import cache
 bp = Blueprint('main', __name__)
 
 
+@bp.route('/')
+def landing():
+    return render_template('main/landing.html')
+
+
 @bp.route('/dashboard')
 @login_required
 def dashboard():
