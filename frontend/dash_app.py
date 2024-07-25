@@ -55,5 +55,60 @@ def create_dash_app(flask_app):
                 # stock info
                 stock_info = html.Div([
                     html.H2(f"{details.name} ({ticker})"),
-                    html.P
+                    html.P(f"Market Cap: ${details.market_cap:,.2f}"),
+                    html.P(f"52 Week Range: ${
+                           week_52_low:.2f} - ${week_52_high:.2f}"),
+                    html.P(f"Open: ${latest_day.open:.2f}"),
+                    html.P(f"Previous Close: ${previous_day.close:.2f}")
+
                 ])
+
+                #  dataframe for chart (last 6 months)
+                df = pd.DataFrame([{
+                    'Date': datetime.fromtimestamp(a.timestamp/1000),
+                    'Close': a.close,
+                    'Volume': a.volume
+                    # Last 180 days (approximately 6 months)
+                } for a in aggs[-180:]])
+
+                # Create subplots
+                fig = sp.make_subplots(rows=2, cols=1, shared_xaxes=True,
+                                       vertical_spacing=0.03,
+                                       row_heights=[0.7, 0.3])
+                # Add price line
+                fig.add_trace(go.Scatter(
+                    x=df['Date'],
+                    y=df['Close'],
+                    mode='lines',
+                    name='Close Price',
+                    line=dict(color='blue')
+                ), row=1, col=1)
+
+                # add volume bars
+                fig.add_trace(go.Bar(
+                    x=df['Date'],
+                    y=df['Volume'],
+                    name='Volume',
+                    marker_color='rgba(0, 0, 255, 0.3)'
+                ), row=2, col=1)
+
+                # Update layout
+                fig.update_layout(
+                    title=f'{ticker} Stock Price and Volume (Last 6 Months)',
+                    xaxis_rangeslider_visible=False,
+                    height=600,
+                    showlegend=False
+                )
+
+                # Update y-axes
+                fig.update_yaxes(title_text="Price ($)", row=1, col=1)
+                fig.update_yaxes(title_text="Volume", row=2, col=1)
+
+                return stock_info, fig
+
+            except Exception as e:
+                return f"An error occurred: {str(e)}", go.Figure()
+
+        return "Enter a stock ticker and click 'Search'", go.Figure()
+
+    return dash_app
