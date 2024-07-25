@@ -1,0 +1,59 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f0f2f5;
+}
+
+.landing-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  text-align: center;
+}
+
+h1 {
+  color: #1a73e8;
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+p {
+  color: #5f6368;
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.cta-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.btn-primary {
+  background-color: #1a73e8;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #1557b0;
+}
+
+.btn-secondary {
+  background-color: #ffffff;
+  color: #1a73e8;
+  border: 1px solid #1a73e8;
+}
+
+.btn-secondary:hover {
+  background-color: #e8f0fe;
+}

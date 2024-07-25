@@ -12,7 +12,7 @@ cache = Cache()
 
 
 def create_app(test_config=None):
-    app = Flask(__name__, template_folder='templates')
+    app = Flask(__name__, template_folder='templates', static_folder='static')
 
     if test_config is None:
         app.config.from_object(Config)
@@ -51,7 +51,7 @@ def create_app(test_config=None):
 
     @app.route('/')
     def index():
-        return redirect(url_for('auth.login'))
+        return redirect(url_for('main.landing'))
 
     from app.cli import delete_user
     app.cli.add_command(delete_user)
