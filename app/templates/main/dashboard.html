@@ -1,12 +1,9 @@
 {% extends "base.html" %}
-
 {% block title %}Dashboard - StockWatch{% endblock %}
-
 {% block content %}
 <div class="container mt-4">
   <h1 class="mb-4">Welcome to Your StockWatch Dashboard, {{user.username}}</h1>
   <iframe src="{{ dash_url }}" width=" 100%" height="800px"></iframe>
-
   <div class="row">
     <div class="col-md-8">
       <div class="card mb-4">
@@ -18,7 +15,6 @@
           <p>You don't have any stocks in your watchlist yet. Add some to get started!</p>
         </div>
       </div>
-
       <div class="card mb-4">
         <div class="card-header">
           Market Overview
@@ -29,7 +25,6 @@
         </div>
       </div>
     </div>
-
     <div class="col-md-4">
       <div class="card mb-4">
         <div class="card-header">
@@ -37,10 +32,10 @@
         </div>
         <div class="card-body">
           <a href="#" class="btn btn-primary btn-block mb-2">Add Stock to Watchlist</a>
-          <a href="#" class="btn btn-secondary btn-block">View All Stocks</a>
+          <a href="#" class="btn btn-secondary btn-block mb-2">View All Stocks</a>
+          <a href="{{ url_for('auth.logout') }}" class="btn btn-danger btn-block">Logout</a>
         </div>
       </div>
-
       <div class="card">
         <div class="card-header">
           Recent Activity
@@ -54,8 +49,6 @@
   </div>
 </div>
 {% endblock %}
-
-
 {% block scripts %}
 <script src="{{ dash_url }}dash-renderer"></script>
 <script id="_dash-config" type="application/json">
@@ -63,5 +56,4 @@
             "url_base_pathname": "{{ dash_url }}"
         }
     </script>
-
 {% endblock %}
