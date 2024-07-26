@@ -30,7 +30,8 @@ def register():
         user = user_services.create_user(username, email, password)
         if user:
             flash('Registration successful. Please log in.', 'success')
-            return redirect(url_for('user.login'))
+            # redirect to login not dashboard
+            return redirect(url_for('auth.login'))
         else:
             flash('Registration failed. Username may already be in use.', 'error')
     return render_template('users/register.html')
