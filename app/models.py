@@ -7,7 +7,8 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), index=True, unique=True)
     email = db.Column(db.String(120), index=True, unique=True)
-    password_hash = db.Column(db.String(256))  # Increase the length of the password hash
+    # Increase the length of the password hash
+    password_hash = db.Column(db.String(256))
     watchlists = db.relationship('Watchlist', backref='user', lazy='dynamic')
 
     def set_password(self, password):
@@ -31,5 +32,6 @@ class Stock(db.Model):
 
 
 watchlist_stocks = db.Table('watchlist_stocks',
-                            db.Column('watchlist_id', db.Integer, db.ForeignKey('watchlist.id'), primary_key=True),
+                            db.Column('watchlist_id', db.Integer, db.ForeignKey(
+                                'watchlist.id'), primary_key=True),
                             db.Column('stock_id', db.Integer, db.ForeignKey('stock.id'), primary_key=True))
