@@ -4,7 +4,7 @@ import os
 from flask import Flask, redirect
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
-from dash_app import create_dash_app
+from dashboard import create_dash_app
 
 # Load environment variables
 load_dotenv()
