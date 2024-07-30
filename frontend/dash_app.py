@@ -3,7 +3,6 @@ from dash import html, dcc, Input, Output, State, callback_context, no_update
 import dash_bootstrap_components as dbc
 from flask import Flask
 import plotly.graph_objs as go
-import plotly.subplots as sp
 from polygon import RESTClient
 from datetime import datetime, timedelta
 import pandas as pd
@@ -25,36 +24,29 @@ def create_dash_app(flask_app):
                          external_stylesheets=[dbc.themes.BOOTSTRAP])
 
     dash_app.layout = dbc.Container([
+        html.H2('Welcome to Your StockWatch Dashboard, willa33',
+                className='text-center my-4'),
         dbc.Row([
             dbc.Col([
-                html.H3('Your Watchlists'),
-                dcc.Dropdown(id='watchlist-dropdown'),
-                dbc.Input(id='new-watchlist-input', type='text',
-                          placeholder='Enter a new watchlist name...'),
-                dbc.Button('Create Watchlist', id='create-watchlist-button',
-                           color='primary', className='ml-2'),
-                html.Div(id='watchlist-content'),
-                dcc.Interval(
-                    id='watchlist-interval',
-                    interval=5*1000,  # in milliseconds, updates every 5 seconds
-                    n_intervals=0
-                )
+                html.H3('Your Stock Dashboard', className='text-center my-4'),
+                dbc.InputGroup([
+                    dbc.Input(id='stock-input', type='text',
+                              placeholder='Enter a stock ticker...'),
+                    dbc.InputGroupText(dbc.Button(
+                        'Search', id='search-button', color='primary'))
+                ], className='mb-4'),
+                html.Div(id='stock-data', className='mb-4'),
+                html.Div(id='watchlist-section')
             ], md=4),
             dbc.Col([
-                dbc.Input(id='stock-input', type='text',
-                          placeholder='Enter a stock ticker...'),
-                dbc.Button('Search', id='search-button',
-                           color='primary', className='ml-2'),
-                html.Div(id='stock-data'),
                 dcc.Graph(id='stock-chart')
             ], md=8)
         ]),
-        dbc.Row([
-            dbc.Col([
-                html.H3('Selected Watchlist'),
-                html.Div(id='selected-watchlist-content')
-            ], md=12)
-        ]),
+        dcc.Interval(
+            id='watchlist-interval',
+            interval=5*1000,  # in milliseconds, updates every 5 seconds
+            n_intervals=0
+        )
     ], fluid=True)
 
     @dash_app.callback(
@@ -62,31 +54,56 @@ def create_dash_app(flask_app):
         Input('watchlist-interval', 'n_intervals')
     )
     def update_watchlist_dropdown(n_intervals):
-        print("update_watchlist_dropdown called")
         if current_user.is_authenticated:
             watchlists = current_user.watchlists.all()
             return [{'label': w.name, 'value': w.id} for w in watchlists]
         return []
 
     @dash_app.callback(
-        Output('watchlist-content', 'children'),
+        Output('watchlist-section', 'children'),
         Input('watchlist-dropdown', 'value'),
         Input('watchlist-interval', 'n_intervals')
     )
-    def update_watchlist(watchlist_id, n_intervals):
-        print("update_watchlist called")
+    def update_watchlist_section(watchlist_id, n_intervals):
         if current_user.is_authenticated:
+            watchlists = current_user.watchlists.all()
+            watchlist_options = [{'label': w.name, 'value': w.id}
+                                 for w in watchlists]
+
+            watchlist_dropdown = dcc.Dropdown(
+                id='watchlist-dropdown', options=watchlist_options, className='mb-2')
+            create_watchlist_input = dbc.Input(
+                id='new-watchlist-input', type='text', placeholder='Enter a new watchlist name...', className='mb-2')
+            create_watchlist_button = dbc.Button(
+                'Create Watchlist', id='create-watchlist-button', color='primary', className='mb-4')
+
             if watchlist_id:
                 watchlist = Watchlist.query.get(watchlist_id)
                 if watchlist:
-                    return html.Div([
-                        html.H4(f"Watchlist: {watchlist.name}"),
-                        dbc.ListGroup([
-                            dbc.ListGroupItem(f"{stock.symbol} - {stock.name}")
-                            for stock in watchlist.stocks
-                        ])
+                    watchlist_content = dbc.Card([
+                        dbc.CardHeader(
+                            html.H4(f"Watchlist: {watchlist.name}")),
+                        dbc.CardBody(
+                            dbc.ListGroup([
+                                dbc.ListGroupItem([
+                                    dbc.Row([
+                                        dbc.Col(
+                                            html.Div(stock.symbol), width=2),
+                                        dbc.Col(html.Div(stock.name), width=10)
+                                    ])
+                                ]) for stock in watchlist.stocks
+                            ])
+                        )
                     ])
-            return html.P("Select a watchlist to view stocks or create a new watchlist.")
+                else:
+                    watchlist_content = html.P(
+                        "Select a watchlist to view stocks or create a new watchlist.")
+            else:
+                watchlist_content = html.P(
+                    "Select a watchlist to view stocks or create a new watchlist.")
+
+            return html.Div([watchlist_dropdown, create_watchlist_input, create_watchlist_button, watchlist_content])
+
         return html.P("Please log in to view your watchlists.")
 
     @dash_app.callback(
@@ -137,26 +154,20 @@ def create_dash_app(flask_app):
                         html.P(f"Open: ${latest_day.open:.2f}",
                                className='card-text'),
                         html.P(f"Previous Close: ${
-                               previous_day.close:.2f}", className='card-text'),
+                            previous_day.close:.2f}", className='card-text'),
                         dbc.Button('Add to Watchlist', id={
-                                   'type': 'add-to-watchlist', 'index': ticker}, color='success')
+                            'type': 'add-to-watchlist', 'index': ticker}, color='success')
                     ])
                 ])
 
-                fig = sp.make_subplots(rows=2, cols=1, shared_xaxes=True,
-                                       vertical_spacing=0.03, row_heights=[0.7, 0.3])
+                fig = go.Figure()
 
-                fig.add_trace(go.Candlestick(x=df['timestamp'],
-                                             open=df['open'], high=df['high'],
-                                             low=df['low'], close=df['close'],
-                                             name='Price'))
-
-                fig.add_trace(
-                    go.Bar(x=df['timestamp'], y=df['volume'], name='Volume'), row=2, col=1)
+                fig.add_trace(go.Scatter(x=df['timestamp'], y=df['close'],
+                                         mode='lines', name='Close Price'))
 
                 fig.update_layout(title=f"{ticker} Stock Price",
-                                  xaxis_rangeslider_visible=False,
-                                  showlegend=False,
+                                  xaxis_title='Date',
+                                  yaxis_title='Price',
                                   height=600)
 
                 return stock_info, fig
@@ -175,7 +186,6 @@ def create_dash_app(flask_app):
         prevent_initial_call=True
     )
     def add_to_watchlist(n_clicks, id, watchlist_id):
-        print("add_to_watchlist called")
         if current_user.is_authenticated and n_clicks and any(n_clicks):
             ctx = callback_context
             button_id = ctx.triggered[0]['prop_id'].split('.')[0]
@@ -189,10 +199,10 @@ def create_dash_app(flask_app):
 
             try:
                 watchlist = Watchlist.query.get(watchlist_id)
-                stock = Stock.query.filter_by(symbol=ticker).first()
+                stock = Stock.query.filter_by(symbol(ticker)).first()
                 if not stock:
                     # If the stock doesn't exist, create it
-                    # You might want to fetch the actual name
+                    # For now, we'll just use the ticker as the name as well
                     stock = Stock(symbol=ticker, name=ticker)
                     db.session.add(stock)
 
@@ -231,7 +241,6 @@ def create_dash_app(flask_app):
         [State('new-watchlist-input', 'value')]
     )
     def create_watchlist(n_clicks, watchlist_name):
-        print("create_watchlist called")
         if current_user.is_authenticated and n_clicks and watchlist_name:
             try:
                 watchlist = Watchlist(
