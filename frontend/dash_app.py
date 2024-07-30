@@ -12,6 +12,7 @@ from app import cache, db
 from flask_login import current_user
 from app.models import Watchlist, Stock
 from sqlalchemy.exc import SQLAlchemyError
+import json
 
 polygon_api_key = os.getenv('POLYGON_API_KEY')
 client = RESTClient(polygon_api_key)
@@ -78,9 +79,12 @@ def create_dash_app(flask_app):
             if watchlist_id:
                 watchlist = Watchlist.query.get(watchlist_id)
                 if watchlist:
-                    return dbc.ListGroup([
-                        dbc.ListGroupItem(f"{stock.symbol} - {stock.name}")
-                        for stock in watchlist.stocks
+                    return html.Div([
+                        html.H4(f"Watchlist: {watchlist.name}"),
+                        dbc.ListGroup([
+                            dbc.ListGroupItem(f"{stock.symbol} - {stock.name}")
+                            for stock in watchlist.stocks
+                        ])
                     ])
             return html.P("Select a watchlist to view stocks or create a new watchlist.")
         return html.P("Please log in to view your watchlists.")
@@ -175,7 +179,11 @@ def create_dash_app(flask_app):
         if current_user.is_authenticated and n_clicks and any(n_clicks):
             ctx = callback_context
             button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-            ticker = eval(button_id)['index']
+            try:
+                ticker = json.loads(button_id.replace("'", "\""))['index']
+            except json.JSONDecodeError:
+                return [no_update] * len(id), "Error: Invalid button ID"
+
             if not watchlist_id:
                 return [dbc.Button('Select a Watchlist', color='warning', disabled=True) if i['index'] == ticker else no_update for i in id], "Please select a watchlist"
 
@@ -194,13 +202,19 @@ def create_dash_app(flask_app):
                         db.session.commit()
                         # After adding the stock to the watchlist, display the updated watchlist
                         return [dbc.Button('Added', color='success', disabled=True) if i['index'] == ticker else no_update for i in id], \
-                            dbc.ListGroup([
-                                dbc.ListGroupItem(f"{s.symbol} - {s.name}") for s in watchlist.stocks
+                            html.Div([
+                                html.H4(f"Watchlist: {watchlist.name}"),
+                                dbc.ListGroup([
+                                    dbc.ListGroupItem(f"{s.symbol} - {s.name}") for s in watchlist.stocks
+                                ])
                             ])
                     else:
                         return [dbc.Button('Already in Watchlist', color='info', disabled=True) if i['index'] == ticker else no_update for i in id], \
-                            dbc.ListGroup([
-                                dbc.ListGroupItem(f"{s.symbol} - {s.name}") for s in watchlist.stocks
+                            html.Div([
+                                html.H4(f"Watchlist: {watchlist.name}"),
+                                dbc.ListGroup([
+                                    dbc.ListGroupItem(f"{s.symbol} - {s.name}") for s in watchlist.stocks
+                                ])
                             ])
                 else:
                     return [dbc.Button(f'Error: Stock or Watchlist not found', color='danger', disabled=True) if i['index'] == ticker else no_update for i in id], "Error: Stock or Watchlist not found"
