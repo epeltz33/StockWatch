@@ -54,8 +54,9 @@ def create_app(test_config=None):
     app.cli.add_command(delete_user)
 
     with app.app_context():
-        from frontend.dash_app import create_dash_app
-        dash_app = create_dash_app(app)
+        from frontend.dashboard import create_dash_app
+
+    create_dash_app(app)
 
     return app
 

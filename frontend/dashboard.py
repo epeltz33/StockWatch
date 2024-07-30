@@ -16,6 +16,8 @@ import json
 polygon_api_key = os.getenv('POLYGON_API_KEY')
 client = RESTClient(polygon_api_key)
 
+# print(f"Polygon API Key: {polygon_api_key}")  # Debug print
+
 
 def create_dash_app(flask_app):
     dash_app = dash.Dash(__name__, server=flask_app, url_base_pathname='/dash/',
@@ -59,26 +61,43 @@ def create_dash_app(flask_app):
 
     @dash_app.callback(
         [Output('watchlist-section', 'children'),
-         Output({'type': 'add-to-watchlist', 'index': dash.ALL}, 'children')],
+         Output({'type': 'add-to-watchlist', 'index': dash.ALL}, 'children'),
+         Output('watchlist-dropdown', 'value'),
+         Output('new-watchlist-input', 'value')],
         [Input('watchlist-dropdown', 'value'),
          Input('watchlist-interval', 'n_intervals'),
-         Input({'type': 'add-to-watchlist', 'index': dash.ALL}, 'n_clicks')],
-        [State({'type': 'add-to-watchlist', 'index': dash.ALL}, 'id')]
+         Input({'type': 'add-to-watchlist', 'index': dash.ALL}, 'n_clicks'),
+         Input('create-watchlist-button', 'n_clicks')],
+        [State({'type': 'add-to-watchlist', 'index': dash.ALL}, 'id'),
+         State('new-watchlist-input', 'value')]
     )
-    def update_watchlist(watchlist_id, n_intervals, add_clicks, add_ids):
+    def update_watchlist(watchlist_id, n_intervals, add_clicks, create_clicks, add_ids, new_watchlist_name):
         ctx = dash.callback_context
         triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
         if triggered_id == 'watchlist-dropdown' or triggered_id == 'watchlist-interval':
             watchlist_content = update_watchlist_section(
                 watchlist_id, n_intervals)
-            return watchlist_content, [no_update] * len(add_ids)
+            return watchlist_content, [no_update] * len(add_ids), no_update, no_update
         elif 'add-to-watchlist' in triggered_id:
             add_to_watchlist_result = add_to_watchlist(
                 add_clicks, add_ids, watchlist_id)
-            return add_to_watchlist_result[1], add_to_watchlist_result[0]
+            return add_to_watchlist_result[1], add_to_watchlist_result[0], no_update, no_update
+        elif triggered_id == 'create-watchlist-button':
+            if current_user.is_authenticated and create_clicks and new_watchlist_name:
+                try:
+                    watchlist = Watchlist(
+                        name=new_watchlist_name, user_id=current_user.id)
+                    db.session.add(watchlist)
+                    db.session.commit()
+                    watchlist_content = update_watchlist_section(
+                        watchlist.id, None)
+                    return watchlist_content, [no_update] * len(add_ids), watchlist.id, ''
+                except SQLAlchemyError as e:
+                    db.session.rollback()
+                    return no_update, [no_update] * len(add_ids), no_update, no_update
 
-        return no_update, [no_update] * len(add_ids)
+        return no_update, [no_update] * len(add_ids), no_update, no_update
 
     def update_watchlist_section(watchlist_id, n_intervals):
         if current_user.is_authenticated:
@@ -182,7 +201,7 @@ def create_dash_app(flask_app):
         [State('stock-input', 'value')]
     )
     def update_stock_data(n_clicks, ticker):
-
+        # print(f"Search button clicked. Ticker: {ticker}")  # Debug print
         ctx = callback_context
         if not ctx.triggered:
             return html.Div("Enter a stock ticker and click 'Search'"), go.Figure()
@@ -191,7 +210,7 @@ def create_dash_app(flask_app):
 
         if button_id == 'search-button' and ticker:
             try:
-
+                # print(f"Fetching details for {ticker}")  # Debug print
                 details = client.get_ticker_details(ticker)
                 # print(f"Details fetched: {details}")  # Debug print
 
@@ -201,8 +220,8 @@ def create_dash_app(flask_app):
                 # start_date} to {end_date}")  # Debug print
                 aggs = client.get_aggs(ticker, 1, "day", start_date.strftime(
                     "%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
-                # print(f"Aggregates fetched: {
-                # len(aggs)} records")  # Debug print
+                print(f"Aggregates fetched: {
+                      len(aggs)} records")  # Debug print
 
                 df = pd.DataFrame([agg.__dict__ for agg in aggs])
                 df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
@@ -250,31 +269,10 @@ def create_dash_app(flask_app):
                 return stock_info, fig
 
             except Exception as e:
-                # print(f"Error in update_stock_data: {str(e)}")  # Debug print
+               # print(f"Error in update_stock_data: {str(e)}")  # Debug print
                 return html.Div(f"An error occurred: {str(e)}"), go.Figure()
 
         return html.Div("Enter a stock ticker and click 'Search'"), go.Figure()
-
-    @dash_app.callback(
-        [Output('watchlist-dropdown', 'value'),
-         Output('new-watchlist-input', 'value'),
-         Output('watchlist-section', 'children')],
-        [Input('create-watchlist-button', 'n_clicks')],
-        [State('new-watchlist-input', 'value')]
-    )
-    def create_watchlist(n_clicks, watchlist_name):
-        if current_user.is_authenticated and n_clicks and watchlist_name:
-            try:
-                watchlist = Watchlist(
-                    name=watchlist_name, user_id=current_user.id)
-                db.session.add(watchlist)
-                db.session.commit()
-                return watchlist.id, '', update_watchlist_section(watchlist.id, None)
-            except SQLAlchemyError as e:
-                db.session.rollback()
-                return no_update, no_update, no_update
-
-        return no_update, no_update, no_update
 
     @dash_app.callback(
         Output({'type': 'remove-from-watchlist', 'index': dash.ALL}, 'children'),
