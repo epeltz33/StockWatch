@@ -1,72 +1,62 @@
+from models import User, Stock, Watchlist
 from dotenv import load_dotenv
 import os
-import frontend.callbacks
-import html
-from flask import Flask, redirect, render_template
-import dash
-import dash_bootstrap_components as dbc
-from dash.dependencies import Input, Output
-import pandas as pd
-import requests
-import pickle
-from components import navbar, layout
+from flask import Flask, redirect
+from flask_login import LoginManager
+from flask_sqlalchemy import SQLAlchemy
+from dash_app import create_dash_app
 
 # Load environment variables
 load_dotenv()
 
-# Flask setup
-server = Flask(__name__)
+# Initialize Flask extensions
+db = SQLAlchemy()
+login_manager = LoginManager()
 
 
-@server.route('/')
-def index():
-    return redirect('/dash/')
+def create_app():
+    # Flask setup
+    app = Flask(__name__)
+
+    # Configure the Flask app
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'a_default_secret_key')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+        'DATABASE_URL', 'sqlite:///your_database.db')
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    # Initialize extensions
+    db.init_app(app)
+    login_manager.init_app(app)
+
+    # Import and register blueprints
+    from auth.routes import auth_bp
+    from main.routes import main_bp
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(main_bp)
+
+    # Create Dash app
+    dash_app = create_dash_app(app)
+
+    @app.route('/')
+    def index():
+        return redirect('/dash/')
+
+    # Create database tables
+    with app.app_context():
+        db.create_all()
+
+    return app
 
 
-# Load ticker list
-try:
-    with open('tickers.pickle', 'rb') as f:
-        ticker_list = pickle.load(f)
-except FileNotFoundError:
-    ticker_list = {}
+# Create the Flask app
+app = create_app()
 
-# Dash setup
-app = dash.Dash(__name__, server=server, url_base_pathname='/dash/',
-                external_stylesheets=[dbc.themes.BOOTSTRAP])
-
-app.layout = layout.create_layout()
+# Import models after creating db to avoid circular imports
 
 
-@app.callback(
-    [Output('price-graph', 'figure'), Output('ticker-data', 'children')],
-    [Input('ticker-dropdown', 'value')]
-)
-def update_graph(ticker):
-    if not ticker:
-        return {}, "No ticker selected"
-
-    api_key = os.getenv('POLYGON_API_KEY')
-    url = f'https://api.polygon.io/v1/open-close/{
-        ticker}/2023-01-01?adjusted=true&apiKey={api_key}'
-    response = requests.get(url).json()
-
-    df = pd.DataFrame([response])
-    fig = {
-        'data': [{
-            'x': df['from'],
-            'y': df['close'],
-            'type': 'line',
-            'name': ticker
-        }],
-        'layout': {
-            'title': ticker
-        }
-    }
-
-    ticker_info = response
-    info = [html.P(f"{key}: {value}") for key, value in ticker_info.items()]
-
-    return fig, info
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 
 if __name__ == '__main__':
