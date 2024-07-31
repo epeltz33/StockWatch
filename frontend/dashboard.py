@@ -1,3 +1,4 @@
+
 import dash
 from dash import html, dcc, Input, Output, State, callback_context, no_update
 import dash_bootstrap_components as dbc
@@ -16,16 +17,13 @@ import json
 polygon_api_key = os.getenv('POLYGON_API_KEY')
 client = RESTClient(polygon_api_key)
 
-# print(f"Polygon API Key: {polygon_api_key}")  # Debug print
-
 
 def create_dash_app(flask_app):
     dash_app = dash.Dash(__name__, server=flask_app, url_base_pathname='/dash/',
                          external_stylesheets=[dbc.themes.BOOTSTRAP])
 
     dash_app.layout = dbc.Container([
-        html.H2('Welcome to Your StockWatch Dashboard, willa33',
-                className='text-center my-4'),
+        html.H2(id='welcome-message', className='text-center my-4'),
         dbc.Row([
             dbc.Col([
                 html.H3('Your Stock Dashboard', className='text-center mb-4'),
@@ -39,15 +37,27 @@ def create_dash_app(flask_app):
             ], md=4, className='mb-4'),
             dbc.Col([
                 dcc.Graph(id='stock-chart'),
-                html.Div(id='watchlist-section', className='mt-4')
+                html.Div(id='watchlist-section', children=[
+                    dcc.Dropdown(id='watchlist-dropdown', options=[],
+                                 placeholder='Select a watchlist', className='mb-2'),
+                    dbc.Input(id='new-watchlist-input', type='text',
+                              placeholder='Enter a new watchlist name...', className='mb-2'),
+                    dbc.Button('Create Watchlist', id='create-watchlist-button',
+                               color='primary', className='mb-4')
+                ], className='mt-4')
             ], md=8)
         ]),
-        dcc.Interval(
-            id='watchlist-interval',
-            interval=5*1000,  # in milliseconds, updates every 5 seconds
-            n_intervals=0
-        )
+        dcc.Interval(id='watchlist-interval', interval=5*1000, n_intervals=0)
     ], fluid=True, className='px-4')
+
+    @dash_app.callback(
+        Output('welcome-message', 'children'),
+        Input('watchlist-interval', 'n_intervals')
+    )
+    def update_welcome_message(n_intervals):
+        if current_user.is_authenticated:
+            return f'Welcome to Your StockWatch Dashboard, {current_user.username}'
+        return 'Welcome to Your StockWatch Dashboard'
 
     @dash_app.callback(
         Output('watchlist-dropdown', 'options'),
@@ -61,45 +71,58 @@ def create_dash_app(flask_app):
 
     @dash_app.callback(
         [Output('watchlist-section', 'children'),
-         Output({'type': 'add-to-watchlist', 'index': dash.ALL}, 'children'),
          Output('watchlist-dropdown', 'value'),
-         Output('new-watchlist-input', 'value')],
-        [Input('watchlist-dropdown', 'value'),
-         Input('watchlist-interval', 'n_intervals'),
-         Input({'type': 'add-to-watchlist', 'index': dash.ALL}, 'n_clicks'),
-         Input('create-watchlist-button', 'n_clicks')],
-        [State({'type': 'add-to-watchlist', 'index': dash.ALL}, 'id'),
-         State('new-watchlist-input', 'value')]
+         Output({'type': 'add-to-watchlist', 'index': dash.ALL}, 'children')],
+        [Input('create-watchlist-button', 'n_clicks'),
+         Input({'type': 'add-to-watchlist', 'index': dash.ALL}, 'n_clicks')],
+        [State('new-watchlist-input', 'value'),
+         State('watchlist-dropdown', 'value'),
+         State({'type': 'add-to-watchlist', 'index': dash.ALL}, 'id')]
     )
-    def update_watchlist(watchlist_id, n_intervals, add_clicks, create_clicks, add_ids, new_watchlist_name):
-        ctx = dash.callback_context
-        triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    def update_watchlist_section(n_clicks_create, n_clicks_add, new_watchlist_name, watchlist_id, ids):
+        ctx = callback_context
+        if not ctx.triggered:
+            return no_update, no_update, [no_update] * len(ids)
 
-        if triggered_id == 'watchlist-dropdown' or triggered_id == 'watchlist-interval':
-            watchlist_content = update_watchlist_section(
-                watchlist_id, n_intervals)
-            return watchlist_content, [no_update] * len(add_ids), no_update, no_update
-        elif 'add-to-watchlist' in triggered_id:
-            add_to_watchlist_result = add_to_watchlist(
-                add_clicks, add_ids, watchlist_id)
-            return add_to_watchlist_result[1], add_to_watchlist_result[0], no_update, no_update
-        elif triggered_id == 'create-watchlist-button':
-            if current_user.is_authenticated and create_clicks and new_watchlist_name:
+        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+        if 'create-watchlist-button' in button_id and new_watchlist_name:
+            if current_user.is_authenticated:
                 try:
                     watchlist = Watchlist(
                         name=new_watchlist_name, user_id=current_user.id)
                     db.session.add(watchlist)
                     db.session.commit()
-                    watchlist_content = update_watchlist_section(
-                        watchlist.id, None)
-                    return watchlist_content, [no_update] * len(add_ids), watchlist.id, ''
+                    watchlist_id = watchlist.id
                 except SQLAlchemyError as e:
                     db.session.rollback()
-                    return no_update, [no_update] * len(add_ids), no_update, no_update
 
-        return no_update, [no_update] * len(add_ids), no_update, no_update
+        if 'add-to-watchlist' in button_id and any(n_clicks_add):
+            if current_user.is_authenticated:
+                try:
+                    ticker = json.loads(button_id.replace("'", "\""))['index']
+                    watchlist = Watchlist.query.get(watchlist_id)
+                    stock = Stock.query.filter_by(symbol=ticker).first()
+                    if not stock:
+                        stock = Stock(symbol=ticker, name=ticker)
+                        db.session.add(stock)
 
-    def update_watchlist_section(watchlist_id, n_intervals):
+                    if watchlist and stock:
+                        if stock not in watchlist.stocks:
+                            watchlist.stocks.append(stock)
+                            db.session.commit()
+                            return update_watchlist_section_content(watchlist_id), watchlist_id, [dbc.Button('Added', color='success', disabled=True) if i['index'] == ticker else no_update for i in ids]
+                        else:
+                            return no_update, no_update, [dbc.Button('Already in Watchlist', color='info', disabled=True) if i['index'] == ticker else no_update for i in ids]
+                    else:
+                        return no_update, no_update, [dbc.Button('Error: Stock or Watchlist not found', color='danger', disabled=True) if i['index'] == ticker else no_update for i in ids]
+                except SQLAlchemyError as e:
+                    db.session.rollback()
+                    return no_update, no_update, [dbc.Button(f'Error: {str(e)}', color='danger', disabled=True) if i['index'] == ticker else no_update for i in ids]
+
+        return update_watchlist_section_content(watchlist_id), watchlist_id, [no_update] * len(ids)
+
+    def update_watchlist_section_content(watchlist_id):
         if current_user.is_authenticated:
             watchlists = current_user.watchlists.all()
 
@@ -136,8 +159,8 @@ def create_dash_app(flask_app):
                                             html.Div(stock.symbol), width=2),
                                         dbc.Col(html.Div(stock.name), width=8),
                                         dbc.Col(
-                                            dbc.Button("Remove", color="danger", size="sm", className="float-right",
-                                                       id={'type': 'remove-from-watchlist', 'index': stock.id}),
+                                            dbc.Button("Remove", color="danger", size="sm", className="float-right", id={
+                                                       'type': 'remove-from-watchlist', 'index': stock.id}),
                                             width=2
                                         )
                                     ])
@@ -156,44 +179,6 @@ def create_dash_app(flask_app):
 
         return html.P("Please log in to view your watchlists.")
 
-    def add_to_watchlist(n_clicks, ids, watchlist_id):
-        if current_user.is_authenticated and n_clicks and any(n_clicks):
-            ctx = callback_context
-            button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-            try:
-                ticker = json.loads(button_id.replace("'", "\""))['index']
-            except json.JSONDecodeError:
-                return [no_update] * len(ids), "Error: Invalid button ID"
-
-            if not watchlist_id:
-                return [no_update] * len(ids), "Please select a watchlist"
-
-            try:
-                watchlist = Watchlist.query.get(watchlist_id)
-                stock = Stock.query.filter_by(symbol=ticker).first()
-                if not stock:
-                    stock = Stock(symbol=ticker, name=ticker)
-                    db.session.add(stock)
-
-                if watchlist and stock:
-                    if stock not in watchlist.stocks:
-                        watchlist.stocks.append(stock)
-                        db.session.commit()
-                        return [dbc.Button('Added', color='success', disabled=True) if i['index'] == ticker else no_update for i in ids], \
-                            update_watchlist_section(watchlist_id, None)
-                    else:
-                        return [dbc.Button('Already in Watchlist', color='info', disabled=True) if i['index'] == ticker else no_update for i in ids], \
-                            update_watchlist_section(watchlist_id, None)
-                else:
-                    return [dbc.Button('Error: Stock or Watchlist not found', color='danger', disabled=True) if i['index'] == ticker else no_update for i in ids], \
-                        "Error: Stock or Watchlist not found"
-            except SQLAlchemyError as e:
-                db.session.rollback()
-                return [dbc.Button(f'Error: {str(e)}', color='danger', disabled=True) if i['index'] == ticker else no_update for i in ids], \
-                    f"Error: {str(e)}"
-
-        return [no_update] * len(ids), no_update
-
     @dash_app.callback(
         [Output('stock-data', 'children'),
          Output('stock-chart', 'figure')],
@@ -201,7 +186,6 @@ def create_dash_app(flask_app):
         [State('stock-input', 'value')]
     )
     def update_stock_data(n_clicks, ticker):
-        # print(f"Search button clicked. Ticker: {ticker}")  # Debug print
         ctx = callback_context
         if not ctx.triggered:
             return html.Div("Enter a stock ticker and click 'Search'"), go.Figure()
@@ -210,18 +194,12 @@ def create_dash_app(flask_app):
 
         if button_id == 'search-button' and ticker:
             try:
-                # print(f"Fetching details for {ticker}")  # Debug print
                 details = client.get_ticker_details(ticker)
-                # print(f"Details fetched: {details}")  # Debug print
 
                 end_date = datetime.now()
                 start_date = end_date - timedelta(days=365)
-                # print(f"Fetching aggregates from {
-                # start_date} to {end_date}")  # Debug print
                 aggs = client.get_aggs(ticker, 1, "day", start_date.strftime(
                     "%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
-                print(f"Aggregates fetched: {
-                      len(aggs)} records")  # Debug print
 
                 df = pd.DataFrame([agg.__dict__ for agg in aggs])
                 df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
@@ -236,9 +214,8 @@ def create_dash_app(flask_app):
                     details, 'branding') and hasattr(details.branding, 'logo_url') else ''
                 stock_info = dbc.Card([
                     dbc.CardBody([
-                        html.Img(src=logo_url,
-                                 alt=f"{details.name} logo",
-                                 style={'max-width': '100%', 'height': 'auto', 'max-height': '50px', 'marginBottom': '10px'}) if logo_url else None,
+                        html.Img(src=logo_url, alt=f"{details.name} logo", style={
+                                 'max-width': '100%', 'height': 'auto', 'max-height': '50px', 'marginBottom': '10px'}) if logo_url else None,
                         html.H4(f"{details.name} ({ticker})",
                                 className='card-title'),
                         html.P(details.description, className='card-text') if hasattr(
@@ -250,34 +227,29 @@ def create_dash_app(flask_app):
                         html.P(f"Open: ${latest_day.open:.2f}",
                                className='card-text'),
                         html.P(f"Previous Close: ${
-                            previous_day.close:.2f}", className='card-text'),
+                               previous_day.close:.2f}", className='card-text'),
                         dbc.Button('Add to Watchlist', id={
-                            'type': 'add-to-watchlist', 'index': ticker}, color='success', className='mt-2')
+                                   'type': 'add-to-watchlist', 'index': ticker}, color='success', className='mt-2')
                     ])
                 ])
 
                 fig = go.Figure()
-
-                fig.add_trace(go.Scatter(x=df['timestamp'], y=df['close'],
-                                         mode='lines', name='Close Price'))
-
-                fig.update_layout(title=f"{ticker} Stock Price",
-                                  xaxis_title='Date',
-                                  yaxis_title='Price',
-                                  height=600)
+                fig.add_trace(go.Scatter(
+                    x=df['timestamp'], y=df['close'], mode='lines', name='Close Price'))
+                fig.update_layout(
+                    title=f"{ticker} Stock Price", xaxis_title='Date', yaxis_title='Price', height=600)
 
                 return stock_info, fig
 
             except Exception as e:
-               # print(f"Error in update_stock_data: {str(e)}")  # Debug print
                 return html.Div(f"An error occurred: {str(e)}"), go.Figure()
 
         return html.Div("Enter a stock ticker and click 'Search'"), go.Figure()
 
     @dash_app.callback(
         Output({'type': 'remove-from-watchlist', 'index': dash.ALL}, 'children'),
-        Input({'type': 'remove-from-watchlist', 'index': dash.ALL}, 'n_clicks'),
-        State('watchlist-dropdown', 'value'),
+        [Input({'type': 'remove-from-watchlist', 'index': dash.ALL}, 'n_clicks')],
+        [State('watchlist-dropdown', 'value')],
         prevent_initial_call=True
     )
     def remove_from_watchlist(n_clicks, watchlist_id):
