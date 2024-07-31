@@ -53,13 +53,11 @@ def create_app(test_config=None):
     from app.cli import delete_user
     app.cli.add_command(delete_user)
 
-    with app.app_context():
-        from frontend.dashboard import create_dash_app
+    # Import create_dash_app outside of app_context
+    from frontend.dashboard import create_dash_app
 
-    create_dash_app(app)
+    with app.app_context():
+        # Create Dash app within app_context
+        create_dash_app(app)
 
     return app
-
-
-# Initialize the Flask app
-server = create_app()

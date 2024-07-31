@@ -20,15 +20,23 @@ class User(UserMixin, db.Model):
 
 class Watchlist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(64))
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    name = db.Column(db.String(64), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     stocks = db.relationship('Stock', secondary='watchlist_stocks')
+
+    def __init__(self, name, user_id):
+        self.name = name
+        self.user_id = user_id
 
 
 class Stock(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     symbol = db.Column(db.String(10), unique=True, nullable=False)
     name = db.Column(db.String(100))
+
+    def __init__(self, symbol, name):
+        self.symbol = symbol
+        self.name = name
 
 
 watchlist_stocks = db.Table('watchlist_stocks',
