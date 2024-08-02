@@ -92,7 +92,7 @@ def register_callbacks(dash_app):
     def update_watchlist(n_clicks_create, n_clicks_add, n_clicks_remove, new_watchlist_name, watchlist_id, add_ids, remove_ids):
         ctx = callback_context
         if not ctx.triggered:
-            return no_update, no_update, [no_update] * len(add_ids), [no_update] * len(remove_ids)
+            return no_update, no_update, [{'id': id, 'property': 'children'} for id in add_ids], [{'id': id, 'property': 'children'} for id in remove_ids]
 
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
         logger.info(f"Button clicked: {button_id}")
@@ -105,13 +105,16 @@ def register_callbacks(dash_app):
             updated_watchlist_section, watchlist_id, add_ids, remove_ids = add_stock_to_watchlist(
                 button_id, watchlist_id, add_ids, remove_ids)
 
-            # Return the updated watchlist section, the selected watchlist ID, and the updated add and remove buttons
-            return updated_watchlist_section, watchlist_id, add_ids, remove_ids
+        # Return the updated watchlist section, the selected watchlist ID, and the updated add and remove buttons
+            if add_ids:
+                return updated_watchlist_section, watchlist_id, [{'id': id, 'property': 'children', 'children': 'Added'} for id in add_ids], [{'id': id, 'property': 'children'} for id in remove_ids]
+            else:
+                return updated_watchlist_section, watchlist_id, [{'id': {'index': 'ALL', 'type': 'add-to-watchlist'}, 'property': 'children', 'children': 'Added'}], [{'id': id, 'property': 'children'} for id in remove_ids]
 
-        if 'remove-from-watchlist' in button_id:
-            return remove_stock_from_watchlist(button_id, watchlist_id, add_ids, remove_ids)
+            if 'remove-from-watchlist' in button_id:
+                return remove_stock_from_watchlist(button_id, watchlist_id, add_ids, remove_ids)
 
-        return no_update, watchlist_id, [no_update] * len(add_ids), [no_update] * len(remove_ids)
+        return no_update, watchlist_id, [{'id': id, 'property': 'children'} for id in add_ids], [{'id': id, 'property': 'children'} for id in remove_ids]
 
     @dash_app.callback(
         [Output('stock-data', 'children'), Output('stock-chart', 'figure')],
@@ -129,15 +132,45 @@ def register_callbacks(dash_app):
         return html.Div("Enter a stock ticker and click 'Search'"), go.Figure()
 
 
+def create_new_stock(stock_symbol):
+    try:
+        stock_details = client.get_ticker_details(stock_symbol)
+        stock_name = stock_details.name if hasattr(
+            stock_details, 'name') else stock_symbol
+        stock = Stock(symbol=stock_symbol, name=stock_name)
+        db.session.add(stock)
+        db.session.commit()
+        return stock
+    except Exception as e:
+        logger.error(f"Error creating stock: {stock_symbol} - {str(e)}")
+        raise
+
+
 def create_new_watchlist(new_watchlist_name, add_ids, remove_ids):
     try:
         watchlist = Watchlist(name=new_watchlist_name, user_id=current_user.id)
         db.session.add(watchlist)
         db.session.commit()
-        return [update_watchlist_section(watchlist.id, 0), watchlist.id, [no_update] * len(add_ids), [no_update] * len(remove_ids)]
+        return [update_watchlist_section(watchlist.id, 0), watchlist.id, [{'id': id, 'property': 'children'} for id in add_ids], [{'id': id, 'property': 'children'} for id in remove_ids]]
     except SQLAlchemyError as e:
         logger.error(f"Error creating watchlist: {str(e)}")
-        return [no_update, no_update, [no_update] * len(add_ids), [no_update] * len(remove_ids)]
+        return [no_update, no_update, [{'id': id, 'property': 'children'} for id in add_ids], [{'id': id, 'property': 'children'} for id in remove_ids]]
+
+
+def remove_stock_from_watchlist(button_id, watchlist_id, add_ids, remove_ids):
+    try:
+        stock_id = int(eval(button_id)['index'])
+        stock = Stock.query.get(stock_id)
+        watchlist = Watchlist.query.get(watchlist_id)
+        if watchlist and stock in watchlist.stocks:
+            watchlist.stocks.remove(stock)
+            db.session.commit()
+
+        remove_ids = [id for id in remove_ids if int(id['index']) != stock_id]
+        return [update_watchlist_section(watchlist_id, 0), watchlist_id, [{'id': id, 'property': 'children'} for id in add_ids], [{'id': id, 'property': 'children'} for id in remove_ids]]
+    except Exception as e:
+        logger.error(f"Error removing stock: {stock_id} - {str(e)}")
+        raise
 
 
 def add_stock_to_watchlist(button_id, watchlist_id, add_ids, remove_ids):
@@ -163,43 +196,13 @@ def add_stock_to_watchlist(button_id, watchlist_id, add_ids, remove_ids):
             watchlist.stocks.append(stock)
             db.session.commit()
 
-        add_ids = [id for id in add_ids if id['index'] != stock_symbol]
+        add_ids = [{'index': stock_symbol, 'type': 'add-to-watchlist'}]
 
         # Update the watchlist section and return the updated values
         updated_watchlist_section = update_watchlist_section(watchlist_id, 0)
         return updated_watchlist_section, watchlist_id, add_ids, remove_ids
     except Exception as e:
         logger.error(f"Error adding stock to watchlist: {str(e)}")
-        raise
-
-
-def remove_stock_from_watchlist(button_id, watchlist_id, add_ids, remove_ids):
-    try:
-        stock_id = int(eval(button_id)['index'])
-        stock = Stock.query.get(stock_id)
-        watchlist = Watchlist.query.get(watchlist_id)
-        if watchlist and stock in watchlist.stocks:
-            watchlist.stocks.remove(stock)
-            db.session.commit()
-
-        remove_ids = [id for id in remove_ids if int(id['index']) != stock_id]
-        return [update_watchlist_section(watchlist_id, 0), watchlist_id, [no_update] * len(add_ids), [no_update] * len(remove_ids)]
-    except Exception as e:
-        logger.error(f"Error removing stock: {stock_id} - {str(e)}")
-        raise
-
-
-def create_new_stock(stock_symbol):
-    try:
-        stock_details = client.get_ticker_details(stock_symbol)
-        stock_name = stock_details.name if hasattr(
-            stock_details, 'name') else stock_symbol
-        stock = Stock(symbol=stock_symbol, name=stock_name)
-        db.session.add(stock)
-        db.session.commit()
-        return stock
-    except Exception as e:
-        logger.error(f"Error creating stock: {stock_symbol} - {str(e)}")
         raise
 
 
