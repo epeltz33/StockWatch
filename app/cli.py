@@ -1,6 +1,6 @@
 from flask.cli import with_appcontext
 import click
-from app.models import User
+from app.models import User, Watchlist
 from app.extensions import db
 
 
@@ -10,8 +10,12 @@ from app.extensions import db
 def delete_user(email):
     user = User.query.filter_by(email=email).first()
     if user:
+        # Delete associated watchlists (which will cascade to stocks)
+        Watchlist.query.filter_by(user_id=user.id).delete()
+
         db.session.delete(user)
         db.session.commit()
-        click.echo(f"User with email {email} has been deleted.")
+        click.echo(f"User with email {
+                   email} and all associated data has been deleted")
     else:
         click.echo(f"No user found with email {email}")
