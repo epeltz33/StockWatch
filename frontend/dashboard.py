@@ -67,7 +67,6 @@ def register_callbacks(dash_app):
     def update_welcome_message(n_intervals):
         if current_user.is_authenticated:
             return f'Welcome to Your StockWatch Dashboard, {current_user.username}'
-        return 'Welcome to Your StockWatch Dashboard'
 
     @dash_app.callback(Output('watchlist-dropdown', 'options'), Input('watchlist-interval', 'n_intervals'))
     def update_watchlist_dropdown(n_intervals):
@@ -94,6 +93,7 @@ def register_callbacks(dash_app):
         if not ctx.triggered:
             return no_update, no_update, [{'id': id, 'property': 'children'} for id in add_ids], [{'id': id, 'property': 'children'} for id in remove_ids]
 
+        # Get the ID of the button that triggered the callback
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
         logger.info(f"Button clicked: {button_id}")
 
@@ -111,9 +111,10 @@ def register_callbacks(dash_app):
             else:
                 return updated_watchlist_section, watchlist_id, [{'id': {'index': 'ALL', 'type': 'add-to-watchlist'}, 'property': 'children', 'children': 'Added'}], [{'id': id, 'property': 'children'} for id in remove_ids]
 
-            if 'remove-from-watchlist' in button_id:
-                return remove_stock_from_watchlist(button_id, watchlist_id, add_ids, remove_ids)
-
+        if 'remove-from-watchlist' in button_id:
+            updated_watchlist_section, watchlist_id, add_ids, remove_ids = remove_stock_from_watchlist(
+                button_id, watchlist_id, add_ids, remove_ids)
+            return updated_watchlist_section, watchlist_id, [{'id': id, 'property': 'children'} for id in add_ids], [{'id': id, 'property': 'children', 'children': 'Removed'} for id in remove_ids]
         return no_update, watchlist_id, [{'id': id, 'property': 'children'} for id in add_ids], [{'id': id, 'property': 'children'} for id in remove_ids]
 
     @dash_app.callback(
@@ -166,9 +167,12 @@ def remove_stock_from_watchlist(button_id, watchlist_id, add_ids, remove_ids):
             watchlist.stocks.remove(stock)
             db.session.commit()
 
-        remove_ids = [id for id in remove_ids if int(id['index']) != stock_id]
-        return [update_watchlist_section(watchlist_id, 0), watchlist_id, [{'id': id, 'property': 'children'} for id in add_ids], [{'id': id, 'property': 'children'} for id in remove_ids]]
+        # Update watchlist section and return the updated values
+        # 0 is a dummy value for n_intervals because it is not used
+        updated_watchlist_section = update_watchlist_section(watchlist_id, 0)
+        return updated_watchlist_section, watchlist_id, add_ids, [{'id': id, 'property': 'children'} for id in remove_ids]
     except Exception as e:
+        # subtracting 1 from the length of the remove_ids list to get the index of the removed stock
         logger.error(f"Error removing stock: {stock_id} - {str(e)}")
         raise
 
@@ -206,36 +210,6 @@ def add_stock_to_watchlist(button_id, watchlist_id, add_ids, remove_ids):
         raise
 
 
-def update_watchlist_section(watchlist_id, n_intervals):
-    if not current_user.is_authenticated:
-        return html.P("Please log in to view your watchlists.")
-
-    watchlists = current_user.watchlists.all()
-    if not watchlists:
-        return create_empty_watchlist_section()
-
-    watchlist_options = [{'label': w.name, 'value': w.id} for w in watchlists]
-    watchlist_dropdown = dcc.Dropdown(
-        id='watchlist-dropdown', options=watchlist_options, value=watchlist_id, className='mb-2')
-    create_watchlist_input = dbc.Input(
-        id='new-watchlist-input', type='text', placeholder='Enter a new watchlist name...', className='mb-2')
-    create_watchlist_button = dbc.Button(
-        'Create Watchlist', id='create-watchlist-button', color='primary', className='mb-4')
-
-    if watchlist_id:
-        watchlist = Watchlist.query.get(watchlist_id)
-        if watchlist:
-            watchlist_content = create_watchlist_content(watchlist)
-        else:
-            watchlist_content = html.P(
-                "Select a watchlist to view stocks or create a new watchlist.")
-    else:
-        watchlist_content = html.P(
-            "Select a watchlist to view stocks or create a new watchlist.")
-
-    return html.Div([watchlist_dropdown, create_watchlist_input, create_watchlist_button, watchlist_content])
-
-
 def create_empty_watchlist_section():
     return html.Div([
         html.H4("You don't have any watchlists yet."),
@@ -248,17 +222,78 @@ def create_empty_watchlist_section():
 
 def create_watchlist_content(watchlist):
     return dbc.Card([
-        dbc.CardHeader(html.H4(f"Watchlist: {watchlist.name}")),
-        dbc.CardBody(dbc.ListGroup([
-            dbc.ListGroupItem([
-                dbc.Row([
-                    dbc.Col(html.Div(stock.symbol), width=2),
-                    dbc.Col(html.Div(stock.name), width=8),
-                    dbc.Col(dbc.Button("Remove", color="danger", size="sm", className="float-right", id={
-                        'type': 'remove-from-watchlist', 'index': stock.id}), width=2)
-                ])
-            ]) for stock in watchlist.stocks
-        ]))
+        dbc.CardHeader(
+            html.H4(f"Watchlist: {watchlist.name}", className="text-center")),
+        dbc.CardBody([
+            dbc.ListGroup([
+                dbc.ListGroupItem([
+                    dbc.Row([
+                        dbc.Col(html.Span(stock.symbol,
+                                className="font-weight-bold"), width=3),
+                        dbc.Col(html.Span(stock.name), width=7),
+                        dbc.Col(
+                            dbc.Button(
+                                "Remove",
+                                color="danger",
+                                size="sm",
+                                className="float-right",
+                                id={'type': 'remove-from-watchlist',
+                                    'index': stock.id}
+                            ),
+                            width=2
+                        )
+                    ], className="align-items-center")
+                ], className="py-2")
+                for stock in watchlist.stocks
+            ], flush=True)
+        ])
+    ], className="mb-4")
+
+
+def update_watchlist_section(watchlist_id, n_intervals):
+    if not current_user.is_authenticated:
+        return html.P("Please log in to view your watchlists.")
+
+    watchlists = current_user.watchlists.all()
+    if not watchlists:
+        return create_empty_watchlist_section()
+
+    watchlist_options = [{'label': w.name, 'value': w.id} for w in watchlists]
+    watchlist_dropdown = dcc.Dropdown(
+        id='watchlist-dropdown',
+        options=watchlist_options,
+        value=watchlist_id,
+        className='mb-2'
+    )
+    create_watchlist_input = dbc.Input(
+        id='new-watchlist-input',
+        type='text',
+        placeholder='Enter a new watchlist name...',
+        className='mb-2'
+    )
+    create_watchlist_button = dbc.Button(
+        'Create Watchlist',
+        id='create-watchlist-button',
+        color='primary',
+        className='mb-4'
+    )
+
+    if watchlist_id:
+        watchlist = Watchlist.query.get(watchlist_id)
+        if watchlist:
+            watchlist_content = create_watchlist_content(watchlist)
+        else:
+            watchlist_content = html.P(
+                "Select a watchlist to view stocks or create a new watchlist.")
+    else:
+        watchlist_content = html.P(
+            "Select a watchlist to view stocks or create a new watchlist.")
+
+    return html.Div([
+        watchlist_dropdown,
+        create_watchlist_input,
+        create_watchlist_button,
+        watchlist_content
     ])
 
 
