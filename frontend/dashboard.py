@@ -88,14 +88,12 @@ def register_callbacks(dash_app):
          State({'type': 'add-to-watchlist', 'index': ALL}, 'id'),
          State({'type': 'remove-from-watchlist', 'index': ALL}, 'id')]
     )
-    def update_watchlist(create_clicks, add_clicks, remove_clicks, selected_watchlist_id,
-                         new_watchlist_name, add_ids, remove_ids):
+    def update_watchlist(create_clicks, add_clicks, remove_clicks, selected_watchlist_id, new_watchlist_name, add_ids, remove_ids):
         ctx = callback_context
         if not ctx.triggered:
-            return update_watchlist_section(selected_watchlist_id, 0)
+            return no_update
 
         trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-
         if trigger_id == 'create-watchlist-button' and new_watchlist_name:
             try:
                 watchlist = Watchlist(
@@ -106,7 +104,6 @@ def register_callbacks(dash_app):
             except SQLAlchemyError as e:
                 logger.error(f"Error creating watchlist: {str(e)}")
                 return no_update
-
         elif 'add-to-watchlist' in trigger_id:
             stock_symbol = eval(trigger_id)['index']
             try:
@@ -120,9 +117,8 @@ def register_callbacks(dash_app):
                     db.session.commit()
                 return update_watchlist_section(selected_watchlist_id, 0)
             except Exception as e:
-                logger.error(f"Error adding stock to watchlist: {str(e)}")
+                logger.error(f"Error adding stock to watchlist: str{(e)}")
                 return no_update
-
         elif 'remove-from-watchlist' in trigger_id:
             stock_id = eval(trigger_id)['index']
             try:
@@ -135,7 +131,6 @@ def register_callbacks(dash_app):
             except Exception as e:
                 logger.error(f"Error removing stock from watchlist: {str(e)}")
                 return no_update
-
         elif trigger_id == 'watchlist-dropdown':
             return update_watchlist_section(selected_watchlist_id, 0)
 
@@ -149,7 +144,6 @@ def register_callbacks(dash_app):
     def update_stock_data(n_clicks, ticker):
         if not n_clicks or not ticker:
             return html.Div("Enter a stock ticker and click 'Search'"), go.Figure()
-
         return fetch_and_display_stock_data(ticker)
 
 
@@ -296,16 +290,16 @@ def create_stock_info_card(details, df, ticker):
     return dbc.Card([
         dbc.CardBody([
             html.Img(src=logo_url, alt=f"{name} logo", style={
-                     'max-width': '100%', 'height': 'auto', 'max-height': '50px', 'marginBottom': '10px'}) if logo_url else None,
+                    'max-width': '100%', 'height': 'auto', 'max-height': '50px', 'marginBottom': '10px'}) if logo_url else None,
             html.H4(f"{name} ({ticker})", className='card-title'),
             html.P(description, className='card-text'),
             html.P(f"Market Cap: ${market_cap:,}" if isinstance(
                 market_cap, (int, float)) else f"Market Cap: {market_cap}", className='card-text'),
             html.P(f"52 Week Range: ${
-                   week_52_low:.2f} - ${week_52_high:.2f}", className='card-text'),
+                week_52_low:.2f} - ${week_52_high:.2f}", className='card-text'),
             html.P(f"Open: ${latest_day['open']:.2f}", className='card-text'),
             html.P(f"Previous Close: ${
-                   previous_day['close']:.2f}", className='card-text'),
+                previous_day['close']:.2f}", className='card-text'),
             dbc.Button('Add to Watchlist', id={'type': 'add-to-watchlist', 'index': ticker},
                        color='success', className='mt-2', n_clicks=0)
         ])
