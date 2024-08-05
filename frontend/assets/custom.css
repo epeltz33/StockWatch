@@ -1,0 +1,26 @@
+/* assets/custom.css */
+.card-header {
+  background-color: #007bff;
+  color: white;
+}
+
+.card-title {
+  font-size: 1.25rem;
+}
+
+.card-body {
+  padding: 1rem;
+}
+
+.list-group-item {
+  border: none;
+  border-bottom: 1px solid #ddd;
+}
+
+.list-group-item:last-child {
+  border-bottom: none;
+}
+
+.float-right {
+  float: right !important;
+}
