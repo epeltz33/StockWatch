@@ -11,6 +11,7 @@ from flask_login import current_user
 from app.models import Watchlist, Stock
 from sqlalchemy.exc import SQLAlchemyError
 import logging
+import json
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -79,62 +80,37 @@ def register_callbacks(dash_app):
         return []
 
     @dash_app.callback(
-        Output('watchlist-section', 'children'),
+        [Output('watchlist-section', 'children'),
+         Output('watchlist-dropdown', 'value'),
+         Output({'type': 'add-to-watchlist', 'index': ALL}, 'children')],
         [Input('create-watchlist-button', 'n_clicks'),
          Input({'type': 'add-to-watchlist', 'index': ALL}, 'n_clicks'),
          Input({'type': 'remove-from-watchlist', 'index': ALL}, 'n_clicks'),
          Input('watchlist-dropdown', 'value')],
         [State('new-watchlist-input', 'value'),
-         State({'type': 'add-to-watchlist', 'index': ALL}, 'id'),
-         State({'type': 'remove-from-watchlist', 'index': ALL}, 'id')]
+         State('watchlist-dropdown', 'value'),
+         State({'type': 'add-to-watchlist', 'index': ALL}, 'id')]
     )
-    def update_watchlist(create_clicks, add_clicks, remove_clicks, selected_watchlist_id, new_watchlist_name, add_ids, remove_ids):
+    def update_watchlist(create_clicks, add_clicks, remove_clicks, selected_watchlist_id, new_watchlist_name, current_watchlist_id, add_ids):
         ctx = callback_context
         if not ctx.triggered:
-            return no_update
+            return no_update, no_update, [no_update] * len(add_ids)
 
         trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
         if trigger_id == 'create-watchlist-button' and new_watchlist_name:
-            try:
-                watchlist = Watchlist(
-                    name=new_watchlist_name, user_id=current_user.id)
-                db.session.add(watchlist)
-                db.session.commit()
-                return update_watchlist_section(watchlist.id, 0)
-            except SQLAlchemyError as e:
-                logger.error(f"Error creating watchlist: {str(e)}")
-                return no_update
+            return create_new_watchlist(new_watchlist_name, add_ids)
         elif 'add-to-watchlist' in trigger_id:
-            stock_symbol = eval(trigger_id)['index']
-            try:
-                stock = Stock.query.filter_by(symbol=stock_symbol).first()
-                if not stock:
-                    stock = create_new_stock(stock_symbol)
-
-                watchlist = Watchlist.query.get(selected_watchlist_id)
-                if watchlist and stock not in watchlist.stocks:
-                    watchlist.stocks.append(stock)
-                    db.session.commit()
-                return update_watchlist_section(selected_watchlist_id, 0)
-            except Exception as e:
-                logger.error(f"Error adding stock to watchlist: str{(e)}")
-                return no_update
+            button_id = json.loads(trigger_id)
+            if any(click > 0 for click in add_clicks):
+                return add_stock_to_watchlist(button_id, current_watchlist_id, add_ids)
         elif 'remove-from-watchlist' in trigger_id:
-            stock_id = eval(trigger_id)['index']
-            try:
-                stock = Stock.query.get(stock_id)
-                watchlist = Watchlist.query.get(selected_watchlist_id)
-                if watchlist and stock in watchlist.stocks:
-                    watchlist.stocks.remove(stock)
-                    db.session.commit()
-                return update_watchlist_section(selected_watchlist_id, 0)
-            except Exception as e:
-                logger.error(f"Error removing stock from watchlist: {str(e)}")
-                return no_update
+            button_id = json.loads(trigger_id)
+            return remove_stock_from_watchlist(button_id, current_watchlist_id, add_ids)
         elif trigger_id == 'watchlist-dropdown':
-            return update_watchlist_section(selected_watchlist_id, 0)
+            return update_watchlist_section(selected_watchlist_id), selected_watchlist_id, [no_update] * len(add_ids)
 
-        return no_update
+        return no_update, no_update, [no_update] * len(add_ids)
 
     @dash_app.callback(
         [Output('stock-data', 'children'), Output('stock-chart', 'figure')],
@@ -145,6 +121,50 @@ def register_callbacks(dash_app):
         if not n_clicks or not ticker:
             return html.Div("Enter a stock ticker and click 'Search'"), go.Figure()
         return fetch_and_display_stock_data(ticker)
+
+
+def create_new_watchlist(new_watchlist_name, add_ids):
+    try:
+        watchlist = Watchlist(name=new_watchlist_name, user_id=current_user.id)
+        db.session.add(watchlist)
+        db.session.commit()
+        return update_watchlist_section(watchlist.id), watchlist.id, [no_update] * len(add_ids)
+    except SQLAlchemyError as e:
+        logger.error(f"Error creating watchlist: {str(e)}")
+        return no_update, no_update, [no_update] * len(add_ids)
+
+
+def add_stock_to_watchlist(button_id, watchlist_id, add_ids):
+    stock_symbol = button_id['index']
+    try:
+        stock = Stock.query.filter_by(symbol=stock_symbol).first()
+        if not stock:
+            stock = create_new_stock(stock_symbol)
+
+        watchlist = Watchlist.query.get(watchlist_id)
+        if watchlist and stock not in watchlist.stocks:
+            watchlist.stocks.append(stock)
+            db.session.commit()
+        updated_add_ids = ['Added' if id['index'] ==
+                           stock_symbol else no_update for id in add_ids]
+        return update_watchlist_section(watchlist_id), watchlist_id, updated_add_ids
+    except Exception as e:
+        logger.error(f"Error adding stock to watchlist: {str(e)}")
+        return no_update, no_update, [no_update] * len(add_ids)
+
+
+def remove_stock_from_watchlist(button_id, watchlist_id, add_ids):
+    stock_id = button_id['index']
+    try:
+        stock = Stock.query.get(stock_id)
+        watchlist = Watchlist.query.get(watchlist_id)
+        if watchlist and stock in watchlist.stocks:
+            watchlist.stocks.remove(stock)
+            db.session.commit()
+        return update_watchlist_section(watchlist_id), watchlist_id, [no_update] * len(add_ids)
+    except Exception as e:
+        logger.error(f"Error removing stock from watchlist: {str(e)}")
+        return no_update, no_update, [no_update] * len(add_ids)
 
 
 def create_new_stock(stock_symbol):
@@ -161,7 +181,7 @@ def create_new_stock(stock_symbol):
         raise
 
 
-def update_watchlist_section(watchlist_id, n_intervals):
+def update_watchlist_section(watchlist_id):
     if not current_user.is_authenticated:
         return html.P("Please log in to view your watchlists.")
 
@@ -296,12 +316,16 @@ def create_stock_info_card(details, df, ticker):
             html.P(f"Market Cap: ${market_cap:,}" if isinstance(
                 market_cap, (int, float)) else f"Market Cap: {market_cap}", className='card-text'),
             html.P(f"52 Week Range: ${
-                week_52_low:.2f} - ${week_52_high:.2f}", className='card-text'),
+                   week_52_low:.2f} - ${week_52_high:.2f}", className='card-text'),
             html.P(f"Open: ${latest_day['open']:.2f}", className='card-text'),
             html.P(f"Previous Close: ${
-                previous_day['close']:.2f}", className='card-text'),
-            dbc.Button('Add to Watchlist', id={'type': 'add-to-watchlist', 'index': ticker},
-                       color='success', className='mt-2', n_clicks=0)
+                   previous_day['close']:.2f}", className='card-text'),
+            dbc.Button('Add to Watchlist',
+                       id={'type': 'add-to-watchlist', 'index': ticker},
+                       color='success',
+                       className='mt-2',
+                       n_clicks=0)
+
         ])
     ])
 
