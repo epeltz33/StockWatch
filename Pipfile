@@ -26,6 +26,7 @@ dash-html-components = "*"
 
 [dev-packages]
 pytest = "*"
+ipykernel = "*"
 
 [requires]
 python_version = "3.12"

@@ -136,6 +136,7 @@ def create_new_watchlist(new_watchlist_name, add_ids):
 
 def add_stock_to_watchlist(button_id, watchlist_id, add_ids):
     stock_symbol = button_id['index']
+    logger.info(f"Adding stock {stock_symbol} to watchlist {watchlist_id}")
     try:
         stock = Stock.query.filter_by(symbol=stock_symbol).first()
         if not stock:
@@ -169,12 +170,14 @@ def remove_stock_from_watchlist(button_id, watchlist_id, add_ids):
 
 def create_new_stock(stock_symbol):
     try:
+        logger.info(f"Creating new stock: {stock_symbol}")
         stock_details = client.get_ticker_details(stock_symbol)
         stock_name = stock_details.name if hasattr(
             stock_details, 'name') else stock_symbol
         stock = Stock(symbol=stock_symbol, name=stock_name)
         db.session.add(stock)
         db.session.commit()
+        logger.info(f"Stock created: {stock_symbol} - {stock_name}")
         return stock
     except Exception as e:
         logger.error(f"Error creating stock: {stock_symbol} - {str(e)}")
@@ -316,10 +319,10 @@ def create_stock_info_card(details, df, ticker):
             html.P(f"Market Cap: ${market_cap:,}" if isinstance(
                 market_cap, (int, float)) else f"Market Cap: {market_cap}", className='card-text'),
             html.P(f"52 Week Range: ${
-                   week_52_low:.2f} - ${week_52_high:.2f}", className='card-text'),
+                week_52_low:.2f} - ${week_52_high:.2f}", className='card-text'),
             html.P(f"Open: ${latest_day['open']:.2f}", className='card-text'),
             html.P(f"Previous Close: ${
-                   previous_day['close']:.2f}", className='card-text'),
+                previous_day['close']:.2f}", className='card-text'),
             dbc.Button('Add to Watchlist',
                        id={'type': 'add-to-watchlist', 'index': ticker},
                        color='success',
