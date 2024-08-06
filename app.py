@@ -5,6 +5,13 @@ from flask import Flask, redirect
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
 from dashboard import create_dash_app
+import logging
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 load_dotenv()
 
