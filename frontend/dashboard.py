@@ -66,10 +66,10 @@ def create_layout():
 def register_callbacks(dash_app):
     @dash_app.callback(Output('welcome-message', 'children'),
                        Input('watchlist-interval', 'n_intervals'))
-    def update_welcome_message(n_intervals):
-        if current_user.is_authenticated:
-            return f'Welcome to Your StockWatch Dashboard, {current_user.username}'
-        return 'Welcome to Your StockWatch Dashboard'
+    #def update_welcome_message(n_intervals):
+        #if current_user.is_authenticated:
+            #return f'Welcome to Your StockWatch Dashboard, {current_user.username}'
+        #return 'Welcome to Your StockWatch Dashboard'
 
     @dash_app.callback(Output('watchlist-dropdown', 'options'),
                        Input('watchlist-interval', 'n_intervals'))

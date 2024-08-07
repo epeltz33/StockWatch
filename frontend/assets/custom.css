@@ -24,3 +24,15 @@
 .float-right {
   float: right !important;
 }
+
+.container-fluid {
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.stock-dashboard {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
