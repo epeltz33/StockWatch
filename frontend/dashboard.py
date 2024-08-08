@@ -24,7 +24,7 @@ client = RESTClient(api_key=polygon_api_key)
 
 def create_dash_app(flask_app):
     dash_app = dash.Dash(__name__, server=flask_app, url_base_pathname='/dash/',
-                         external_stylesheets=[dbc.themes.BOOTSTRAP])
+                         external_stylesheets=[dbc.themes.BOOTSTRAP, '/assets/custom.css'])
 
     dash_app.layout = create_layout()
 
@@ -285,8 +285,19 @@ def fetch_and_display_stock_data(ticker):
         df = pd.DataFrame(aggs)
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
 
-        stock_info = create_stock_info_card(details, df, ticker)
+        # calc avg volume
+        avg_volume = df['volume'].mean()
+
+        #Calc percent change
+        latest_close = df.iloc[-1]['close']
+        previous_close = df.iloc[-2]['close']
+        percent_change = ((latest_close - previous_close) / previous_close) * 100
+
+
+        stock_info = create_stock_info_card(details, df, ticker, avg_volume,percent_change)
         fig = create_stock_chart(df, ticker)
+
+
 
         return stock_info, fig
 
@@ -295,7 +306,7 @@ def fetch_and_display_stock_data(ticker):
         return html.Div(f"An error occurred: {str(e)}"), go.Figure()
 
 
-def create_stock_info_card(details, df, ticker):
+def create_stock_info_card(details, df, ticker, avg_volume, percent_change):
     week_52_high = df['high'].max()
     week_52_low = df['low'].min()
     latest_day = df.iloc[-1]
@@ -310,25 +321,31 @@ def create_stock_info_card(details, df, ticker):
     if logo_url:
         logo_url = f"{logo_url}?apiKey={polygon_api_key}"
 
+    # Determine color for % change
+    color = 'green' if percent_change >= 0 else 'red'
+
     return dbc.Card([
         dbc.CardBody([
             html.Img(src=logo_url, alt=f"{name} logo", style={
                     'max-width': '100%', 'height': 'auto', 'max-height': '50px', 'marginBottom': '10px'}) if logo_url else None,
             html.H4(f"{name} ({ticker})", className='card-title'),
-            html.P(description, className='card-text'),
+            html.Hr(),
+            html.P([
+                f"Current Price: ${latest_day['close']:.2f} ",
+                html.Span(f"({percent_change:.2f}%)", style={'color': color})
+
+            ], className='card-text font-weight-bold'),
+            html.P(f"Previous Close: ${previous_day['close']:.2f}", className='card-text'),
+            html.P(f"Open: ${latest_day['open']:.2f}", className='card-text'),
+            html.P(f"52 Week Range: ${week_52_low:.2f} - ${week_52_high:.2f}", className='card-text'),
+            html.P(f"Volume: {latest_day['volume']:,}", className='card-text'),
+            html.P(f"Average Volume: {avg_volume:,.0f}", className='card-text'),
             html.P(f"Market Cap: ${market_cap:,}" if isinstance(
                 market_cap, (int, float)) else f"Market Cap: {market_cap}", className='card-text'),
-            html.P(f"52 Week Range: ${
-                week_52_low:.2f} - ${week_52_high:.2f}", className='card-text'),
-            html.P(f"Open: ${latest_day['open']:.2f}", className='card-text'),
-            html.P(f"Previous Close: ${
-                previous_day['close']:.2f}", className='card-text'),
-            dbc.Button('Add to Watchlist',
-                       id={'type': 'add-to-watchlist', 'index': ticker},
-                       color='success',
-                       className='mt-2',
-                       n_clicks=0)
-
+            html.P(description, className='card-text mt-3'),
+            html.Hr(),
+            dbc.Button('Add to Watchlist', id={
+                       'type': 'add-to-watchlist', 'index': ticker}, color='success', className='mt-2')
         ])
     ])
 
