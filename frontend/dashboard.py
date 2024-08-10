@@ -94,7 +94,7 @@ def register_callbacks(dash_app):
     def update_watchlist(create_clicks, add_clicks, remove_clicks, selected_watchlist_id, new_watchlist_name, current_watchlist_id, add_ids):
         ctx = callback_context
         if not ctx.triggered:
-            return no_update, no_update, [no_update] * len(add_ids)
+            return no_update, no_update, [no_update] * len(add_ids) # Return early if no inputs have changed
 
         trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
@@ -102,10 +102,10 @@ def register_callbacks(dash_app):
             return create_new_watchlist(new_watchlist_name, add_ids)
         elif 'add-to-watchlist' in trigger_id:
             button_id = json.loads(trigger_id)
-            if any(click > 0 for click in add_clicks):
+            if any(click > 0 for click in add_clicks): # Check if any add buttons were clicked
                 return add_stock_to_watchlist(button_id, current_watchlist_id, add_ids)
         elif 'remove-from-watchlist' in trigger_id:
-            button_id = json.loads(trigger_id)
+            button_id = json.loads(trigger_id) # Parse button ID from JSON string
             return remove_stock_from_watchlist(button_id, current_watchlist_id, add_ids)
         elif trigger_id == 'watchlist-dropdown':
             return update_watchlist_section(selected_watchlist_id), selected_watchlist_id, [no_update] * len(add_ids)
