@@ -102,7 +102,7 @@ def register_callbacks(dash_app):
             return create_new_watchlist(new_watchlist_name, add_ids)
         elif 'add-to-watchlist' in trigger_id:
             button_id = json.loads(trigger_id)
-            if any(click > 0 for click in add_clicks is not None): # Check if any add buttons were clicked
+            if add_clicks is not None and any(click > 0 for click in add_clicks):
                 return add_stock_to_watchlist(button_id, current_watchlist_id, add_ids)
         elif 'remove-from-watchlist' in trigger_id:
             button_id = json.loads(trigger_id) # Parse button ID from JSON string
