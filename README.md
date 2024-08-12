@@ -21,7 +21,7 @@ The **StockWatch App** is a web-based application designed to help users monitor
 - **Frontend**: Plotly Dash, Dash Bootstrap Components, CSS
 - **Database**: SQLite
 - **API**: Polygon.io
-- **Development Tools**: PyCharm, DataGrip, GitHub, VScode
+- **Development Tools**: VScode, Codespaces, GitHub
 - **Deployment**: tbd
 
 ## Installation
