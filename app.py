@@ -1,4 +1,4 @@
-from models import User, Stock, Watchlist
+from models import User
 from dotenv import load_dotenv
 import os
 from flask import Flask, redirect
@@ -54,4 +54,4 @@ def load_user(user_id):
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)
