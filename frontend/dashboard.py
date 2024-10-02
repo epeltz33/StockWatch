@@ -24,14 +24,14 @@ client = RESTClient(api_key=polygon_api_key)
 
 def create_dash_app(flask_app):
     dash_app = dash.Dash(__name__, server=flask_app, url_base_pathname='/dash/',
-                         external_stylesheets=[dbc.themes.BOOTSTRAP, '/assets/custom.css'])
+                        external_stylesheets=[dbc.themes.BOOTSTRAP, '/assets/custom.css'],
+                        assets_folder='assets')
 
     dash_app.layout = create_layout()
 
     register_callbacks(dash_app)
 
     return dash_app
-
 
 def create_layout():
     return dbc.Container([
@@ -41,7 +41,7 @@ def create_layout():
                 html.H3('Your Stock Dashboard', className='text-center mb-4'),
                 dbc.InputGroup([
                     dbc.Input(id='stock-input', type='text',
-                              placeholder='Enter a stock ticker...'),
+                            placeholder='Enter a stock ticker...'),
                     dbc.InputGroupText(dbc.Button(
                         'Search', id='search-button', color='primary'))
                 ], className='mb-4'),
@@ -51,11 +51,11 @@ def create_layout():
                 dcc.Graph(id='stock-chart'),
                 html.Div(id='watchlist-section', children=[
                     dcc.Dropdown(id='watchlist-dropdown', options=[],
-                                 placeholder='Select a watchlist', className='mb-2'),
+                                placeholder='Select a watchlist', className='mb-2'),
                     dbc.Input(id='new-watchlist-input', type='text',
-                              placeholder='Enter a new watchlist name...', className='mb-2'),
+                            placeholder='Enter a new watchlist name...', className='mb-2'),
                     dbc.Button('Create Watchlist', id='create-watchlist-button',
-                               color='primary', className='mb-4')
+                            color='primary', className='mb-4')
                 ], className='mt-4')
             ], md=8)
         ]),
@@ -65,14 +65,14 @@ def create_layout():
 
 def register_callbacks(dash_app):
     @dash_app.callback(Output('welcome-message', 'children'),
-                       Input('watchlist-interval', 'n_intervals'))
+                    Input('watchlist-interval', 'n_intervals'))
     #def update_welcome_message(n_intervals):
         #if current_user.is_authenticated:
             #return f'Welcome to Your StockWatch Dashboard, {current_user.username}'
         #return 'Welcome to Your StockWatch Dashboard'
 
     @dash_app.callback(Output('watchlist-dropdown', 'options'),
-                       Input('watchlist-interval', 'n_intervals'))
+                    Input('watchlist-interval', 'n_intervals'))
     def update_watchlist_dropdown(n_intervals):
         if current_user.is_authenticated:
             watchlists = current_user.watchlists.all()
@@ -94,7 +94,7 @@ def register_callbacks(dash_app):
     def update_watchlist(create_clicks, add_clicks, remove_clicks, selected_watchlist_id, new_watchlist_name, current_watchlist_id, add_ids):
         ctx = callback_context
         if not ctx.triggered:
-            return no_update, no_update, [no_update] * len(add_ids)
+            return no_update, no_update, [no_update] * len(add_ids) # Return early if no inputs have changed
 
         trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
@@ -102,10 +102,10 @@ def register_callbacks(dash_app):
             return create_new_watchlist(new_watchlist_name, add_ids)
         elif 'add-to-watchlist' in trigger_id:
             button_id = json.loads(trigger_id)
-            if any(click > 0 for click in add_clicks):
+            if add_clicks is not None and any(click > 0 for click in add_clicks):
                 return add_stock_to_watchlist(button_id, current_watchlist_id, add_ids)
         elif 'remove-from-watchlist' in trigger_id:
-            button_id = json.loads(trigger_id)
+            button_id = json.loads(trigger_id) # Parse button ID from JSON string
             return remove_stock_from_watchlist(button_id, current_watchlist_id, add_ids)
         elif trigger_id == 'watchlist-dropdown':
             return update_watchlist_section(selected_watchlist_id), selected_watchlist_id, [no_update] * len(add_ids)
@@ -147,7 +147,7 @@ def add_stock_to_watchlist(button_id, watchlist_id, add_ids):
             watchlist.stocks.append(stock)
             db.session.commit()
         updated_add_ids = ['Added' if id['index'] ==
-                           stock_symbol else no_update for id in add_ids]
+                        stock_symbol else no_update for id in add_ids]
         return update_watchlist_section(watchlist_id), watchlist_id, updated_add_ids
     except Exception as e:
         logger.error(f"Error adding stock to watchlist: {str(e)}")
