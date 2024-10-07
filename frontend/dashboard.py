@@ -13,6 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 import logging
 import json
 
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,7 +21,6 @@ logger = logging.getLogger(__name__)
 # Initialize Polygon client
 polygon_api_key = os.getenv('POLYGON_API_KEY')
 client = RESTClient(api_key=polygon_api_key)
-
 
 def create_dash_app(flask_app):
     dash_app = dash.Dash(__name__, server=flask_app, url_base_pathname='/dash/',
@@ -35,10 +35,16 @@ def create_dash_app(flask_app):
 
 def create_layout():
     return dbc.Container([
-        html.H2(id='welcome-message', className='text-center my-4'),
         dbc.Row([
             dbc.Col([
-                html.H3('Your Stock Dashboard', className='text-center mb-4'),
+                html.Div([
+                    html.H2(id='welcome-message', className='text-center mb-3'),
+                    html.H3('Your Stock Dashboard', className='text-center mb-4')
+                ], className='stock-dashboard')
+            ], width=12)
+        ]),
+        dbc.Row([
+            dbc.Col([
                 dbc.InputGroup([
                     dbc.Input(id='stock-input', type='text',
                             placeholder='Enter a stock ticker...'),
@@ -62,14 +68,8 @@ def create_layout():
         dcc.Interval(id='watchlist-interval', interval=5*1000, n_intervals=0)
     ], fluid=True, className='px-4')
 
-
 def register_callbacks(dash_app):
-    @dash_app.callback(Output('welcome-message', 'children'),
-                    Input('watchlist-interval', 'n_intervals'))
-    #def update_welcome_message(n_intervals):
-        #if current_user.is_authenticated:
-            #return f'Welcome to Your StockWatch Dashboard, {current_user.username}'
-        #return 'Welcome to Your StockWatch Dashboard'
+
 
     @dash_app.callback(Output('watchlist-dropdown', 'options'),
                     Input('watchlist-interval', 'n_intervals'))
@@ -94,7 +94,7 @@ def register_callbacks(dash_app):
     def update_watchlist(create_clicks, add_clicks, remove_clicks, selected_watchlist_id, new_watchlist_name, current_watchlist_id, add_ids):
         ctx = callback_context
         if not ctx.triggered:
-            return no_update, no_update, [no_update] * len(add_ids) # Return early if no inputs have changed
+            return no_update, no_update, [no_update] * len(add_ids)
 
         trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
@@ -102,10 +102,10 @@ def register_callbacks(dash_app):
             return create_new_watchlist(new_watchlist_name, add_ids)
         elif 'add-to-watchlist' in trigger_id:
             button_id = json.loads(trigger_id)
-            if add_clicks is not None and any(click > 0 for click in add_clicks):
+            if add_clicks is not None and any(click is not None and click > 0 for click in add_clicks):
                 return add_stock_to_watchlist(button_id, current_watchlist_id, add_ids)
         elif 'remove-from-watchlist' in trigger_id:
-            button_id = json.loads(trigger_id) # Parse button ID from JSON string
+            button_id = json.loads(trigger_id)
             return remove_stock_from_watchlist(button_id, current_watchlist_id, add_ids)
         elif trigger_id == 'watchlist-dropdown':
             return update_watchlist_section(selected_watchlist_id), selected_watchlist_id, [no_update] * len(add_ids)
@@ -113,15 +113,37 @@ def register_callbacks(dash_app):
         return no_update, no_update, [no_update] * len(add_ids)
 
     @dash_app.callback(
-        [Output('stock-data', 'children'), Output('stock-chart', 'figure')],
-        [Input('search-button', 'n_clicks')],
-        [State('stock-input', 'value')]
+        [Output('stock-data', 'children'),
+         Output('stock-chart', 'figure'),
+         Output('stock-input', 'value')],
+        [Input({'type': 'watchlist-stock', 'index': ALL}, 'n_clicks'),
+         Input('search-button', 'n_clicks')],
+        [State({'type': 'watchlist-stock', 'index': ALL}, 'id'),
+         State('stock-input', 'value')]
     )
-    def update_stock_data(n_clicks, ticker):
-        if not n_clicks or not ticker:
-            return html.Div("Enter a stock ticker and click 'Search'"), go.Figure()
-        return fetch_and_display_stock_data(ticker)
+    def update_stock_data(watchlist_clicks, search_clicks, watchlist_stock_ids, search_input):
+        ctx = callback_context
+        if not ctx.triggered:
+            return no_update, no_update, no_update
 
+        trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+        if 'watchlist-stock' in trigger_id:
+            clicked_stock = json.loads(trigger_id)['index']
+        elif trigger_id == 'search-button':
+            clicked_stock = search_input
+        else:
+            return no_update, no_update, no_update
+
+        if not clicked_stock:
+            return html.Div("Enter a stock ticker and click 'Search'"), go.Figure(), no_update
+
+        stock_info, chart = fetch_and_display_stock_data(clicked_stock)
+        return stock_info, chart, clicked_stock
+
+    # ... (previous imports and initializations remain unchanged)
+
+# ... (create_dash_app, create_layout, and register_callbacks functions remain unchanged)
 
 def create_new_watchlist(new_watchlist_name, add_ids):
     try:
@@ -132,7 +154,6 @@ def create_new_watchlist(new_watchlist_name, add_ids):
     except SQLAlchemyError as e:
         logger.error(f"Error creating watchlist: {str(e)}")
         return no_update, no_update, [no_update] * len(add_ids)
-
 
 def add_stock_to_watchlist(button_id, watchlist_id, add_ids):
     stock_symbol = button_id['index']
@@ -146,13 +167,11 @@ def add_stock_to_watchlist(button_id, watchlist_id, add_ids):
         if watchlist and stock not in watchlist.stocks:
             watchlist.stocks.append(stock)
             db.session.commit()
-        updated_add_ids = ['Added' if id['index'] ==
-                        stock_symbol else no_update for id in add_ids]
+        updated_add_ids = ['Added' if id['index'] == stock_symbol else no_update for id in add_ids]
         return update_watchlist_section(watchlist_id), watchlist_id, updated_add_ids
     except Exception as e:
         logger.error(f"Error adding stock to watchlist: {str(e)}")
         return no_update, no_update, [no_update] * len(add_ids)
-
 
 def remove_stock_from_watchlist(button_id, watchlist_id, add_ids):
     stock_id = button_id['index']
@@ -167,13 +186,11 @@ def remove_stock_from_watchlist(button_id, watchlist_id, add_ids):
         logger.error(f"Error removing stock from watchlist: {str(e)}")
         return no_update, no_update, [no_update] * len(add_ids)
 
-
 def create_new_stock(stock_symbol):
     try:
         logger.info(f"Creating new stock: {stock_symbol}")
         stock_details = client.get_ticker_details(stock_symbol)
-        stock_name = stock_details.name if hasattr(
-            stock_details, 'name') else stock_symbol
+        stock_name = stock_details.name if hasattr(stock_details, 'name') else stock_symbol
         stock = Stock(symbol=stock_symbol, name=stock_name)
         db.session.add(stock)
         db.session.commit()
@@ -182,7 +199,6 @@ def create_new_stock(stock_symbol):
     except Exception as e:
         logger.error(f"Error creating stock: {stock_symbol} - {str(e)}")
         raise
-
 
 def update_watchlist_section(watchlist_id):
     if not current_user.is_authenticated:
@@ -216,12 +232,11 @@ def update_watchlist_section(watchlist_id):
         watchlist = Watchlist.query.get(watchlist_id)
         if watchlist:
             watchlist_content = create_watchlist_content(watchlist)
+            print(watchlist_content)
         else:
-            watchlist_content = html.P(
-                "Select a watchlist to view stocks or create a new watchlist.")
+            watchlist_content = html.P("Select a watchlist to view stocks or create a new watchlist.")
     else:
-        watchlist_content = html.P(
-            "Select a watchlist to view stocks or create a new watchlist.")
+        watchlist_content = html.P("Select a watchlist to view stocks or create a new watchlist.")
 
     return html.Div([
         watchlist_dropdown,
@@ -229,7 +244,6 @@ def update_watchlist_section(watchlist_id):
         create_watchlist_button,
         watchlist_content
     ])
-
 
 def create_empty_watchlist_section():
     return html.Div([
@@ -240,26 +254,33 @@ def create_empty_watchlist_section():
                    color='primary', className='mb-4')
     ])
 
-
 def create_watchlist_content(watchlist):
     return dbc.Card([
         dbc.CardHeader(
-            html.H4(f"Watchlist: {watchlist.name}", className="text-center")),
+            html.H4(watchlist.name, className="text-center")),
         dbc.CardBody([
             dbc.ListGroup([
                 dbc.ListGroupItem([
                     dbc.Row([
-                        dbc.Col(html.Span(stock.symbol,
-                                className="font-weight-bold"), width=3),
-                        dbc.Col(html.Span(stock.name), width=7),
+                        dbc.Col(
+                            html.A(
+                                [
+                                    html.Span(stock.symbol, className="font-weight-bold me-2"),
+                                    html.Span(stock.name)
+                                ],
+                                href="#",
+                                id={'type': 'watchlist-stock', 'index': stock.symbol},
+                                className="text-decoration-none text-reset"
+                            ),
+                            width=10
+                        ),
                         dbc.Col(
                             dbc.Button(
                                 "Remove",
                                 color="danger",
                                 size="sm",
                                 className="float-right",
-                                id={'type': 'remove-from-watchlist',
-                                    'index': stock.id}
+                                id={'type': 'remove-from-watchlist', 'index': stock.id}
                             ),
                             width=2
                         )
@@ -270,14 +291,12 @@ def create_watchlist_content(watchlist):
         ])
     ], className="mb-4")
 
-
 def fetch_and_display_stock_data(ticker):
     try:
         details = client.get_ticker_details(ticker)
         end_date = datetime.now()
         start_date = end_date - timedelta(days=365)
-        aggs = client.get_aggs(ticker, 1, "day", start_date.strftime(
-            "%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
+        aggs = client.get_aggs(ticker, 1, "day", start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
 
         if not aggs:
             return html.Div(f"No data available for {ticker}"), go.Figure()
@@ -293,18 +312,14 @@ def fetch_and_display_stock_data(ticker):
         previous_close = df.iloc[-2]['close']
         percent_change = ((latest_close - previous_close) / previous_close) * 100
 
-
-        stock_info = create_stock_info_card(details, df, ticker, avg_volume,percent_change)
+        stock_info = create_stock_info_card(details, df, ticker, avg_volume, percent_change)
         fig = create_stock_chart(df, ticker)
-
-
 
         return stock_info, fig
 
     except Exception as e:
         logger.error(f"Error fetching stock data for {ticker}: {str(e)}")
         return html.Div(f"An error occurred: {str(e)}"), go.Figure()
-
 
 def create_stock_info_card(details, df, ticker, avg_volume, percent_change):
     week_52_high = df['high'].max()
@@ -315,8 +330,7 @@ def create_stock_info_card(details, df, ticker, avg_volume, percent_change):
     name = getattr(details, 'name', ticker)
     description = getattr(details, 'description', 'No description available')
     market_cap = getattr(details, 'market_cap', 'N/A')
-    logo_url = getattr(details.branding, 'logo_url', '') if hasattr(
-        details, 'branding') else ''
+    logo_url = getattr(details.branding, 'logo_url', '') if hasattr(details, 'branding') else ''
 
     if logo_url:
         logo_url = f"{logo_url}?apiKey={polygon_api_key}"
@@ -333,7 +347,6 @@ def create_stock_info_card(details, df, ticker, avg_volume, percent_change):
             html.P([
                 f"Current Price: ${latest_day['close']:.2f} ",
                 html.Span(f"({percent_change:.2f}%)", style={'color': color})
-
             ], className='card-text font-weight-bold'),
             html.P(f"Previous Close: ${previous_day['close']:.2f}", className='card-text'),
             html.P(f"Open: ${latest_day['open']:.2f}", className='card-text'),
@@ -348,8 +361,6 @@ def create_stock_info_card(details, df, ticker, avg_volume, percent_change):
                        'type': 'add-to-watchlist', 'index': ticker}, color='success', className='mt-2')
         ])
     ])
-
-
 def create_stock_chart(df, ticker):
     fig = go.Figure()
     fig.add_trace(go.Scatter(
@@ -357,3 +368,4 @@ def create_stock_chart(df, ticker):
     fig.update_layout(title=f"{ticker} Stock Price",
                       xaxis_title='Date', yaxis_title='Price', height=600)
     return fig
+
