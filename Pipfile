@@ -23,6 +23,7 @@ requests-html = "*"
 flask-caching = "*"
 dash-table = "*"
 dash-html-components = "*"
+dash-daq = "*"
 
 [dev-packages]
 pytest = "*"
