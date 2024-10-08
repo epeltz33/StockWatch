@@ -3,6 +3,82 @@
   background-color: #007bff;
   color: white;
 }
+body {
+    background-color: #f0f2f5;
+    font-family: 'Roboto', sans-serif;
+}
+
+.container-fluid {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.stock-dashboard {
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    margin-bottom: 30px;
+}
+
+h2, h3 {
+    color: #333;
+}
+
+.btn-primary {
+    background-color: #4a90e2;
+    border-color: #4a90e2;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: #3a7bc8;
+    border-color: #3a7bc8;
+}
+
+.form-control {
+    border-radius: 5px;
+    border: 1px solid #ced4da;
+}
+
+.form-control:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+}
+
+#stock-chart {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#watchlist-section {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.list-group-item {
+    transition: background-color 0.3s ease;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
 
 .card-title {
   font-size: 1.25rem;
@@ -31,7 +107,7 @@
 }
 
 .stock-dashboard {
-    background-color: #f8f9fa;
+    background-color: #f8fafa;
     border-radius: 8px;
     padding: 20px;
     margin-bottom: 20px;

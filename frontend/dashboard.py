@@ -12,6 +12,68 @@ from app.models import Watchlist, Stock
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 import json
+# Import additional components for improved UI
+from dash import dash_table
+import dash_daq as daq
+
+# Define color scheme (using values from custom.css)
+COLORS = {
+    'primary': '#4a90e2',
+    'secondary': '#f0f2f5',
+    'text': '#333',
+    'positive': '#28a745',
+    'negative': '#dc3545'
+}
+
+# Define custom styles (integrating with custom.css)
+CUSTOM_STYLES = {
+    'card': {
+        'borderRadius': '10px',
+        'marginBottom': '20px',
+        'transition': 'all 0.3s ease'
+    },
+    'button': {
+        'borderRadius': '5px',
+        'transition': 'all 0.3s ease'
+    }
+}
+
+def create_stock_card(title, value, change):
+    return dbc.Card([
+        dbc.CardBody([
+            html.H4(title, className="card-title"),
+            html.H2(value, className="mb-2"),
+            html.P(change, className=f"{'text-success' if float(change.strip('%')) > 0 else 'text-danger'}")
+        ])
+    ], className='card')  # Using the 'card' class from custom.css
+
+def create_watchlist_table(data):
+    return dash_table.DataTable(
+        data=data,
+        columns=[
+            {"name": "Symbol", "id": "symbol"},
+            {"name": "Company", "id": "company"},
+            {"name": "Price", "id": "price"},
+            {"name": "Change", "id": "change"}
+        ],
+        style_cell={'textAlign': 'left'},
+        style_data_conditional=[
+            {
+                'if': {'column_id': 'change', 'filter_query': '{change} > 0'},
+                'color': COLORS['positive']
+            },
+            {
+                'if': {'column_id': 'change', 'filter_query': '{change} < 0'},
+                'color': COLORS['negative']
+            }
+        ],
+        style_header={
+            'backgroundColor': COLORS['secondary'],
+            'fontWeight': 'bold'
+        },
+        style_table={'overflowX': 'auto'}
+    )
+
 
 
 # Set up logging
