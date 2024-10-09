@@ -12,17 +12,22 @@ from app.models import Watchlist, Stock
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 import json
-# Import additional components for improved UI
 from dash import dash_table
-import dash_daq as daq
+
+
+
+
+
 
 # Define color scheme (using values from custom.css)
 COLORS = {
-    'primary': '#4a90e2',
-    'secondary': '#f0f2f5',
-    'text': '#333',
-    'positive': '#28a745',
-    'negative': '#dc3545'
+    'primary': '#3498db',
+    'secondary': '#ecf0f1',
+    'text': '#2c3e50',
+    'positive': '#2ecc71',
+    'negative': '#e74c3c',
+    'background': '#f9f9f9',
+    'card': '#ffffff'
 }
 
 # Define custom styles (integrating with custom.css)
@@ -107,28 +112,31 @@ def create_layout():
         ]),
         dbc.Row([
             dbc.Col([
-                dbc.InputGroup([
-                    dbc.Input(id='stock-input', type='text',
-                            placeholder='Enter a stock ticker...'),
-                    dbc.InputGroupText(dbc.Button(
-                        'Search', id='search-button', color='primary'))
+                dbc.Card([
+                    dbc.CardBody([
+                        dbc.InputGroup([
+                            dbc.Input(id='stock-input', type='text', placeholder='Enter a stock ticker...'),
+                            dbc.InputGroupText(dbc.Button('Search', id='search-button', color='primary'))
+                        ], className='mb-3'),
+                        html.Div(id='stock-data')
+                    ])
                 ], className='mb-4'),
-                html.Div(id='stock-data', className='mb-4'),
+                html.Div(id='watchlist-section', children=[
+                    dcc.Dropdown(id='watchlist-dropdown', options=[], placeholder='Select a watchlist', className='mb-2'),
+                    dbc.Input(id='new-watchlist-input', type='text', placeholder='Enter a new watchlist name...', className='mb-2'),
+                    dbc.Button('Create Watchlist', id='create-watchlist-button', color='primary', className='mb-3')
+                ])
             ], md=4, className='mb-4'),
             dbc.Col([
-                dcc.Graph(id='stock-chart'),
-                html.Div(id='watchlist-section', children=[
-                    dcc.Dropdown(id='watchlist-dropdown', options=[],
-                                placeholder='Select a watchlist', className='mb-2'),
-                    dbc.Input(id='new-watchlist-input', type='text',
-                            placeholder='Enter a new watchlist name...', className='mb-2'),
-                    dbc.Button('Create Watchlist', id='create-watchlist-button',
-                            color='primary', className='mb-4')
-                ], className='mt-4')
+                dbc.Card([
+                    dbc.CardBody([
+                        dcc.Graph(id='stock-chart')
+                    ])
+                ])
             ], md=8)
         ]),
         dcc.Interval(id='watchlist-interval', interval=5*1000, n_intervals=0)
-    ], fluid=True, className='px-4')
+    ], fluid=True, className='py-4')
 
 def register_callbacks(dash_app):
 
