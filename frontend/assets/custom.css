@@ -1,19 +1,84 @@
-/* assets/custom.css */
-.card-header {
-  background-color: #007bff;
-  color: white;
-}
+/* Reset and base styles */
 body {
-    background-color: #f0f2f5;
+    background-color: #f9f9f9;
     font-family: 'Roboto', sans-serif;
+    color: #2c3e50;
+    line-height: 1.6;
 }
 
 .container-fluid {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
+    padding: 30px 15px;
+}
+
+/* Typography */
+h2, h3 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+}
+
+h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+h3 {
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+/* Card styles */
+.card {
+    background-color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+    background-color: #3498db;
+    color: white;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    padding: 15px 20px;
+}
+
+.card-body {
     padding: 20px;
 }
 
+/* Button styles */
+.btn-primary {
+    background-color: #3498db;
+    border-color: #3498db;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+    border-color: #2980b9;
+}
+
+/* Form control styles */
+.form-control {
+    border-radius: 5px;
+    border: 1px solid #bdc3c7;
+}
+
+.form-control:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+}
+
+/* Stock dashboard */
 .stock-dashboard {
     background-color: #ffffff;
     border-radius: 10px;
@@ -22,37 +87,15 @@ body {
     margin-bottom: 30px;
 }
 
-h2, h3 {
-    color: #333;
-}
-
-.btn-primary {
-    background-color: #4a90e2;
-    border-color: #4a90e2;
-    transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-    background-color: #3a7bc8;
-    border-color: #3a7bc8;
-}
-
-.form-control {
-    border-radius: 5px;
-    border: 1px solid #ced4da;
-}
-
-.form-control:focus {
-    border-color: #4a90e2;
-    box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
-}
-
+/* Stock chart */
 #stock-chart {
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: #ffffff;
 }
 
+/* Watchlist section */
 #watchlist-section {
     background-color: #ffffff;
     border-radius: 10px;
@@ -60,55 +103,36 @@ h2, h3 {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* List group items */
 .list-group-item {
+    border: none;
+    border-bottom: 1px solid #ecf0f1;
     transition: background-color 0.3s ease;
 }
 
-.list-group-item:hover {
-    background-color: #f8f9fa;
-}
-
-.card {
-    border: none;
-    border-radius: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-}
-
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.card-title {
-  font-size: 1.25rem;
-}
-
-.card-body {
-  padding: 1rem;
-}
-
-.list-group-item {
-  border: none;
-  border-bottom: 1px solid #ddd;
-}
-
 .list-group-item:last-child {
-  border-bottom: none;
+    border-bottom: none;
 }
 
-.float-right {
-  float: right !important;
+.list-group-item:hover {
+    background-color: #f4f6f7;
 }
 
-.container-fluid {
-    border: none !important;
-    box-shadow: none !important;
-}
+/* Responsive design */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 15px;
+    }
 
-.stock-dashboard {
-    background-color: #f8fafa;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
+    h2 {
+        font-size: 2rem;
+    }
+
+    h3 {
+        font-size: 1.75rem;
+    }
+
+    .card-body {
+        padding: 15px;
+    }
 }
