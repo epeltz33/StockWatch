@@ -42,3 +42,8 @@ def stock_historical(symbol):
     if not data:
         return jsonify({"error": "Could not fetch historical data. Please try again later."}), 500
     return jsonify(data)
+
+
+
+
+
