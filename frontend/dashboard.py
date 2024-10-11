@@ -19,6 +19,7 @@ from dash import dash_table
 
 
 
+
 # Define color scheme (using values from custom.css)
 COLORS = {
     'primary': '#3498db',
@@ -211,9 +212,7 @@ def register_callbacks(dash_app):
         stock_info, chart = fetch_and_display_stock_data(clicked_stock)
         return stock_info, chart, clicked_stock
 
-    # ... (previous imports and initializations remain unchanged)
 
-# ... (create_dash_app, create_layout, and register_callbacks functions remain unchanged)
 
 def create_new_watchlist(new_watchlist_name, add_ids):
     try:

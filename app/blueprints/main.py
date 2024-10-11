@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, url_for
 from flask_login import current_user, login_required
 from app import cache
 
+
 bp = Blueprint('main', __name__)
 
 
