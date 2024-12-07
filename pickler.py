@@ -14,11 +14,7 @@ load_dotenv()
 CACHE_EXPIRY = 3600  # Cache expires after 1 hour (in seconds)
 
 # Initialize Redis connection
-redis_client = redis.Redis(
-    host="redis-18572.c240.us-east-1-3.ec2.redns.redis-cloud.com",
-    port=18572,
-    password="BzrSrz0O42MRRYIyH08Q6xEgZ7wVV0Gk"
-)
+redis_client = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 # ticker list dictionary
 ticker_list = {
@@ -241,12 +237,14 @@ ticker_list = {
 # Reverse lookup dictionary for quick symbol to name mapping
 symbol_to_name = {symbol: name for name, (symbol, _) in ticker_list.items()}
 
+
 def check_cache(ticker):
     cache_key = f"stock_data:{ticker}"
     cached_data = redis_client.get(cache_key)
     if cached_data:
         return json.loads(cached_data)
     return None
+
 
 def get_stock_data(ticker, force_update=False):
     cache_key = f"stock_data:{ticker}"
@@ -268,37 +266,3 @@ def get_stock_data(ticker, force_update=False):
     redis_client.setex(cache_key, CACHE_EXPIRY, json.dumps(data))
 
     return data
-
-def fetch_from_api(ticker):
-    # Get API key from environment vars
-    api_key = os.getenv("POLYGON_API_KEY")
-
-    if not api_key:
-        raise ValueError("No API key provided")
-    url = f"https://api.polygon.io/v2/aggs/ticker/{ticker}/prev?apiKey={api_key}"
-
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise Exception(f"API call failed for ticker {ticker}")
-
-def get_company_info(ticker):
-    for name, (symbol, short_name) in ticker_list.items():
-        if symbol == ticker:
-            return {"name": name, "short_name": short_name}
-    return None
-
-# Example usage
-if __name__ == "__main__":
-    # Get stock data for Apple
-    apple_data = get_stock_data("AAPL")
-    print(f"Apple stock data: {apple_data}")
-
-    # check cache
-    print(check_cache("AAPL"))
-    print(check_cache("AAPL", force_update=True))
-
-    # Get company info for Apple
-    apple_info = get_company_info("AAPL")
-    print(f"Apple company info: {apple_info}")
