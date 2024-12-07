@@ -1,14 +1,13 @@
 from flask import Flask, redirect, url_for
 from flask_caching import Cache
 from config import Config
-from app.extensions import db, migrate, login
+from app.extensions import db, migrate, login, cache  # Import cache from extensions
 from app.models import User
+from app.cli import delete_user, test_cache
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
-
-cache = Cache()
 
 
 def create_app(test_config=None):
@@ -26,7 +25,7 @@ def create_app(test_config=None):
     db.init_app(app)
     migrate.init_app(app, db)
     login.init_app(app)
-    cache.init_app(app)
+    cache.init_app(app)  # Initialize cache
 
     login.login_view = 'auth.login'
 
@@ -50,8 +49,8 @@ def create_app(test_config=None):
     def index():
         return redirect(url_for('main.landing'))
 
-    from app.cli import delete_user
     app.cli.add_command(delete_user)
+    app.cli.add_command(test_cache)
 
     # Import create_dash_app outside of app_context
     from frontend.dashboard import create_dash_app
