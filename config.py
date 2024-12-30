@@ -14,3 +14,10 @@ class Config:
     # Cache configuration
     CACHE_TYPE = "SimpleCache"
     CACHE_DEFAULT_TIMEOUT = 300  # 5 minutes
+    CACHE_TIMEOUTS = {
+        'price': 300,        # 5 minutes
+        'details': 86400,    # 24 hours
+        'historical': 3600,  # 1 hour
+        'fallback': 600      # 10 minutes (fallback data lifetime)
+    }
+

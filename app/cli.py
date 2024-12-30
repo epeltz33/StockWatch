@@ -1,4 +1,3 @@
-
 from flask.cli import with_appcontext
 import click
 from app.models import User, Watchlist
@@ -15,14 +14,11 @@ def delete_user(email):
         Watchlist.query.filter_by(user_id=user.id).delete()
         db.session.delete(user)
         db.session.commit()
-        click.echo(f"User with email {
-                   email} and all associated data has been deleted")
+        click.echo(f"User with email {email} and all associated data has been deleted")
     else:
         click.echo(f"No user found with email {email}")
 
 # new cache testing command
-
-
 @click.command('test-cache')
 @click.argument('symbol', default='AAPL')
 @with_appcontext
