@@ -5,7 +5,7 @@
 
 ## Overview
 
-The **StockWatch App** is a web-based application designed to help users monitor and manage their stock portfolios. Built with **Flask** for the backend and **Plotly Dash** for the frontend, this app allows users to track their favorite stocks, view historical data, and maintain a personalized watchlist.
+The **StockWatch App** is a web-based application designed to help users monitor and manage their stock portfolios. Built with Flask for the backend and Plotly Dash for the frontend, this app allows users to track their favorite stocks, view historical data, and maintain a personalized watchlist.
 
 ## Features
 
