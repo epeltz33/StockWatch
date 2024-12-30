@@ -27,6 +27,15 @@ def create_app(test_config=None):
     login.init_app(app)
     cache.init_app(app)  # Initialize cache
 
+    app.config['CACHE_TIMEOUTS'] = {
+    'price': 300,
+    'details': 86400,
+    'historical': 3600,
+    'fallback': 600
+}
+
+
+
     login.login_view = 'auth.login'
 
     @login.user_loader

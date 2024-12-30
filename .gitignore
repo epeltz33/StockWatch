@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.pyc
+repomix-output.txt
 
 # C extensions
 *.so

@@ -1,162 +1,115 @@
-from app.models import Stock
-from app import db
-from app.extensions import db, cache  # Import cache from extensions
-from sqlalchemy.exc import IntegrityError
-from polygon import RESTClient
-from datetime import datetime, timedelta
-import pytz
-import os
-import json
 from typing import Optional, Dict, List, Any
+from datetime import datetime, timedelta
 import logging
+import os
+from polygon import RESTClient
+from app.extensions import db, cache
+from app.models import Stock
+from sqlalchemy.exc import IntegrityError
+from app.utils.cache_manager import create_cache_decorator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Initialize Polygon client
 polygon_client = RESTClient(os.getenv('POLYGON_API_KEY'))
 
-# Cache timeouts (in seconds)
-CACHE_TIMEOUT = {
-    'price': 300,  # 5 minutes for current price
-    'details': 86400,  # 24 hours for company details
-    'historical': 3600,  # 1 hour for historical data
-}
+# Create cache decorator instance
+cache_stock_data = create_cache_decorator(cache)
 
-
-class StockDataCache:
-    @staticmethod
-    def get_cache_key(symbol: str, data_type: str, **kwargs) -> str:
-        """Generate a unique cache key for different types of stock data."""
-        base_key = f"stock:{symbol}:{data_type}"
-        if kwargs:
-            # Sort kwargs to ensure consistent cache keys
-            param_str = ":".join(f"{k}={v}" for k, v in sorted(kwargs.items()))
-            return f"{base_key}:{param_str}"
-        return base_key
-
-
+@cache_stock_data
 def get_stock_price(symbol: str) -> Optional[float]:
-    """Get current stock price with caching."""
-    cache_key = StockDataCache.get_cache_key(symbol, 'price')
+    """
+    Get current stock price with caching.
 
-    # Try to get from cache first
-    cached_price = cache.get(cache_key)
-    if cached_price is not None:
-        logger.info(f"Cache hit for price data: {symbol}")
-        return cached_price
+    Args:
+        symbol (str): Stock symbol (e.g., 'AAPL')
 
+    Returns:
+        Optional[float]: Current stock price or None if unavailable
+    """
     try:
         date = get_most_recent_trading_day()
         resp = polygon_client.get_daily_open_close_agg(symbol, date)
-        if resp:
-            price = resp.close
-            # Cache the price
-            cache.set(cache_key, price, timeout=CACHE_TIMEOUT['price'])
-            logger.info(f"Cached price data for: {symbol}")
-            return price
+        return resp.close if resp else None
     except Exception as e:
-        logger.error(f"Error fetching stock price for {symbol}: {e}")
+        logger.error(f"Error fetching stock price for {symbol}: {str(e)}")
         return None
 
-
+@cache_stock_data
 def get_stock_data(symbol: str, from_date: str, to_date: str) -> List[Dict[str, Any]]:
-    """Get historical stock data with caching."""
-    cache_key = StockDataCache.get_cache_key(
-        symbol, 'historical',
-        from_date=from_date,
-        to_date=to_date
-    )
+    """
+    Get historical stock data with caching.
 
-    # Try to get from cache first
-    cached_data = cache.get(cache_key)
-    if cached_data is not None:
-        logger.info(f"Cache hit for historical data: {symbol}")
-        return cached_data
+    Args:
+        symbol (str): Stock symbol (e.g., 'AAPL')
+        from_date (str): Start date in 'YYYY-MM-DD' format
+        to_date (str): End date in 'YYYY-MM-DD' format
 
+    Returns:
+        List[Dict[str, Any]]: List of historical stock data points
+    """
     try:
         resp = polygon_client.get_aggs(symbol, 1, "day", from_date, to_date)
-        if resp and len(resp.results) > 0:
-            data = [{"date": datetime.fromtimestamp(item.t / 1000).strftime('%Y-%m-%d'),
-                     "close": item.c,
-                     "volume": item.v} for item in resp.results]
-
-            # Cache the historical data
-            cache.set(cache_key, data, timeout=CACHE_TIMEOUT['historical'])
-            logger.info(f"Cached historical data for: {symbol}")
-            return data
+        if resp:
+            return [
+                {
+                    "date": datetime.fromtimestamp(result.timestamp/1000).strftime('%Y-%m-%d'),
+                    "close": result.close,
+                    "volume": result.volume,
+                    "open": result.open,
+                    "high": result.high,
+                    "low": result.low,
+                    "transactions": result.transactions
+                }
+                for result in resp
+            ]
         return []
     except Exception as e:
-        logger.error(f"Error fetching historical data for {symbol}: {e}")
+        logger.error(f"Error fetching historical data for {symbol}: {str(e)}")
         return []
 
-
+@cache_stock_data
 def get_company_details(symbol: str) -> Dict[str, Any]:
-    """Get company details with caching."""
-    cache_key = StockDataCache.get_cache_key(symbol, 'details')
+    """
+    Get company details with caching.
 
-    # Try to get from cache first
-    cached_details = cache.get(cache_key)
-    if cached_details is not None:
-        logger.info(f"Cache hit for company details: {symbol}")
-        return cached_details
+    Args:
+        symbol (str): Stock symbol (e.g., 'AAPL')
 
+    Returns:
+        Dict[str, Any]: Company details including name, market cap, etc.
+    """
     try:
         resp = polygon_client.get_ticker_details(symbol)
-        details = {
-            "name": resp.name,
-            "market_cap": resp.market_cap,
-            "primary_exchange": resp.primary_exchange,
-            "description": resp.description
-        }
-
-        # Cache the company details
-        cache.set(cache_key, details, timeout=CACHE_TIMEOUT['details'])
-        logger.info(f"Cached company details for: {symbol}")
-        return details
+        if resp:
+            return {
+                "name": resp.name,
+                "market_cap": resp.market_cap,
+                "primary_exchange": resp.primary_exchange,
+                "description": resp.description,
+                "sector": getattr(resp, 'sector', 'N/A'),
+                "industry": getattr(resp, 'industry', 'N/A'),
+                "website": getattr(resp, 'url', 'N/A')
+            }
+        return {}
     except Exception as e:
-        logger.error(f"Error fetching company details for {symbol}: {e}")
+        logger.error(f"Error fetching company details for {symbol}: {str(e)}")
         return {}
 
-# Database-related functions
-
-
-def get_all_stocks():
-    return Stock.query.all()
-
-
-def get_stock_by_symbol(symbol: str) -> Optional[Stock]:
-    return Stock.query.filter_by(symbol=symbol).first()
-
-
-def create_stock(symbol: str, name: str) -> Optional[Stock]:
-    stock = Stock(symbol=symbol, name=name)
-    db.session.add(stock)
-    try:
-        db.session.commit()
-        return stock
-    except IntegrityError:
-        db.session.rollback()
-        return None
-
-
-def delete_stock(symbol: str) -> bool:
-    stock = get_stock_by_symbol(symbol)
-    if stock:
-        db.session.delete(stock)
-        db.session.commit()
-        return True
-    return False
-
-
 def get_most_recent_trading_day() -> str:
-    """Calculate the most recent trading day."""
+    """
+    Calculate the most recent trading day, accounting for weekends and market hours.
+
+    Returns:
+        str: Date string in 'YYYY-MM-DD' format
+    """
     now = datetime.now()
     market_close_time = now.replace(hour=16, minute=0, second=0, microsecond=0)
 
     if now <= market_close_time and now.weekday() < 5:
-        most_recent_trading_day = now - \
-            timedelta(days=1) if now.weekday() < 5 else now
+        most_recent_trading_day = now - timedelta(days=1) if now.weekday() > 0 else now
     else:
         days_to_subtract = 1
         if now.weekday() == 5:  # Saturday
@@ -165,18 +118,76 @@ def get_most_recent_trading_day() -> str:
             days_to_subtract = 2
         most_recent_trading_day = now - timedelta(days=days_to_subtract)
 
-    if most_recent_trading_day.weekday() == 5:
+    if most_recent_trading_day.weekday() == 5:  # If it's Saturday
         most_recent_trading_day -= timedelta(days=1)
-    elif most_recent_trading_day.weekday() == 6:
+    elif most_recent_trading_day.weekday() == 6:  # If it's Sunday
         most_recent_trading_day -= timedelta(days=2)
 
     return most_recent_trading_day.strftime('%Y-%m-%d')
 
+# Database-related functions
+def get_all_stocks() -> List[Stock]:
+    """Get all stocks from the database."""
+    return Stock.query.all()
+
+def get_stock_by_symbol(symbol: str) -> Optional[Stock]:
+    """Get a stock by its symbol from the database."""
+    return Stock.query.filter_by(symbol=symbol).first()
+
+def create_stock(symbol: str, name: str) -> Optional[Stock]:
+    """
+    Create a new stock entry in the database.
+
+    Args:
+        symbol (str): Stock symbol
+        name (str): Company name
+
+    Returns:
+        Optional[Stock]: Created stock object or None if creation failed
+    """
+    stock = Stock(symbol=symbol, name=name)
+    db.session.add(stock)
+    try:
+        db.session.commit()
+        return stock
+    except IntegrityError:
+        db.session.rollback()
+        logger.error(f"Failed to create stock {symbol}: IntegrityError")
+        return None
+
+def delete_stock(symbol: str) -> bool:
+    """
+    Delete a stock from the database.
+
+    Args:
+        symbol (str): Stock symbol to delete
+
+    Returns:
+        bool: True if deletion was successful, False otherwise
+    """
+    stock = get_stock_by_symbol(symbol)
+    if stock:
+        try:
+            db.session.delete(stock)
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Failed to delete stock {symbol}: {str(e)}")
+            return False
+    return False
 
 def clear_stock_cache(symbol: str) -> None:
-    """Clear all cached data for a specific stock."""
-    cache_types = ['price', 'details', 'historical']
-    for cache_type in cache_types:
-        cache_key = StockDataCache.get_cache_key(symbol, cache_type)
-        cache.delete(cache_key)
-        logger.info(f"Cleared {cache_type} cache for: {symbol}")
+    """
+    Clear all cached data for a specific stock.
+
+    Args:
+        symbol (str): Stock symbol to clear cache for
+    """
+    try:
+        # Get the cache instance through the decorator
+        stock_cache = cache_stock_data.cache_instance
+        stock_cache.clear_symbol_cache(symbol)
+        logger.info(f"Successfully cleared cache for stock {symbol}")
+    except Exception as e:
+        logger.error(f"Error clearing cache for stock {symbol}: {str(e)}")
