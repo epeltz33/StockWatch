@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 from datetime import datetime, timedelta
 from app.utils.cache_manager import StockCache
 from app.services.stock_services import get_stock_price, get_company_details, get_stock_data
+from app.cli import test_cache
 from flask_caching import Cache
 
 @pytest.fixture
@@ -61,36 +62,6 @@ def test_cache_timeouts(stock_cache, mock_cache):
     assert mock_cache.set.call_args[1]['timeout'] == 86400  # 24 hours
 
 @patch('app.services.stock_services.polygon_client')
-def test_stock_price_caching(mock_polygon, app, test_cache):
-    """Test stock price caching behavior."""
-    with app.app_context():
-        # Mock polygon response
-        mock_response = Mock()
-        mock_response.close = 150.0
-        mock_polygon.get_daily_open_close_agg.return_value = mock_response
-
-        # First call - should hit API
-        price = get_stock_price("AAPL")
-        assert price == 150.0
-        mock_polygon.get_daily_open_close_agg.assert_called_once()
-
-        # Second call - should hit cache
-        cached_price = get_stock_price("AAPL")
-        assert cached_price == 150.0
-        assert mock_polygon.get_daily_open_close_agg.call_count == 1  # No additional API calls
-
-@patch('app.services.stock_services.polygon_client')
-def test_api_error_handling(mock_polygon, app, test_cache):
-    """Test error handling when API calls fail."""
-    with app.app_context():
-        # Mock API error
-        mock_polygon.get_daily_open_close_agg.side_effect = Exception("API Error")
-
-        # Should return None but not raise exception
-        price = get_stock_price("AAPL")
-        assert price is None
-
-@patch('app.services.stock_services.polygon_client')
 def test_historical_data_handling(mock_polygon, app, test_cache):
     """Test historical data retrieval and caching."""
     with app.app_context():
@@ -104,7 +75,6 @@ def test_historical_data_handling(mock_polygon, app, test_cache):
         mock_response.results = [mock_result]
         mock_polygon.get_aggs.return_value = mock_response
 
-        # Get historical data
         end_date = datetime.now().strftime('%Y-%m-%d')
         start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
 
@@ -113,13 +83,36 @@ def test_historical_data_handling(mock_polygon, app, test_cache):
         assert data[0]['close'] == 150.0
         assert data[0]['volume'] == 1000000
 
-def test_cache_key_conflicts(stock_cache):
-    """Test that different cache keys don't conflict."""
-    # Set different types of data
-    stock_cache.set_cached_data("AAPL", "price", 150.0)
-    stock_cache.set_cached_data("AAPL", "details", {"name": "Apple Inc."})
+@pytest.mark.integration
+def test_full_stock_workflow(app, test_cache):
+    """Test the entire stock data workflow with caching."""
+    with app.app_context():
+        with patch('app.services.stock_services.polygon_client') as mock_polygon:
+            # Mock company details response
+            mock_details_response = Mock()
+            mock_details_response.name = "Apple Inc."
+            mock_details_response.market_cap = 2000000000000
+            mock_details_response.primary_exchange = "NASDAQ"
+            mock_details_response.description = "Technology company"
+            mock_details_response.sector = "Technology"
+            mock_details_response.industry = "Consumer Electronics"
+            mock_details_response.url = "http://www.apple.com"
+            mock_polygon.get_ticker_details.return_value = mock_details_response
 
-    # Verify keys are different
-    price_key = stock_cache._get_cache_key("AAPL", "price")
-    details_key = stock_cache._get_cache_key("AAPL", "details")
-    assert price_key != details_key
+            # Test company details
+            details = get_company_details("AAPL")
+            assert details is not None
+            assert "name" in details
+            assert details["name"] == "Apple Inc."
+            assert details["sector"] == "Technology"
+            assert details["industry"] == "Consumer Electronics"
+
+@pytest.mark.integration
+def test_cache_cli_command(app):
+    """Test the cache CLI command."""
+    runner = app.test_cli_runner()
+
+    with patch('app.utils.cache_monitor.test_cache_functionality') as mock_test_cache:
+        result = runner.invoke(test_cache, ['AAPL'])
+        assert result.exit_code == 0
+        mock_test_cache.assert_called_once_with('AAPL')

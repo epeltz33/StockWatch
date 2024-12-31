@@ -40,7 +40,7 @@ def get_stock_price(symbol: str) -> Optional[float]:
 @cache_stock_data
 def get_stock_data(symbol: str, from_date: str, to_date: str) -> List[Dict[str, Any]]:
     """
-    Get historical stock data with caching.
+    Get historical stock data with enhanced caching.
 
     Args:
         symbol (str): Stock symbol (e.g., 'AAPL')
@@ -52,18 +52,14 @@ def get_stock_data(symbol: str, from_date: str, to_date: str) -> List[Dict[str, 
     """
     try:
         resp = polygon_client.get_aggs(symbol, 1, "day", from_date, to_date)
-        if resp:
+        if resp and hasattr(resp, 'results') and len(resp.results) > 0:
             return [
                 {
-                    "date": datetime.fromtimestamp(result.timestamp/1000).strftime('%Y-%m-%d'),
-                    "close": result.close,
-                    "volume": result.volume,
-                    "open": result.open,
-                    "high": result.high,
-                    "low": result.low,
-                    "transactions": result.transactions
+                    "date": datetime.fromtimestamp(item.t / 1000).strftime('%Y-%m-%d'),
+                    "close": item.c,
+                    "volume": item.v
                 }
-                for result in resp
+                for item in resp.results
             ]
         return []
     except Exception as e:
