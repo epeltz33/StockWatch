@@ -14,12 +14,6 @@ import logging
 import json
 from dash import dash_table
 
-
-
-
-
-
-
 # Define color scheme (using values from custom.css)
 COLORS = {
     'primary': '#3498db',
@@ -44,14 +38,17 @@ CUSTOM_STYLES = {
     }
 }
 
+
 def create_stock_card(title, value, change):
     return dbc.Card([
         dbc.CardBody([
             html.H4(title, className="card-title"),
             html.H2(value, className="mb-2"),
-            html.P(change, className=f"{'text-success' if float(change.strip('%')) > 0 else 'text-danger'}")
+            html.P(change, className=f"{
+                   'text-success' if float(change.strip('%')) > 0 else 'text-danger'}")
         ])
     ], className='card')  # Using the 'card' class from custom.css
+
 
 def create_watchlist_table(data):
     return dash_table.DataTable(
@@ -81,7 +78,6 @@ def create_watchlist_table(data):
     )
 
 
-
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -90,10 +86,12 @@ logger = logging.getLogger(__name__)
 polygon_api_key = os.getenv('POLYGON_API_KEY')
 client = RESTClient(api_key=polygon_api_key)
 
+
 def create_dash_app(flask_app):
     dash_app = dash.Dash(__name__, server=flask_app, url_base_pathname='/dash/',
-                        external_stylesheets=[dbc.themes.BOOTSTRAP, '/assets/custom.css'],
-                        assets_folder='assets')
+                         external_stylesheets=[
+                             dbc.themes.BOOTSTRAP, '/assets/custom.css'],
+                         assets_folder='assets')
 
     dash_app.layout = create_layout()
 
@@ -101,13 +99,16 @@ def create_dash_app(flask_app):
 
     return dash_app
 
+
 def create_layout():
     return dbc.Container([
         dbc.Row([
             dbc.Col([
                 html.Div([
-                    html.H2(id='welcome-message', className='text-center mb-3'),
-                    html.H3('Your Stock Dashboard', className='text-center mb-4')
+                    html.H2(id='welcome-message',
+                            className='text-center mb-3'),
+                    html.H3('Your Stock Dashboard',
+                            className='text-center mb-4')
                 ], className='stock-dashboard')
             ], width=12)
         ]),
@@ -116,16 +117,21 @@ def create_layout():
                 dbc.Card([
                     dbc.CardBody([
                         dbc.InputGroup([
-                            dbc.Input(id='stock-input', type='text', placeholder='Enter a stock ticker...'),
-                            dbc.InputGroupText(dbc.Button('Search', id='search-button', color='primary'))
+                            dbc.Input(id='stock-input', type='text',
+                                      placeholder='Enter a stock ticker...'),
+                            dbc.InputGroupText(dbc.Button(
+                                'Search', id='search-button', color='primary'))
                         ], className='mb-3'),
                         html.Div(id='stock-data')
                     ])
                 ], className='mb-4'),
                 html.Div(id='watchlist-section', children=[
-                    dcc.Dropdown(id='watchlist-dropdown', options=[], placeholder='Select a watchlist', className='mb-2'),
-                    dbc.Input(id='new-watchlist-input', type='text', placeholder='Enter a new watchlist name...', className='mb-2'),
-                    dbc.Button('Create Watchlist', id='create-watchlist-button', color='primary', className='mb-3')
+                    dcc.Dropdown(id='watchlist-dropdown', options=[],
+                                 placeholder='Select a watchlist', className='mb-2'),
+                    dbc.Input(id='new-watchlist-input', type='text',
+                              placeholder='Enter a new watchlist name...', className='mb-2'),
+                    dbc.Button('Create Watchlist', id='create-watchlist-button',
+                               color='primary', className='mb-3')
                 ])
             ], md=4, className='mb-4'),
             dbc.Col([
@@ -139,11 +145,10 @@ def create_layout():
         dcc.Interval(id='watchlist-interval', interval=5*1000, n_intervals=0)
     ], fluid=True, className='py-4')
 
+
 def register_callbacks(dash_app):
-
-
     @dash_app.callback(Output('watchlist-dropdown', 'options'),
-                    Input('watchlist-interval', 'n_intervals'))
+                       Input('watchlist-interval', 'n_intervals'))
     def update_watchlist_dropdown(n_intervals):
         if current_user.is_authenticated:
             watchlists = current_user.watchlists.all()
@@ -213,7 +218,6 @@ def register_callbacks(dash_app):
         return stock_info, chart, clicked_stock
 
 
-
 def create_new_watchlist(new_watchlist_name, add_ids):
     try:
         watchlist = Watchlist(name=new_watchlist_name, user_id=current_user.id)
@@ -223,6 +227,7 @@ def create_new_watchlist(new_watchlist_name, add_ids):
     except SQLAlchemyError as e:
         logger.error(f"Error creating watchlist: {str(e)}")
         return no_update, no_update, [no_update] * len(add_ids)
+
 
 def add_stock_to_watchlist(button_id, watchlist_id, add_ids):
     stock_symbol = button_id['index']
@@ -236,11 +241,13 @@ def add_stock_to_watchlist(button_id, watchlist_id, add_ids):
         if watchlist and stock not in watchlist.stocks:
             watchlist.stocks.append(stock)
             db.session.commit()
-        updated_add_ids = ['Added' if id['index'] == stock_symbol else no_update for id in add_ids]
+        updated_add_ids = ['Added' if id['index'] ==
+                           stock_symbol else no_update for id in add_ids]
         return update_watchlist_section(watchlist_id), watchlist_id, updated_add_ids
     except Exception as e:
         logger.error(f"Error adding stock to watchlist: {str(e)}")
         return no_update, no_update, [no_update] * len(add_ids)
+
 
 def remove_stock_from_watchlist(button_id, watchlist_id, add_ids):
     stock_id = button_id['index']
@@ -255,11 +262,13 @@ def remove_stock_from_watchlist(button_id, watchlist_id, add_ids):
         logger.error(f"Error removing stock from watchlist: {str(e)}")
         return no_update, no_update, [no_update] * len(add_ids)
 
+
 def create_new_stock(stock_symbol):
     try:
         logger.info(f"Creating new stock: {stock_symbol}")
         stock_details = client.get_ticker_details(stock_symbol)
-        stock_name = stock_details.name if hasattr(stock_details, 'name') else stock_symbol
+        stock_name = stock_details.name if hasattr(
+            stock_details, 'name') else stock_symbol
         stock = Stock(symbol=stock_symbol, name=stock_name)
         db.session.add(stock)
         db.session.commit()
@@ -268,6 +277,7 @@ def create_new_stock(stock_symbol):
     except Exception as e:
         logger.error(f"Error creating stock: {stock_symbol} - {str(e)}")
         raise
+
 
 def update_watchlist_section(watchlist_id):
     if not current_user.is_authenticated:
@@ -303,9 +313,11 @@ def update_watchlist_section(watchlist_id):
             watchlist_content = create_watchlist_content(watchlist)
             print(watchlist_content)
         else:
-            watchlist_content = html.P("Select a watchlist to view stocks or create a new watchlist.")
+            watchlist_content = html.P(
+                "Select a watchlist to view stocks or create a new watchlist.")
     else:
-        watchlist_content = html.P("Select a watchlist to view stocks or create a new watchlist.")
+        watchlist_content = html.P(
+            "Select a watchlist to view stocks or create a new watchlist.")
 
     return html.Div([
         watchlist_dropdown,
@@ -313,6 +325,7 @@ def update_watchlist_section(watchlist_id):
         create_watchlist_button,
         watchlist_content
     ])
+
 
 def create_empty_watchlist_section():
     return html.Div([
@@ -323,118 +336,74 @@ def create_empty_watchlist_section():
                    color='primary', className='mb-4')
     ])
 
+
 def create_watchlist_content(watchlist):
     return dbc.Card([
         dbc.CardHeader(
             html.H4(watchlist.name, className="text-center")),
         dbc.CardBody([
             dbc.ListGroup([
-                dbc.ListGroupItem([
-                    dbc.Row([
-                        dbc.Col(
-                            html.A(
-                                [
-                                    html.Span(stock.symbol, className="font-weight-bold me-2"),
-                                    html.Span(stock.name)
-                                ],
-                                href="#",
-                                id={'type': 'watchlist-stock', 'index': stock.symbol},
-                                className="text-decoration-none text-reset"
-                            ),
-                            width=10
-                        ),
-                        dbc.Col(
-                            dbc.Button(
-                                "Remove",
-                                color="danger",
-                                size="sm",
-                                className="float-right",
-                                id={'type': 'remove-from-watchlist', 'index': stock.id}
-                            ),
-                            width=2
-                        )
-                    ], className="align-items-center")
-                ], className="py-2")
-                for stock in watchlist.stocks
-            ], flush=True)
-        ])
-    ], className="mb-4")
-
-def fetch_and_display_stock_data(ticker):
-    try:
-        details = client.get_ticker_details(ticker)
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=365)
-        aggs = client.get_aggs(ticker, 1, "day", start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
-
-        if not aggs:
-            return html.Div(f"No data available for {ticker}"), go.Figure()
-
-        df = pd.DataFrame(aggs)
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-
-        # calc avg volume
-        avg_volume = df['volume'].mean()
-
-        #Calc percent change
-        latest_close = df.iloc[-1]['close']
-        previous_close = df.iloc[-2]['close']
-        percent_change = ((latest_close - previous_close) / previous_close) * 100
-
-        stock_info = create_stock_info_card(details, df, ticker, avg_volume, percent_change)
-        fig = create_stock_chart(df, ticker)
-
-        return stock_info, fig
-
-    except Exception as e:
-        logger.error(f"Error fetching stock data for {ticker}: {str(e)}")
-        return html.Div(f"An error occurred: {str(e)}"), go.Figure()
-
-def create_stock_info_card(details, df, ticker, avg_volume, percent_change):
-    week_52_high = df['high'].max()
-    week_52_low = df['low'].min()
-    latest_day = df.iloc[-1]
-    previous_day = df.iloc[-2]
-
-    name = getattr(details, 'name', ticker)
-    description = getattr(details, 'description', 'No description available')
-    market_cap = getattr(details, 'market_cap', 'N/A')
-    logo_url = getattr(details.branding, 'logo_url', '') if hasattr(details, 'branding') else ''
-
-    if logo_url:
-        logo_url = f"{logo_url}?apiKey={polygon_api_key}"
-
-    # Determine color for % change
-    color = 'green' if percent_change >= 0 else 'red'
-
-    return dbc.Card([
-        dbc.CardBody([
-            html.Img(src=logo_url, alt=f"{name} logo", style={
-                    'max-width': '100%', 'height': 'auto', 'max-height': '50px', 'marginBottom': '10px'}) if logo_url else None,
-            html.H4(f"{name} ({ticker})", className='card-title'),
-            html.Hr(),
-            html.P([
-                f"Current Price: ${latest_day['close']:.2f} ",
-                html.Span(f"({percent_change:.2f}%)", style={'color': color})
-            ], className='card-text font-weight-bold'),
-            html.P(f"Previous Close: ${previous_day['close']:.2f}", className='card-text'),
-            html.P(f"Open: ${latest_day['open']:.2f}", className='card-text'),
-            html.P(f"52 Week Range: ${week_52_low:.2f} - ${week_52_high:.2f}", className='card-text'),
-            html.P(f"Volume: {latest_day['volume']:,}", className='card-text'),
-            html.P(f"Average Volume: {avg_volume:,.0f}", className='card-text'),
-            html.P(f"Market Cap: ${market_cap:,}" if isinstance(
-                market_cap, (int, float)) else f"Market Cap: {market_cap}", className='card-text'),
-            html.P(description, className='card-text mt-3'),
-            html.Hr(),
-            dbc.Button('Add to Watchlist', id={
-                       'type': 'add-to-watchlist', 'index': ticker}, color='success', className='mt-2')
+                dbc.ListGroupItem
+                (
+                    [
+                        html.Span(stock.symbol, id={
+                                  'type': 'watchlist-stock', 'index': stock.symbol}, style={'cursor': 'pointer'}),
+                        html.Span(f" ({stock.name})", className='text-muted'),
+                        dbc.Button('Remove', id={
+                                   'type': 'remove-from-watchlist', 'index': stock.id}, color='danger', size='sm', className='float-end')
+                    ]
+                ) for stock in watchlist.stocks
+            ], flush=True) if watchlist.stocks else html.P("No stocks added yet.")
         ])
     ])
-def create_stock_chart(df, ticker):
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=df['timestamp'], y=df['close'], mode='lines', name='Close Price'))
-    fig.update_layout(title=f"{ticker} Stock Price",
-                      xaxis_title='Date', yaxis_title='Price', height=600)
-    return fig
 
+
+def fetch_and_display_stock_data(stock_symbol):
+    try:
+        # Fetch stock data from Polygon API
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=365)
+        logger.info(f"Fetching stock data for {stock_symbol} from {
+                    start_date.date()} to {end_date.date()}")
+        daily_aggs = client.get_daily_open_close_agg(
+            stock_symbol, start_date.date(), end_date.date())
+
+        # Process stock data for chart
+        df = pd.DataFrame(daily_aggs)
+        df['date'] = pd.to_datetime(df['from'], unit='ms')
+        chart = go.Figure(data=[go.Candlestick(x=df['date'],
+                                               open=df['open'],
+                                               high=df['high'],
+                                               low=df['low'],
+                                               close=df['close'])])
+        chart.update_layout(title=f"{stock_symbol} Stock Price",
+                            xaxis_title="Date",
+                            yaxis_title="Price")
+
+        # Fetch current price and calculate change
+        current_price = client.get_last_trade(stock_symbol).price
+        previous_close = df['close'].iloc[-2] if len(df) > 1 else current_price
+        change = (current_price - previous_close) / previous_close * 100
+        change_str = f"{change:.2f}%"
+
+        # Create stock cards
+        stock_cards = dbc.Row([
+            dbc.Col(create_stock_card("Current Price", f"${
+                    current_price:.2f}", change_str), md=4),
+            dbc.Col(create_stock_card("Previous Close",
+                    f"${previous_close:.2f}", ""), md=4),
+            dbc.Col(create_stock_card("Change", change_str, ""), md=4)
+        ], className="mb-4")
+
+        # Add to Watchlist button
+        add_to_watchlist_button = dbc.Button(
+            "Add to Watchlist",
+            id={'type': 'add-to-watchlist', 'index': stock_symbol},
+            color='primary',
+            className='mb-3'
+        )
+
+        return html.Div([stock_cards, add_to_watchlist_button]), chart
+    except Exception as e:
+        logger.error(f"Error fetching stock data: {str(e)}")
+        return html.Div(f"Error fetching data for {stock_symbol}"), go.Figure()
