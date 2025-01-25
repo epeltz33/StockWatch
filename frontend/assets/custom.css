@@ -1,138 +1,75 @@
-/* Reset and base styles */
+/* General styles */
 body {
+    font-family: sans-serif;
     background-color: #f9f9f9;
-    font-family: 'Roboto', sans-serif;
+    /* COLORS['background'] */
     color: #2c3e50;
-    line-height: 1.6;
+    /* COLORS['text'] */
 }
 
-.container-fluid {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 30px 15px;
-}
-
-/* Typography */
-h2, h3 {
-    color: #2c3e50;
-    margin-bottom: 1rem;
-}
-
-h2 {
-    font-size: 2.5rem;
-    font-weight: 700;
-}
-
-h3 {
-    font-size: 2rem;
-    font-weight: 600;
+.stock-dashboard {
+    background-color: #3498db;
+    /* COLORS['primary'] */
+    color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
 }
 
 /* Card styles */
 .card {
-    background-color: #ffffff;
+    background-color: #fff;
+    /* COLORS['card'] */
     border: none;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
+    /* CUSTOM_STYLES['card']['borderRadius'] */
     margin-bottom: 20px;
+    /* CUSTOM_STYLES['card']['marginBottom'] */
+    transition: all 0.3s ease;
+    /* CUSTOM_STYLES['card']['transition'] */
 }
 
 .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
-.card-header {
-    background-color: #3498db;
-    color: white;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-    padding: 15px 20px;
-}
-
-.card-body {
-    padding: 20px;
+.card-title {
+    font-weight: bold;
+    margin-bottom: 10px;
 }
 
 /* Button styles */
 .btn-primary {
     background-color: #3498db;
+    /* COLORS['primary'] */
     border-color: #3498db;
-    transition: all 0.3s ease;
+    /* COLORS['primary'] */
 }
 
-.btn-primary:hover {
-    background-color: #2980b9;
-    border-color: #2980b9;
-}
-
-/* Form control styles */
-.form-control {
+.btn {
     border-radius: 5px;
-    border: 1px solid #bdc3c7;
+    /* CUSTOM_STYLES['button']['borderRadius'] */
+    transition: all 0.3s ease;
+    /* CUSTOM_STYLES['button']['transition'] */
 }
 
-.form-control:focus {
-    border-color: #3498db;
-    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+.btn:hover {
+    opacity: 0.9;
 }
 
-/* Stock dashboard */
-.stock-dashboard {
-    background-color: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    padding: 30px;
-    margin-bottom: 30px;
+/* Text color classes */
+.text-success {
+    color: #2ecc71;
+    /* COLORS['positive'] */
 }
 
-/* Stock chart */
-#stock-chart {
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    background-color: #ffffff;
+.text-danger {
+    color: #e74c3c;
+    /* COLORS['negative'] */
 }
 
-/* Watchlist section */
-#watchlist-section {
-    background-color: #ffffff;
-    border-radius: 10px;
-    padding: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* List group items */
-.list-group-item {
-    border: none;
-    border-bottom: 1px solid #ecf0f1;
-    transition: background-color 0.3s ease;
-}
-
-.list-group-item:last-child {
-    border-bottom: none;
-}
-
-.list-group-item:hover {
-    background-color: #f4f6f7;
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-    .container-fluid {
-        padding: 15px;
-    }
-
-    h2 {
-        font-size: 2rem;
-    }
-
-    h3 {
-        font-size: 1.75rem;
-    }
-
-    .card-body {
-        padding: 15px;
-    }
+/* DataTable styles */
+.dash-table-container {
+    overflow-x: auto;
 }
