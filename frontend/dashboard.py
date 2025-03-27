@@ -44,8 +44,7 @@ def create_stock_card(title, value, change):
         dbc.CardBody([
             html.H4(title, className="card-title"),
             html.H2(value, className="mb-2"),
-            html.P(change, className=f"{
-                   'text-success' if float(change.strip('%')) > 0 else 'text-danger'}")
+            html.P(change, className=f"mb-2 {'text-success' if float(change.strip('%')) > 0 else 'text-danger'}")
         ])
     ], className='card')  # Using the 'card' class from custom.css
 
@@ -360,50 +359,85 @@ def create_watchlist_content(watchlist):
 
 def fetch_and_display_stock_data(stock_symbol):
     try:
-        # Fetch stock data from Polygon API
+        # Set date range
         end_date = datetime.now()
         start_date = end_date - timedelta(days=365)
-        logger.info(f"Fetching stock data for {stock_symbol} from {
-                    start_date.date()} to {end_date.date()}")
-        daily_aggs = client.get_daily_open_close_agg(
-            stock_symbol, start_date.date(), end_date.date())
 
-        # Process stock data for chart
-        df = pd.DataFrame(daily_aggs)
-        df['date'] = pd.to_datetime(df['from'], unit='ms')
-        chart = go.Figure(data=[go.Candlestick(x=df['date'],
-                                               open=df['open'],
-                                               high=df['high'],
-                                               low=df['low'],
-                                               close=df['close'])])
-        chart.update_layout(title=f"{stock_symbol} Stock Price",
-                            xaxis_title="Date",
-                            yaxis_title="Price")
+        # Format dates as strings
+        start_date_str = start_date.strftime('%Y-%m-%d')
+        end_date_str = end_date.strftime('%Y-%m-%d')
 
-        # Fetch current price and calculate change
-        current_price = client.get_last_trade(stock_symbol).price
-        previous_close = df['close'].iloc[-2] if len(df) > 1 else current_price
-        change = (current_price - previous_close) / previous_close * 100
-        change_str = f"{change:.2f}%"
+        logger.info(f"Fetching stock data for {stock_symbol} from {start_date_str} to {end_date_str}")
 
-        # Create stock cards
-        stock_cards = dbc.Row([
-            dbc.Col(create_stock_card("Current Price", f"${
-                    current_price:.2f}", change_str), md=4),
-            dbc.Col(create_stock_card("Previous Close",
-                    f"${previous_close:.2f}", ""), md=4),
-            dbc.Col(create_stock_card("Change", change_str, ""), md=4)
-        ], className="mb-4")
+        # Import the stock service function for historical data
+        from app.services.stock_services import get_stock_data, get_stock_price, get_company_details
 
-        # Add to Watchlist button
-        add_to_watchlist_button = dbc.Button(
-            "Add to Watchlist",
-            id={'type': 'add-to-watchlist', 'index': stock_symbol},
-            color='primary',
-            className='mb-3'
-        )
+        # Get historical data using the service function with proper caching
+        historical_data = get_stock_data(stock_symbol, start_date_str, end_date_str)
 
-        return html.Div([stock_cards, add_to_watchlist_button]), chart
+        if not historical_data:
+            return html.Div(f"No historical data available for {stock_symbol}"), go.Figure()
+
+        # Convert to DataFrame for chart
+        df = pd.DataFrame(historical_data)
+        df['date'] = pd.to_datetime(df['date'])
+
+        # Create candlestick chart using close prices
+        # Note: If your data only has close prices, we'll create a simple line chart instead
+        if 'close' in df.columns:
+            chart = go.Figure(data=[go.Scatter(
+                x=df['date'],
+                y=df['close'],
+                mode='lines',
+                name=f"{stock_symbol} Price"
+            )])
+
+            chart.update_layout(
+                title=f"{stock_symbol} Stock Price - Past Year",
+                xaxis_title="Date",
+                yaxis_title="Price ($)",
+                template="plotly_white"
+            )
+
+            # Get current price from service function
+            current_price = get_stock_price(stock_symbol)
+
+            # Calculate change
+            if len(df) > 1:
+                previous_close = df['close'].iloc[-2]
+                change = ((current_price - previous_close) / previous_close) * 100
+            else:
+                change = 0
+                previous_close = current_price
+
+            change_str = f"{change:.2f}%"
+
+            # Get company details
+            company_details = get_company_details(stock_symbol)
+            company_name = company_details.get('name', stock_symbol) if company_details else stock_symbol
+
+            # Create stock cards
+            stock_cards = dbc.Row([
+                dbc.Col(create_stock_card("Current Price", f"${current_price:.2f}", change_str), md=4),
+                dbc.Col(create_stock_card("Previous Close", f"${previous_close:.2f}", ""), md=4),
+                dbc.Col(create_stock_card("Company", company_name, ""), md=4)
+            ], className="mb-4")
+
+            # Add to Watchlist button
+            add_to_watchlist_button = dbc.Button(
+                "Add to Watchlist",
+                id={'type': 'add-to-watchlist', 'index': stock_symbol},
+                color='primary',
+                className='mb-3'
+            )
+
+            return html.Div([stock_cards, add_to_watchlist_button]), chart
+        else:
+            return html.Div(f"Insufficient data for {stock_symbol}"), go.Figure()
+
     except Exception as e:
         logger.error(f"Error fetching stock data: {str(e)}")
-        return html.Div(f"Error fetching data for {stock_symbol}"), go.Figure()
+        return html.Div([
+            html.H4(f"Error fetching data for {stock_symbol}"),
+            html.P(f"Details: {str(e)}")
+        ]), go.Figure()
