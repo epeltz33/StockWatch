@@ -1,12 +1,168 @@
-/* General styles */
-body {
-    font-family: sans-serif;
-    background-color: #f9f9f9;
-    /* COLORS['background'] */
-    color: #2c3e50;
-    /* COLORS['text'] */
+/* StockWatch Custom CSS */
+
+:root {
+    --primary-color: #3498db;
+    --secondary-color: #ecf0f1;
+    --text-color: #2c3e50;
+    --positive-color: #2ecc71;
+    --negative-color: #e74c3c;
+    --background-color: #f9f9f9;
+    --card-color: #ffffff;
+    --border-color: #eee;
 }
 
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.stock-dashboard {
+    padding: 20px 0;
+    margin-bottom: 30px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Company header styling */
+.company-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.company-logo {
+    height: 60px;
+    width: auto;
+    margin-right: 20px;
+    object-fit: contain;
+}
+
+.company-symbol {
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 28px;
+}
+
+.company-name {
+    color: #777;
+    font-size: 20px;
+    margin-top: 0;
+}
+
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card-body {
+    padding: 20px;
+}
+
+/* Stock card styles */
+.text-success {
+    color: var(--positive-color) !important;
+}
+
+.text-danger {
+    color: var(--negative-color) !important;
+}
+
+/* Button styling */
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+    border-color: #2980b9;
+}
+
+/* Input styling */
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+}
+
+/* Company info table styling */
+.company-info-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.company-info-table tr {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.company-info-table tr:last-child {
+    border-bottom: none;
+}
+
+.company-info-table td {
+    padding: 15px 10px;
+    vertical-align: top;
+}
+
+.company-info-table td:first-child {
+    font-weight: bold;
+    width: 30%;
+    color: #555;
+}
+
+.company-info-row {
+    padding: 15px 0;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+}
+
+.company-info-row:last-child {
+    border-bottom: none;
+}
+
+.company-info-label {
+    font-weight: bold;
+    width: 30%;
+    color: #555;
+    padding-right: 15px;
+}
+
+.company-info-value {
+    width: 70%;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card {
+        margin-bottom: 20px;
+    }
+
+    .company-info-row {
+        flex-direction: column;
+    }
+
+    .company-info-label,
+    .company-info-value {
+        width: 100%;
+    }
+
+    .company-info-label {
+        margin-bottom: 5px;
+    }
+}
+
+/* Chart container */
+.dash-graph {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* General styles */
 .stock-dashboard {
     background-color: #3498db;
     /* COLORS['primary'] */
@@ -40,13 +196,6 @@ body {
 }
 
 /* Button styles */
-.btn-primary {
-    background-color: #3498db;
-    /* COLORS['primary'] */
-    border-color: #3498db;
-    /* COLORS['primary'] */
-}
-
 .btn {
     border-radius: 5px;
     /* CUSTOM_STYLES['button']['borderRadius'] */
@@ -56,17 +205,6 @@ body {
 
 .btn:hover {
     opacity: 0.9;
-}
-
-/* Text color classes */
-.text-success {
-    color: #2ecc71;
-    /* COLORS['positive'] */
-}
-
-.text-danger {
-    color: #e74c3c;
-    /* COLORS['negative'] */
 }
 
 /* DataTable styles */
