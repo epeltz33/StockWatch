@@ -30,23 +30,65 @@ CUSTOM_STYLES = {
     'card': {
         'borderRadius': '10px',
         'marginBottom': '20px',
+        'boxShadow': '0 4px 8px rgba(0,0,0,0.1)',
         'transition': 'all 0.3s ease'
     },
     'button': {
         'borderRadius': '5px',
         'transition': 'all 0.3s ease'
+    },
+    'stock_logo': {
+        'height': '40px',
+        'width': 'auto',
+        'marginRight': '15px'
+    },
+    'stock_header': {
+        'display': 'flex',
+        'alignItems': 'center',
+        'marginBottom': '20px'
+    },
+    'card_title': {
+        'fontSize': '14px',
+        'fontWeight': 'bold',
+        'color': '#7f8c8d',
+        'marginBottom': '10px',
+        'textTransform': 'uppercase'
+    },
+    'card_value': {
+        'fontSize': '22px',
+        'fontWeight': 'bold',
+        'marginBottom': '5px'
+    },
+    'card_change_positive': {
+        'color': COLORS['positive'],
+        'fontWeight': 'bold',
+        'fontSize': '16px'
+    },
+    'card_change_negative': {
+        'color': COLORS['negative'],
+        'fontWeight': 'bold',
+        'fontSize': '16px'
     }
 }
 
 
-def create_stock_card(title, value, change):
+def create_stock_card(title, value, change=None):
+    # Determine style based on change value
+    change_style = {}
+    if change and change.strip('%'):
+        try:
+            change_value = float(change.strip('%'))
+            change_style = CUSTOM_STYLES['card_change_positive'] if change_value > 0 else CUSTOM_STYLES['card_change_negative']
+        except ValueError:
+            change_style = {}
+
     return dbc.Card([
         dbc.CardBody([
-            html.H4(title, className="card-title"),
-            html.H2(value, className="mb-2"),
-            html.P(change, className=f"mb-2 {'text-success' if float(change.strip('%')) > 0 else 'text-danger'}")
-        ])
-    ], className='card')  # Using the 'card' class from custom.css
+            html.Div(title, style=CUSTOM_STYLES['card_title']),
+            html.Div(value, style=CUSTOM_STYLES['card_value']),
+            html.Div(change, style=change_style) if change is not None else html.Div()
+        ], className="text-center")
+    ], className='h-100', style=CUSTOM_STYLES['card'])
 
 
 def create_watchlist_table(data):
@@ -146,6 +188,15 @@ def create_layout():
 
 
 def register_callbacks(dash_app):
+    @dash_app.callback(
+        Output('welcome-message', 'children'),
+        Input('watchlist-interval', 'n_intervals')
+    )
+    def update_welcome_message(n_intervals):
+        if current_user.is_authenticated:
+            return f"Welcome to Your StockWatch Dashboard, {current_user.username}"
+        return "Welcome to Your StockWatch Dashboard"
+
     @dash_app.callback(Output('watchlist-dropdown', 'options'),
                        Input('watchlist-interval', 'n_intervals'))
     def update_watchlist_dropdown(n_intervals):
@@ -356,39 +407,26 @@ def create_watchlist_content(watchlist):
         ])
     ])
 
-
 def fetch_and_display_stock_data(stock_symbol):
     try:
-        # Set date range
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=365)
-
-        # Format dates as strings
-        start_date_str = start_date.strftime('%Y-%m-%d')
-        end_date_str = end_date.strftime('%Y-%m-%d')
-
-        logger.info(f"Fetching stock data for {stock_symbol} from {start_date_str} to {end_date_str}")
-
-        # Import the stock service function for historical data
-        from app.services.stock_services import get_stock_data, get_stock_price, get_company_details
-
-        # Get historical data using the service function with proper caching
-        historical_data = get_stock_data(stock_symbol, start_date_str, end_date_str)
+        # Get historical data for the past year
+        end_date = datetime.now().strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+        historical_data = get_stock_data(stock_symbol, start_date, end_date)
 
         if not historical_data:
             return html.Div(f"No historical data available for {stock_symbol}"), go.Figure()
 
-        # Convert to DataFrame for chart
+        # Convert to DataFrame
         df = pd.DataFrame(historical_data)
-        df['date'] = pd.to_datetime(df['date'])
 
         # Create candlestick chart using close prices
-        # Note: If your data only has close prices, we'll create a simple line chart instead
         if 'close' in df.columns:
             chart = go.Figure(data=[go.Scatter(
                 x=df['date'],
                 y=df['close'],
                 mode='lines',
+                line=dict(color=COLORS['primary'], width=2),
                 name=f"{stock_symbol} Price"
             )])
 
@@ -396,42 +434,143 @@ def fetch_and_display_stock_data(stock_symbol):
                 title=f"{stock_symbol} Stock Price - Past Year",
                 xaxis_title="Date",
                 yaxis_title="Price ($)",
-                template="plotly_white"
+                template="plotly_white",
+                margin=dict(l=40, r=40, t=50, b=40),
+                hovermode="x unified",
+                paper_bgcolor=COLORS['background'],
+                plot_bgcolor=COLORS['background'],
+                font=dict(color=COLORS['text']),
+                height=500
             )
 
             # Get current price from service function
             current_price = get_stock_price(stock_symbol)
 
-            # Calculate change
-            if len(df) > 1:
-                previous_close = df['close'].iloc[-2]
-                change = ((current_price - previous_close) / previous_close) * 100
-            else:
-                change = 0
-                previous_close = current_price
+            # Ensure we have a valid current price
+            if current_price is None and not df.empty:
+                current_price = df['close'].iloc[-1]
+            elif current_price is None:
+                current_price = 0
 
-            change_str = f"{change:.2f}%"
+            # Calculate change - SAFELY
+            previous_close = current_price  # Default fallback
+            change_str = "0.00%"
+            change_value = 0
+
+            # Calculate previous close and percent change
+            if len(df) > 1 and current_price is not None:
+                previous_close = df['close'].iloc[-2]
+                # Avoid division by zero
+                if previous_close != 0:
+                    change_value = ((current_price - previous_close) / previous_close) * 100
+                    change_str = f"{change_value:.2f}%"
+                else:
+                    change_str = "0.00%"
 
             # Get company details
             company_details = get_company_details(stock_symbol)
             company_name = company_details.get('name', stock_symbol) if company_details else stock_symbol
 
-            # Create stock cards
-            stock_cards = dbc.Row([
-                dbc.Col(create_stock_card("Current Price", f"${current_price:.2f}", change_str), md=4),
-                dbc.Col(create_stock_card("Previous Close", f"${previous_close:.2f}", ""), md=4),
-                dbc.Col(create_stock_card("Company", company_name, ""), md=4)
+            # Get company logo
+            icon_url = company_details.get('icon_url', "") if company_details else ""
+            logo_url = company_details.get('logo_url', "") if company_details else ""
+
+            # Choose the best logo - prefer icon_url if available
+            display_logo = icon_url if icon_url else logo_url
+
+            # Use a default image if no logo is available
+            if not display_logo:
+                display_logo = "/assets/default_stock_icon.png"
+
+            # Calculate 52-week range
+            if not df.empty and 'close' in df.columns:
+                fifty_two_week_low = df['low'].min() if 'low' in df.columns else df['close'].min()
+                fifty_two_week_high = df['high'].max() if 'high' in df.columns else df['close'].max()
+                fifty_two_week_range = f"${fifty_two_week_low:.2f} - ${fifty_two_week_high:.2f}"
+            else:
+                fifty_two_week_range = "N/A"
+
+            # Format market cap
+            market_cap = company_details.get('market_cap', "N/A") if company_details else "N/A"
+            market_cap_str = "N/A"
+            if isinstance(market_cap, (int, float)) and market_cap > 0:
+                if market_cap >= 1e12:
+                    market_cap_str = f"${market_cap/1e12:.2f} Trillion"
+                elif market_cap >= 1e9:
+                    market_cap_str = f"${market_cap/1e9:.2f} Billion"
+                elif market_cap >= 1e6:
+                    market_cap_str = f"${market_cap/1e6:.2f} Million"
+                else:
+                    market_cap_str = f"${market_cap:,.2f}"
+
+            # Create company header with logo
+            company_header = html.Div([
+                html.Div([
+                    html.Img(src=display_logo, className="company-logo"),
+                    html.Div([
+                        html.H2(stock_symbol, className="company-symbol"),
+                        html.H3(company_name, className="company-name")
+                    ])
+                ], className="company-header")
             ], className="mb-4")
 
-            # Add to Watchlist button
-            add_to_watchlist_button = dbc.Button(
-                "Add to Watchlist",
-                id={'type': 'add-to-watchlist', 'index': stock_symbol},
-                color='primary',
-                className='mb-3'
-            )
+            # Format website URL
+            website = company_details.get('website', None) if company_details else None
+            website_display = website if website else "N/A"
 
-            return html.Div([stock_cards, add_to_watchlist_button]), chart
+            # Format listing date
+            list_date = company_details.get('list_date', None) if company_details else None
+            list_date_display = list_date if list_date else "N/A"
+
+            # Create a table-like display for company information
+            company_info_table = html.Div([
+                html.Div([
+                    html.Div([
+                        html.Div("Description", className="company-info-label"),
+                        html.Div(company_details.get('description', "N/A") if company_details else "N/A",
+                                className="company-info-value")
+                    ], className="company-info-row"),
+
+                    html.Div([
+                        html.Div("Market Capitalization", className="company-info-label"),
+                        html.Div(market_cap_str, className="company-info-value")
+                    ], className="company-info-row"),
+
+                    html.Div([
+                        html.Div("Website", className="company-info-label"),
+                        html.Div([
+                            html.A(website_display, href=website, target="_blank") if website else website_display
+                        ], className="company-info-value")
+                    ], className="company-info-row"),
+
+                    html.Div([
+                        html.Div("List Date", className="company-info-label"),
+                        html.Div(list_date_display, className="company-info-value")
+                    ], className="company-info-row"),
+
+                    html.Div([
+                        html.Div("Listing Exchange", className="company-info-label"),
+                        html.Div(company_details.get('exchange', "N/A") if company_details else "N/A",
+                                className="company-info-value")
+                    ], className="company-info-row")
+                ], style={'backgroundColor': 'white', 'borderRadius': '10px', 'boxShadow': '0 2px 6px rgba(0,0,0,0.1)', 'padding': '15px 20px'})
+            ], className="mb-4")
+
+            # Create price cards for current price, change, etc.
+            price_cards = dbc.Row([
+                dbc.Col(create_stock_card("Current Price", f"${current_price:.2f}", change_str), md=4),
+                dbc.Col(create_stock_card("Previous Close", f"${previous_close:.2f}"), md=4),
+                dbc.Col(create_stock_card("52-Week Range", fifty_two_week_range), md=4)
+            ], className="mb-4 g-3")
+
+            # Put it all together
+            stock_info = html.Div([
+                company_header,
+                company_info_table,
+                price_cards
+            ], className="p-2")
+
+            return stock_info, chart
         else:
             return html.Div(f"Insufficient data for {stock_symbol}"), go.Figure()
 
@@ -440,4 +579,77 @@ def fetch_and_display_stock_data(stock_symbol):
         return html.Div([
             html.H4(f"Error fetching data for {stock_symbol}"),
             html.P(f"Details: {str(e)}")
-        ]), go.Figure()
+        ], className="p-3 text-danger"), go.Figure()
+
+
+def get_stock_data(symbol, start_date, end_date):
+    """Fetch historical stock data from Polygon API"""
+    try:
+        # Use the Polygon API client to get aggregates (historical data)
+        aggs = client.get_aggs(
+            ticker=symbol,
+            multiplier=1,
+            timespan="day",
+            from_=start_date,
+            to=end_date
+        )
+
+        # Convert to list of dictionaries
+        historical_data = []
+        for agg in aggs:
+            historical_data.append({
+                'date': datetime.fromtimestamp(agg.timestamp/1000).strftime('%Y-%m-%d'),
+                'open': agg.open,
+                'high': agg.high,
+                'low': agg.low,
+                'close': agg.close,
+                'volume': agg.volume
+            })
+
+        return historical_data
+    except Exception as e:
+        logger.error(f"Error fetching historical data for {symbol}: {str(e)}")
+        return []
+
+
+def get_stock_price(symbol):
+    """Fetch current stock price from Polygon API"""
+    try:
+        # Get the last trade for the symbol
+        last_trade = client.get_last_trade(symbol)
+        return last_trade.price if last_trade else None
+    except Exception as e:
+        logger.error(f"Error fetching price for {symbol}: {str(e)}")
+        return None
+
+
+def get_company_details(symbol):
+    """Fetch company details from Polygon API"""
+    try:
+        # Get ticker details
+        ticker_details = client.get_ticker_details(symbol)
+
+        # Extract relevant information
+        company_details = {
+            'name': ticker_details.name if hasattr(ticker_details, 'name') else symbol,
+            'description': ticker_details.description if hasattr(ticker_details, 'description') else "",
+            'market_cap': ticker_details.market_cap if hasattr(ticker_details, 'market_cap') else None,
+            'icon_url': ticker_details.branding.icon_url if hasattr(ticker_details, 'branding') and hasattr(ticker_details.branding, 'icon_url') else None,
+            'logo_url': ticker_details.branding.logo_url if hasattr(ticker_details, 'branding') and hasattr(ticker_details.branding, 'logo_url') else None,
+            'avg_volume': ticker_details.weighted_shares_outstanding if hasattr(ticker_details, 'weighted_shares_outstanding') else None,
+            'website': ticker_details.homepage_url if hasattr(ticker_details, 'homepage_url') else None,
+            'list_date': ticker_details.list_date if hasattr(ticker_details, 'list_date') else None,
+            'exchange': ticker_details.primary_exchange if hasattr(ticker_details, 'primary_exchange') else None
+        }
+
+        # If we get a URL with a {apiKey} parameter, substitute it
+        if company_details['icon_url'] and '{apiKey}' in company_details['icon_url']:
+            company_details['icon_url'] = company_details['icon_url'].replace('{apiKey}', polygon_api_key)
+
+        if company_details['logo_url'] and '{apiKey}' in company_details['logo_url']:
+            company_details['logo_url'] = company_details['logo_url'].replace('{apiKey}', polygon_api_key)
+
+        return company_details
+    except Exception as e:
+        logger.error(f"Error fetching company details for {symbol}: {str(e)}")
+        return None
