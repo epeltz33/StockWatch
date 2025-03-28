@@ -18,35 +18,43 @@ body {
 }
 
 .stock-dashboard {
-    padding: 20px 0;
+    padding: 20px;
     margin-bottom: 30px;
-    border-bottom: 1px solid var(--border-color);
+    border-radius: 10px;
+    background-color: var(--primary-color);
+    color: #fff;
 }
 
 /* Company header styling */
 .company-header {
     display: flex;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 
 .company-logo {
     height: 60px;
-    width: auto;
-    margin-right: 20px;
+    width: 60px;
     object-fit: contain;
+    margin-right: 20px;
+    border-radius: 8px;
 }
 
 .company-symbol {
-    margin-bottom: 5px;
+    margin: 0;
     font-weight: bold;
     font-size: 28px;
 }
 
 .company-name {
+    margin: 0;
+    margin-top: 5px;
     color: #777;
     font-size: 20px;
-    margin-top: 0;
 }
 
 .card {
@@ -54,10 +62,12 @@ body {
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     transition: transform 0.3s ease;
+    background-color: var(--card-color);
 }
 
 .card:hover {
     transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
 .card-body {
@@ -115,6 +125,7 @@ body {
     color: #555;
 }
 
+/* Company info row styling */
 .company-info-row {
     padding: 15px 0;
     border-bottom: 1px solid var(--border-color);
@@ -134,6 +145,7 @@ body {
 
 .company-info-value {
     width: 70%;
+    line-height: 1.6;
 }
 
 /* Responsive adjustments */
@@ -162,45 +174,16 @@ body {
     overflow: hidden;
 }
 
-/* General styles */
-.stock-dashboard {
-    background-color: #3498db;
-    /* COLORS['primary'] */
-    color: #fff;
-    padding: 20px;
-    border-radius: 10px;
-    margin-bottom: 20px;
-}
-
-/* Card styles */
-.card {
-    background-color: #fff;
-    /* COLORS['card'] */
-    border: none;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    border-radius: 10px;
-    /* CUSTOM_STYLES['card']['borderRadius'] */
-    margin-bottom: 20px;
-    /* CUSTOM_STYLES['card']['marginBottom'] */
-    transition: all 0.3s ease;
-    /* CUSTOM_STYLES['card']['transition'] */
-}
-
-.card:hover {
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-}
-
+/* Card styles refinements */
 .card-title {
     font-weight: bold;
     margin-bottom: 10px;
 }
 
-/* Button styles */
+/* Button styles refinements */
 .btn {
     border-radius: 5px;
-    /* CUSTOM_STYLES['button']['borderRadius'] */
     transition: all 0.3s ease;
-    /* CUSTOM_STYLES['button']['transition'] */
 }
 
 .btn:hover {
@@ -210,4 +193,48 @@ body {
 /* DataTable styles */
 .dash-table-container {
     overflow-x: auto;
+}
+
+/* Price card specific styles */
+.card-value {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    white-space: nowrap;
+}
+
+.card-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #7f8c8d;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+.card-change-positive {
+    color: var(--positive-color);
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.card-change-negative {
+    color: var(--negative-color);
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* Watchlist styling */
+.watchlist-item {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.watchlist-item:hover {
+    background-color: #f5f5f5;
+}
+
+/* Search input and button styling */
+.search-box {
+    border-radius: 8px;
+    overflow: hidden;
 }
