@@ -71,24 +71,49 @@ CUSTOM_STYLES = {
     }
 }
 
-
 def create_stock_card(title, value, change=None):
     # Determine style based on change value
     change_style = {}
+    change_value = 0
     if change and change.strip('%'):
         try:
             change_value = float(change.strip('%'))
-            change_style = CUSTOM_STYLES['card_change_positive'] if change_value > 0 else CUSTOM_STYLES['card_change_negative']
+            change_style = {
+                'color': COLORS['positive'] if change_value > 0 else COLORS['negative'],
+                'fontWeight': 'bold',
+                'fontSize': '16px'
+            }
         except ValueError:
             change_style = {}
 
+    # Add arrow indicator based on change value
+    change_indicator = "▲ " if change_value > 0 else "▼ " if change_value < 0 else ""
+    change_display = f"{change_indicator}{change}" if change else ""
+
     return dbc.Card([
         dbc.CardBody([
-            html.Div(title, style=CUSTOM_STYLES['card_title']),
-            html.Div(value, style=CUSTOM_STYLES['card_value']),
-            html.Div(change, style=change_style) if change is not None else html.Div()
-        ], className="text-center")
-    ], className='h-100', style=CUSTOM_STYLES['card'])
+            html.Div(title, style={
+                'fontSize': '14px',
+                'fontWeight': 'bold',
+                'color': '#7f8c8d',
+                'marginBottom': '10px',
+                'textTransform': 'uppercase'
+            }),
+            html.Div(value, style={
+                'fontSize': '22px',
+                'fontWeight': 'bold',
+                'marginBottom': '5px',
+                'whiteSpace': 'nowrap'  # Prevent breaking across lines
+            }),
+            html.Div(change_display, style=change_style) if change is not None else html.Div()
+        ], className="text-center py-3")
+    ], className='h-100', style={
+        'borderRadius': '10px',
+        'boxShadow': '0 4px 8px rgba(0,0,0,0.1)',
+        'border': 'none',
+        'transition': 'all 0.3s ease',
+        'marginBottom': '10px'
+    })
 
 
 def create_watchlist_table(data):
@@ -415,12 +440,13 @@ def fetch_and_display_stock_data(stock_symbol):
         historical_data = get_stock_data(stock_symbol, start_date, end_date)
 
         if not historical_data:
-            return html.Div(f"No historical data available for {stock_symbol}"), go.Figure()
+            return html.Div(f"No historical data available for {stock_symbol}",
+                           className="alert alert-warning m-3 p-3"), go.Figure()
 
         # Convert to DataFrame
         df = pd.DataFrame(historical_data)
 
-        # Create candlestick chart using close prices
+        # Create chart using close prices
         if 'close' in df.columns:
             chart = go.Figure(data=[go.Scatter(
                 x=df['date'],
@@ -503,17 +529,6 @@ def fetch_and_display_stock_data(stock_symbol):
                 else:
                     market_cap_str = f"${market_cap:,.2f}"
 
-            # Create company header with logo
-            company_header = html.Div([
-                html.Div([
-                    html.Img(src=display_logo, className="company-logo"),
-                    html.Div([
-                        html.H2(stock_symbol, className="company-symbol"),
-                        html.H3(company_name, className="company-name")
-                    ])
-                ], className="company-header")
-            ], className="mb-4")
-
             # Format website URL
             website = company_details.get('website', None) if company_details else None
             website_display = website if website else "N/A"
@@ -522,64 +537,261 @@ def fetch_and_display_stock_data(stock_symbol):
             list_date = company_details.get('list_date', None) if company_details else None
             list_date_display = list_date if list_date else "N/A"
 
-            # Create a table-like display for company information
-            company_info_table = html.Div([
-                html.Div([
-                    html.Div([
-                        html.Div("Description", className="company-info-label"),
-                        html.Div(company_details.get('description', "N/A") if company_details else "N/A",
-                                className="company-info-value")
-                    ], className="company-info-row"),
-
-                    html.Div([
-                        html.Div("Market Capitalization", className="company-info-label"),
-                        html.Div(market_cap_str, className="company-info-value")
-                    ], className="company-info-row"),
-
-                    html.Div([
-                        html.Div("Website", className="company-info-label"),
-                        html.Div([
-                            html.A(website_display, href=website, target="_blank") if website else website_display
-                        ], className="company-info-value")
-                    ], className="company-info-row"),
-
-                    html.Div([
-                        html.Div("List Date", className="company-info-label"),
-                        html.Div(list_date_display, className="company-info-value")
-                    ], className="company-info-row"),
-
-                    html.Div([
-                        html.Div("Listing Exchange", className="company-info-label"),
-                        html.Div(company_details.get('exchange', "N/A") if company_details else "N/A",
-                                className="company-info-value")
-                    ], className="company-info-row")
-                ], style={'backgroundColor': 'white', 'borderRadius': '10px', 'boxShadow': '0 2px 6px rgba(0,0,0,0.1)', 'padding': '15px 20px'})
-            ], className="mb-4")
-
-            # Create price cards for current price, change, etc.
-            price_cards = dbc.Row([
-                dbc.Col(create_stock_card("Current Price", f"${current_price:.2f}", change_str), md=4),
-                dbc.Col(create_stock_card("Previous Close", f"${previous_close:.2f}"), md=4),
-                dbc.Col(create_stock_card("52-Week Range", fifty_two_week_range), md=4)
-            ], className="mb-4 g-3")
-
-            # Put it all together
+            # Create stock content in a clean tabular layout like the screenshots
             stock_info = html.Div([
-                company_header,
-                company_info_table,
-                price_cards
-            ], className="p-2")
+                # Top header section with logo and name
+                html.Div([
+                    # Logo/icon section
+                    html.Div([
+                        html.Img(
+                            src=display_logo,
+                            style={
+                                'height': '50px',
+                                'width': '50px',
+                                'objectFit': 'contain',
+                                'borderRadius': '4px',
+                                'marginRight': '15px'
+                            }
+                        ) if display_logo else html.Div(
+                            html.Span(stock_symbol[0],
+                                     style={
+                                        'fontSize': '24px',
+                                        'fontWeight': 'bold',
+                                        'color': 'white',
+                                        'backgroundColor': COLORS['primary'],
+                                        'borderRadius': '4px',
+                                        'padding': '8px 12px',
+                                     }),
+                            style={'marginRight': '15px'}
+                        )
+                    ], style={'display': 'inline-block', 'verticalAlign': 'middle'}),
+
+                    # Company name and symbol section
+                    html.Div([
+                        html.H3(stock_symbol,
+                               style={
+                                   'margin': '0',
+                                   'fontWeight': 'bold',
+                                   'fontSize': '24px'
+                               }),
+                        html.Div(company_name,
+                                style={
+                                    'fontSize': '16px',
+                                    'color': '#666'
+                                })
+                    ], style={'display': 'inline-block', 'verticalAlign': 'middle'})
+                ], style={
+                    'display': 'flex',
+                    'alignItems': 'center',
+                    'marginBottom': '25px',
+                    'padding': '0 0 15px 0',
+                    'borderBottom': '1px solid #eee'
+                }),
+
+                # Price information cards
+                html.Div([
+                    # Current price
+                    html.Div([
+                        html.Div("CURRENT PRICE", className="label",
+                                style={
+                                    'fontSize': '12px',
+                                    'fontWeight': '600',
+                                    'color': '#777',
+                                    'textTransform': 'uppercase',
+                                    'letterSpacing': '0.5px',
+                                    'marginBottom': '5px'
+                                }),
+                        html.Div(f"${current_price:.2f}", className="value",
+                                style={
+                                    'fontSize': '24px',
+                                    'fontWeight': 'bold',
+                                }),
+                        html.Div([
+                            "▲ " if change_value > 0 else "▼ " if change_value < 0 else "",
+                            change_str
+                        ], style={
+                            'color': COLORS['positive'] if change_value > 0 else COLORS['negative'] if change_value < 0 else '#666',
+                            'fontSize': '14px',
+                            'fontWeight': 'bold'
+                        })
+                    ], className="price-card", style={
+                        'display': 'inline-block',
+                        'width': '33%',
+                        'padding': '10px 20px',
+                        'boxSizing': 'border-box',
+                        'textAlign': 'center'
+                    }),
+
+                    # Previous close
+                    html.Div([
+                        html.Div("PREVIOUS CLOSE", className="label",
+                                style={
+                                    'fontSize': '12px',
+                                    'fontWeight': '600',
+                                    'color': '#777',
+                                    'textTransform': 'uppercase',
+                                    'letterSpacing': '0.5px',
+                                    'marginBottom': '5px'
+                                }),
+                        html.Div(f"${previous_close:.2f}", className="value",
+                                style={
+                                    'fontSize': '24px',
+                                    'fontWeight': 'bold',
+                                })
+                    ], className="price-card", style={
+                        'display': 'inline-block',
+                        'width': '33%',
+                        'padding': '10px 20px',
+                        'boxSizing': 'border-box',
+                        'textAlign': 'center',
+                        'borderLeft': '1px solid #eee',
+                        'borderRight': '1px solid #eee'
+                    }),
+
+                    # 52-week range
+                    html.Div([
+                        html.Div("52-WEEK RANGE", className="label",
+                                style={
+                                    'fontSize': '12px',
+                                    'fontWeight': '600',
+                                    'color': '#777',
+                                    'textTransform': 'uppercase',
+                                    'letterSpacing': '0.5px',
+                                    'marginBottom': '5px'
+                                }),
+                        html.Div(fifty_two_week_range, className="value",
+                                style={
+                                    'fontSize': '18px',
+                                    'fontWeight': 'bold',
+                                })
+                    ], className="price-card", style={
+                        'display': 'inline-block',
+                        'width': '33%',
+                        'padding': '10px 20px',
+                        'boxSizing': 'border-box',
+                        'textAlign': 'center'
+                    })
+                ], style={
+                    'backgroundColor': 'white',
+                    'borderRadius': '10px',
+                    'boxShadow': '0 2px 10px rgba(0,0,0,0.08)',
+                    'marginBottom': '25px',
+                    'overflow': 'hidden'
+                }),
+
+                # Company information table
+                html.Table([
+                    html.Tbody([
+                        # Description row
+                        html.Tr([
+                            html.Td("Description", style={
+                                'fontWeight': 'bold',
+                                'width': '25%',
+                                'padding': '15px 20px 15px 20px',
+                                'verticalAlign': 'top',
+                                'borderBottom': '1px solid #eee'
+                            }),
+                            html.Td(company_details.get('description', "N/A") if company_details else "N/A", style={
+                                'padding': '15px 20px 15px 10px',
+                                'lineHeight': '1.5',
+                                'borderBottom': '1px solid #eee'
+                            })
+                        ]),
+
+                        # Market Cap row
+                        html.Tr([
+                            html.Td("Market Cap", style={
+                                'fontWeight': 'bold',
+                                'width': '25%',
+                                'padding': '15px 20px 15px 20px',
+                                'verticalAlign': 'top',
+                                'borderBottom': '1px solid #eee'
+                            }),
+                            html.Td(market_cap_str, style={
+                                'padding': '15px 20px 15px 10px',
+                                'borderBottom': '1px solid #eee'
+                            })
+                        ]),
+
+                        # Website row
+                        html.Tr([
+                            html.Td("Website", style={
+                                'fontWeight': 'bold',
+                                'width': '25%',
+                                'padding': '15px 20px 15px 20px',
+                                'verticalAlign': 'top',
+                                'borderBottom': '1px solid #eee'
+                            }),
+                            html.Td([
+                                html.A(website_display, href=website, target="_blank", style={
+                                    'color': COLORS['primary'],
+                                    'textDecoration': 'none'
+                                }) if website else website_display
+                            ], style={
+                                'padding': '15px 20px 15px 10px',
+                                'borderBottom': '1px solid #eee'
+                            })
+                        ]),
+
+                        # List Date row
+                        html.Tr([
+                            html.Td("List Date", style={
+                                'fontWeight': 'bold',
+                                'width': '25%',
+                                'padding': '15px 20px 15px 20px',
+                                'verticalAlign': 'top',
+                                'borderBottom': '1px solid #eee'
+                            }),
+                            html.Td(list_date_display, style={
+                                'padding': '15px 20px 15px 10px',
+                                'borderBottom': '1px solid #eee'
+                            })
+                        ]),
+
+                        # Exchange row
+                        html.Tr([
+                            html.Td("Exchange", style={
+                                'fontWeight': 'bold',
+                                'width': '25%',
+                                'padding': '15px 20px 15px 20px',
+                                'verticalAlign': 'top',
+                            }),
+                            html.Td(company_details.get('exchange', "N/A") if company_details else "N/A", style={
+                                'padding': '15px 20px 15px 10px',
+                            })
+                        ])
+                    ])
+                ], style={
+                    'width': '100%',
+                    'borderCollapse': 'collapse',
+                    'backgroundColor': 'white',
+                    'borderRadius': '10px',
+                    'boxShadow': '0 2px 10px rgba(0,0,0,0.08)',
+                    'overflow': 'hidden'
+                })
+            ], style={
+                'fontFamily': 'Arial, sans-serif',
+                'padding': '20px',
+                'backgroundColor': '#f9f9f9',
+                'borderRadius': '10px',
+                'maxWidth': '100%'
+            })
 
             return stock_info, chart
         else:
-            return html.Div(f"Insufficient data for {stock_symbol}"), go.Figure()
+            return html.Div(f"Insufficient data for {stock_symbol}", className="alert alert-warning m-3 p-3"), go.Figure()
 
     except Exception as e:
         logger.error(f"Error fetching stock data: {str(e)}")
         return html.Div([
-            html.H4(f"Error fetching data for {stock_symbol}"),
-            html.P(f"Details: {str(e)}")
-        ], className="p-3 text-danger"), go.Figure()
+            html.H4(f"Error fetching data for {stock_symbol}",
+                   style={'color': COLORS['negative']}),
+            html.P(f"Details: {str(e)}",
+                  style={'color': '#666'})
+        ], className="alert alert-danger m-3 p-4", style={
+            'textAlign': 'center',
+            'borderRadius': '10px'
+        }), go.Figure()
 
 
 def get_stock_data(symbol, start_date, end_date):
@@ -622,32 +834,48 @@ def get_stock_price(symbol):
         logger.error(f"Error fetching price for {symbol}: {str(e)}")
         return None
 
-
 def get_company_details(symbol):
     """Fetch company details from Polygon API"""
     try:
         # Get ticker details
         ticker_details = client.get_ticker_details(symbol)
 
+        # Extract branding info directly
+        branding = getattr(ticker_details, 'branding', None)
+        icon_url = None
+        logo_url = None
+
+        if branding:
+            # Try to get icon_url with API key substitution
+            if hasattr(branding, 'icon_url') and branding.icon_url:
+                icon_url = branding.icon_url.replace('{apiKey}', polygon_api_key)
+
+            # Try to get logo_url with API key substitution
+            if hasattr(branding, 'logo_url') and branding.logo_url:
+                logo_url = branding.logo_url.replace('{apiKey}', polygon_api_key)
+
+        # Log the image URLs to debug
+        logger.info(f"Icon URL: {icon_url}")
+        logger.info(f"Logo URL: {logo_url}")
+
         # Extract relevant information
+        description = ""
+        if hasattr(ticker_details, 'description') and ticker_details.description:
+            # Truncate description to 150 characters
+            description = ticker_details.description[:150]
+            if len(ticker_details.description) > 150:
+                description += "..."
+
         company_details = {
             'name': ticker_details.name if hasattr(ticker_details, 'name') else symbol,
-            'description': ticker_details.description if hasattr(ticker_details, 'description') else "",
+            'description': description,
             'market_cap': ticker_details.market_cap if hasattr(ticker_details, 'market_cap') else None,
-            'icon_url': ticker_details.branding.icon_url if hasattr(ticker_details, 'branding') and hasattr(ticker_details.branding, 'icon_url') else None,
-            'logo_url': ticker_details.branding.logo_url if hasattr(ticker_details, 'branding') and hasattr(ticker_details.branding, 'logo_url') else None,
-            'avg_volume': ticker_details.weighted_shares_outstanding if hasattr(ticker_details, 'weighted_shares_outstanding') else None,
+            'icon_url': icon_url,
+            'logo_url': logo_url,
             'website': ticker_details.homepage_url if hasattr(ticker_details, 'homepage_url') else None,
             'list_date': ticker_details.list_date if hasattr(ticker_details, 'list_date') else None,
             'exchange': ticker_details.primary_exchange if hasattr(ticker_details, 'primary_exchange') else None
         }
-
-        # If we get a URL with a {apiKey} parameter, substitute it
-        if company_details['icon_url'] and '{apiKey}' in company_details['icon_url']:
-            company_details['icon_url'] = company_details['icon_url'].replace('{apiKey}', polygon_api_key)
-
-        if company_details['logo_url'] and '{apiKey}' in company_details['logo_url']:
-            company_details['logo_url'] = company_details['logo_url'].replace('{apiKey}', polygon_api_key)
 
         return company_details
     except Exception as e:
