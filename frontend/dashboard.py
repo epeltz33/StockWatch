@@ -220,7 +220,8 @@ def create_layout():
                                           color='primary',
                                           className='w-100')
                             )
-                        ])
+                        ]),
+                        html.Div(id='watchlist-section')
                     ], className='p-3')
                 ], className='shadow-sm')
             ], md=4, className='mb-4'),
@@ -707,6 +708,16 @@ def fetch_and_display_stock_data(stock_symbol):
                     'padding': '0 0 15px 0',
                     'borderBottom': '1px solid #eee'
                 }),
+
+                html.Div([
+                        dbc.Button(
+                            "Add to Watchlist",
+                            id={'type': 'add-to-watchlist', 'index': stock_symbol},
+                            color='success',
+                            className='mb-3'
+                        )
+                    ], style={'textAlign': 'right', 'marginBottom': '15px'}),
+
 
                 # Price Information Cards
                 html.Div([
