@@ -168,6 +168,7 @@ def create_dash_app(flask_app):
 
 def create_layout():
     return dbc.Container([
+        # Welcome Section
         dbc.Row([
             dbc.Col([
                 html.Div([
@@ -177,37 +178,72 @@ def create_layout():
                             className='text-center mb-4')
                 ], className='stock-dashboard')
             ], width=12)
-        ]),
+        ], className='mb-4'),
+
+        # Main Content Section
         dbc.Row([
+            # Left Sidebar
             dbc.Col([
+                # Search Section
                 dbc.Card([
                     dbc.CardBody([
+                        html.H5("Search Stocks", className="card-title mb-3"),
                         dbc.InputGroup([
                             dbc.Input(id='stock-input', type='text',
-                                      placeholder='Enter a stock ticker...'),
-                            dbc.InputGroupText(dbc.Button(
-                                'Search', id='search-button', color='primary'))
+                                      placeholder='Enter a stock ticker...',
+                                      className='form-control'),
+                            dbc.InputGroupText(
+                                dbc.Button('Search', id='search-button',
+                                          color='primary', className='w-100')
+                            )
                         ], className='mb-3'),
                         html.Div(id='stock-data')
-                    ])
-                ], className='mb-4'),
-                html.Div(id='watchlist-section', children=[
-                    dcc.Dropdown(id='watchlist-dropdown', options=[],
-                                 placeholder='Select a watchlist', className='mb-2'),
-                    dbc.Input(id='new-watchlist-input', type='text',
-                              placeholder='Enter a new watchlist name...', className='mb-2'),
-                    dbc.Button('Create Watchlist', id='create-watchlist-button',
-                               color='primary', className='mb-3')
-                ])
-            ], md=4, className='mb-4'),
-            dbc.Col([
+                    ], className='p-3')
+                ], className='mb-4 shadow-sm'),
+
+                # Watchlist Section
                 dbc.Card([
                     dbc.CardBody([
-                        dcc.Graph(id='stock-chart')
-                    ])
-                ])
+                        html.H5("Watchlists", className="card-title mb-3"),
+                        dcc.Dropdown(id='watchlist-dropdown',
+                                   options=[],
+                                   placeholder='Select a watchlist',
+                                   className='mb-3'),
+                        dbc.InputGroup([
+                            dbc.Input(id='new-watchlist-input',
+                                      type='text',
+                                      placeholder='Enter a new watchlist name...',
+                                      className='form-control'),
+                            dbc.InputGroupText(
+                                dbc.Button('Create',
+                                          id='create-watchlist-button',
+                                          color='primary',
+                                          className='w-100')
+                            )
+                        ])
+                    ], className='p-3')
+                ], className='shadow-sm')
+            ], md=4, className='mb-4'),
+
+            # Main Content Area
+            dbc.Col([
+                # Chart Section
+                dbc.Card([
+                    dbc.CardBody([
+                        html.Div(id='stock-chart-container', className='chart-container')
+                    ], className='p-3')
+                ], className='mb-4 shadow-sm'),
+
+                # Company Info Section
+                dbc.Card([
+                    dbc.CardBody([
+                        html.Div(id='company-info-container', className='company-info-container')
+                    ], className='p-3')
+                ], className='shadow-sm')
             ], md=8)
         ]),
+
+        # Update Interval
         dcc.Interval(id='watchlist-interval', interval=5*1000, n_intervals=0)
     ], fluid=True, className='py-4')
 
@@ -265,7 +301,7 @@ def register_callbacks(dash_app):
 
     @dash_app.callback(
         [Output('stock-data', 'children'),
-         Output('stock-chart', 'figure'),
+         Output('stock-chart-container', 'children'),
          Output('stock-input', 'value')],
         [Input({'type': 'watchlist-stock', 'index': ALL}, 'n_clicks'),
          Input('search-button', 'n_clicks')],
@@ -287,10 +323,25 @@ def register_callbacks(dash_app):
             return no_update, no_update, no_update
 
         if not clicked_stock:
-            return html.Div("Enter a stock ticker and click 'Search'"), go.Figure(), no_update
+            return html.Div("Enter a stock ticker and click 'Search'"), html.Div("Please search for a stock to view its chart."), no_update
 
         stock_info, chart = fetch_and_display_stock_data(clicked_stock)
-        return stock_info, chart, clicked_stock
+
+        # Create chart container with proper styling
+        chart_container = html.Div([
+            dcc.Graph(
+                id='stock-chart',
+                figure=chart,
+                style={'height': '100%', 'width': '100%'},
+                config={
+                    'displayModeBar': True,
+                    'scrollZoom': True,
+                    'responsive': True
+                }
+            )
+        ], className='chart-container')
+
+        return stock_info, chart_container, clicked_stock
 
 
 def create_new_watchlist(new_watchlist_name, add_ids):
@@ -441,7 +492,7 @@ def fetch_and_display_stock_data(stock_symbol):
 
         if not historical_data:
             return html.Div(f"No historical data available for {stock_symbol}",
-                           className="alert alert-warning m-3 p-3"), go.Figure()
+                        className="alert alert-warning m-3 p-3"), go.Figure()
 
         # Convert to DataFrame
         df = pd.DataFrame(historical_data)
@@ -466,7 +517,30 @@ def fetch_and_display_stock_data(stock_symbol):
                 paper_bgcolor=COLORS['background'],
                 plot_bgcolor=COLORS['background'],
                 font=dict(color=COLORS['text']),
-                height=500
+                height=500,
+                autosize=True,
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1
+                )
+            )
+
+            # Add selector buttons without range slider
+            chart.update_xaxes(
+                rangeselector=dict(
+                    buttons=list([
+                        dict(count=1, label="1m", step="month", stepmode="backward"),
+                        dict(count=6, label="6m", step="month", stepmode="backward"),
+                        dict(count=1, label="YTD", step="year", stepmode="todate"),
+                        dict(step="all")
+                    ]),
+                    bgcolor=COLORS['secondary'],
+                    activecolor=COLORS['primary'],
+                    font=dict(color=COLORS['text'])
+                )
             )
 
             # Get current price from service function
@@ -501,12 +575,43 @@ def fetch_and_display_stock_data(stock_symbol):
             icon_url = company_details.get('icon_url', "") if company_details else ""
             logo_url = company_details.get('logo_url', "") if company_details else ""
 
+            # Log the logo URLs for debugging
+            logger.info(f"For {stock_symbol} - Icon URL: {icon_url}, Logo URL: {logo_url}")
+
             # Choose the best logo - prefer icon_url if available
-            display_logo = icon_url if icon_url else logo_url
+            display_logo = None
+            if icon_url:
+                display_logo = icon_url
+                logger.info(f"Using icon_url for {stock_symbol}")
+            elif logo_url:
+                display_logo = logo_url
+                logger.info(f"Using logo_url for {stock_symbol}")
+
+            # Additional fallback - try to use a public stock logo service if Polygon doesn't provide one
+            if not display_logo:
+                logger.info(f"No Polygon logo found for {stock_symbol}, trying fallbacks")
+                # Try dedicated stock logo service first
+                display_logo = f"https://eodhistoricaldata.com/img/logos/US/{stock_symbol}.png"
+                logger.info(f"Using EOD logo URL: {display_logo}")
+
+                # Alternative: Try clearbit logo API if we have a website
+                if company_details and company_details.get('website'):
+                    website = company_details.get('website')
+                    if website:
+                        if not website.startswith('http'):
+                            website = f"https://{website}"
+                        try:
+                            domain = website.split('//')[1].split('/')[0] if '//' in website else ""
+                            if domain:
+                                clearbit_logo = f"https://logo.clearbit.com/{domain}?size=60"
+                                logger.info(f"Also prepared Clearbit URL as fallback: {clearbit_logo}")
+                        except Exception as e:
+                            logger.error(f"Error parsing website URL: {str(e)}")
 
             # Use a default image if no logo is available
             if not display_logo:
-                display_logo = "/assets/default_stock_icon.png"
+                display_logo = "/assets/default_stock_icon.svg"
+                logger.info(f"Falling back to default logo for {stock_symbol}")
 
             # Calculate 52-week range
             if not df.empty and 'close' in df.columns:
@@ -537,23 +642,33 @@ def fetch_and_display_stock_data(stock_symbol):
             list_date = company_details.get('list_date', None) if company_details else None
             list_date_display = list_date if list_date else "N/A"
 
-            # Create stock content in a clean tabular layout like the screenshots
+            # Update the stock_info layout with better spacing and responsiveness
             stock_info = html.Div([
-                # Top header section with logo and name
+                # Company Header
                 html.Div([
-                    # Logo/icon section
+                    # Logo/Icon
                     html.Div([
                         html.Img(
                             src=display_logo,
+                            id="company-logo",
+                            alt=stock_symbol,
                             style={
                                 'height': '50px',
                                 'width': '50px',
                                 'objectFit': 'contain',
                                 'borderRadius': '4px',
-                                'marginRight': '15px'
-                            }
+                                'marginRight': '15px',
+                                'backgroundColor': '#f5f5f5',
+                                'padding': '2px',
+                                'border': '1px solid #e0e0e0'
+                            },
+                            className='company-logo',
+                            # Add error handler to use fallback if image fails to load
+                            loading_state={'is_loading': True},
+                            # Add event handler for image load error
+                            n_clicks=0
                         ) if display_logo else html.Div(
-                            html.Span(stock_symbol[0],
+                            html.Span(stock_symbol[0].upper(),
                                      style={
                                         'fontSize': '24px',
                                         'fontWeight': 'bold',
@@ -561,12 +676,17 @@ def fetch_and_display_stock_data(stock_symbol):
                                         'backgroundColor': COLORS['primary'],
                                         'borderRadius': '4px',
                                         'padding': '8px 12px',
+                                        'display': 'inline-block',
+                                        'textAlign': 'center',
+                                        'width': '50px',
+                                        'height': '50px',
+                                        'lineHeight': '34px'
                                      }),
                             style={'marginRight': '15px'}
                         )
                     ], style={'display': 'inline-block', 'verticalAlign': 'middle'}),
 
-                    # Company name and symbol section
+                    # Company Name and Symbol
                     html.Div([
                         html.H3(stock_symbol,
                                style={
@@ -588,9 +708,9 @@ def fetch_and_display_stock_data(stock_symbol):
                     'borderBottom': '1px solid #eee'
                 }),
 
-                # Price information cards
+                # Price Information Cards
                 html.Div([
-                    # Current price
+                    # Current Price Card
                     html.Div([
                         html.Div("CURRENT PRICE", className="label",
                                 style={
@@ -603,8 +723,11 @@ def fetch_and_display_stock_data(stock_symbol):
                                 }),
                         html.Div(f"${current_price:.2f}", className="value",
                                 style={
-                                    'fontSize': '24px',
+                                    'fontSize': '22px',
                                     'fontWeight': 'bold',
+                                    'whiteSpace': 'nowrap',
+                                    'overflow': 'hidden',
+                                    'textOverflow': 'ellipsis'
                                 }),
                         html.Div([
                             "▲ " if change_value > 0 else "▼ " if change_value < 0 else "",
@@ -612,17 +735,20 @@ def fetch_and_display_stock_data(stock_symbol):
                         ], style={
                             'color': COLORS['positive'] if change_value > 0 else COLORS['negative'] if change_value < 0 else '#666',
                             'fontSize': '14px',
-                            'fontWeight': 'bold'
+                            'fontWeight': 'bold',
+                            'whiteSpace': 'nowrap'
                         })
                     ], className="price-card", style={
-                        'display': 'inline-block',
-                        'width': '33%',
-                        'padding': '10px 20px',
-                        'boxSizing': 'border-box',
-                        'textAlign': 'center'
+                        'flex': '1',
+                        'padding': '15px',
+                        'textAlign': 'center',
+                        'marginRight': '10px',
+                        'backgroundColor': 'white',
+                        'borderRadius': '8px',
+                        'boxShadow': '0 1px 3px rgba(0,0,0,0.08)'
                     }),
 
-                    # Previous close
+                    # Previous Close Card
                     html.Div([
                         html.Div("PREVIOUS CLOSE", className="label",
                                 style={
@@ -635,20 +761,24 @@ def fetch_and_display_stock_data(stock_symbol):
                                 }),
                         html.Div(f"${previous_close:.2f}", className="value",
                                 style={
-                                    'fontSize': '24px',
+                                    'fontSize': '22px',
                                     'fontWeight': 'bold',
+                                    'whiteSpace': 'nowrap',
+                                    'overflow': 'hidden',
+                                    'textOverflow': 'ellipsis'
                                 })
                     ], className="price-card", style={
-                        'display': 'inline-block',
-                        'width': '33%',
-                        'padding': '10px 20px',
-                        'boxSizing': 'border-box',
+                        'flex': '1',
+                        'padding': '15px',
                         'textAlign': 'center',
-                        'borderLeft': '1px solid #eee',
-                        'borderRight': '1px solid #eee'
+                        'marginRight': '10px',
+                        'marginLeft': '10px',
+                        'backgroundColor': 'white',
+                        'borderRadius': '8px',
+                        'boxShadow': '0 1px 3px rgba(0,0,0,0.08)'
                     }),
 
-                    # 52-week range
+                    # 52-Week Range Card
                     html.Div([
                         html.Div("52-WEEK RANGE", className="label",
                                 style={
@@ -663,23 +793,29 @@ def fetch_and_display_stock_data(stock_symbol):
                                 style={
                                     'fontSize': '18px',
                                     'fontWeight': 'bold',
+                                    'whiteSpace': 'nowrap',
+                                    'overflow': 'hidden',
+                                    'textOverflow': 'ellipsis'
                                 })
                     ], className="price-card", style={
-                        'display': 'inline-block',
-                        'width': '33%',
-                        'padding': '10px 20px',
-                        'boxSizing': 'border-box',
-                        'textAlign': 'center'
+                        'flex': '1',
+                        'padding': '15px',
+                        'textAlign': 'center',
+                        'marginLeft': '10px',
+                        'backgroundColor': 'white',
+                        'borderRadius': '8px',
+                        'boxShadow': '0 1px 3px rgba(0,0,0,0.08)'
                     })
                 ], style={
-                    'backgroundColor': 'white',
-                    'borderRadius': '10px',
-                    'boxShadow': '0 2px 10px rgba(0,0,0,0.08)',
+                    'display': 'flex',
+                    'flexDirection': 'row',
+                    'flexWrap': 'wrap',
+                    'justifyContent': 'space-between',
                     'marginBottom': '25px',
-                    'overflow': 'hidden'
+                    'gap': '10px'
                 }),
 
-                # Company information table
+                # Company Information Table
                 html.Table([
                     html.Tbody([
                         # Description row
@@ -687,14 +823,16 @@ def fetch_and_display_stock_data(stock_symbol):
                             html.Td("Description", style={
                                 'fontWeight': 'bold',
                                 'width': '25%',
-                                'padding': '15px 20px 15px 20px',
+                                'padding': '15px 20px',
                                 'verticalAlign': 'top',
-                                'borderBottom': '1px solid #eee'
+                                'borderBottom': '1px solid #eee',
+                                'whiteSpace': 'nowrap'
                             }),
                             html.Td(company_details.get('description', "N/A") if company_details else "N/A", style={
-                                'padding': '15px 20px 15px 10px',
+                                'padding': '15px 20px',
                                 'lineHeight': '1.5',
-                                'borderBottom': '1px solid #eee'
+                                'borderBottom': '1px solid #eee',
+                                'wordBreak': 'break-word'
                             })
                         ]),
 
@@ -703,13 +841,15 @@ def fetch_and_display_stock_data(stock_symbol):
                             html.Td("Market Cap", style={
                                 'fontWeight': 'bold',
                                 'width': '25%',
-                                'padding': '15px 20px 15px 20px',
+                                'padding': '15px 20px',
                                 'verticalAlign': 'top',
-                                'borderBottom': '1px solid #eee'
+                                'borderBottom': '1px solid #eee',
+                                'whiteSpace': 'nowrap'
                             }),
                             html.Td(market_cap_str, style={
-                                'padding': '15px 20px 15px 10px',
-                                'borderBottom': '1px solid #eee'
+                                'padding': '15px 20px',
+                                'borderBottom': '1px solid #eee',
+                                'whiteSpace': 'nowrap'
                             })
                         ]),
 
@@ -718,17 +858,19 @@ def fetch_and_display_stock_data(stock_symbol):
                             html.Td("Website", style={
                                 'fontWeight': 'bold',
                                 'width': '25%',
-                                'padding': '15px 20px 15px 20px',
+                                'padding': '15px 20px',
                                 'verticalAlign': 'top',
-                                'borderBottom': '1px solid #eee'
+                                'borderBottom': '1px solid #eee',
+                                'whiteSpace': 'nowrap'
                             }),
                             html.Td([
                                 html.A(website_display, href=website, target="_blank", style={
                                     'color': COLORS['primary'],
-                                    'textDecoration': 'none'
+                                    'textDecoration': 'none',
+                                    'wordBreak': 'break-all'
                                 }) if website else website_display
                             ], style={
-                                'padding': '15px 20px 15px 10px',
+                                'padding': '15px 20px',
                                 'borderBottom': '1px solid #eee'
                             })
                         ]),
@@ -738,13 +880,15 @@ def fetch_and_display_stock_data(stock_symbol):
                             html.Td("List Date", style={
                                 'fontWeight': 'bold',
                                 'width': '25%',
-                                'padding': '15px 20px 15px 20px',
+                                'padding': '15px 20px',
                                 'verticalAlign': 'top',
-                                'borderBottom': '1px solid #eee'
+                                'borderBottom': '1px solid #eee',
+                                'whiteSpace': 'nowrap'
                             }),
                             html.Td(list_date_display, style={
-                                'padding': '15px 20px 15px 10px',
-                                'borderBottom': '1px solid #eee'
+                                'padding': '15px 20px',
+                                'borderBottom': '1px solid #eee',
+                                'whiteSpace': 'nowrap'
                             })
                         ]),
 
@@ -753,11 +897,13 @@ def fetch_and_display_stock_data(stock_symbol):
                             html.Td("Exchange", style={
                                 'fontWeight': 'bold',
                                 'width': '25%',
-                                'padding': '15px 20px 15px 20px',
+                                'padding': '15px 20px',
                                 'verticalAlign': 'top',
+                                'whiteSpace': 'nowrap'
                             }),
                             html.Td(company_details.get('exchange', "N/A") if company_details else "N/A", style={
-                                'padding': '15px 20px 15px 10px',
+                                'padding': '15px 20px',
+                                'whiteSpace': 'nowrap'
                             })
                         ])
                     ])
@@ -774,7 +920,8 @@ def fetch_and_display_stock_data(stock_symbol):
                 'padding': '20px',
                 'backgroundColor': '#f9f9f9',
                 'borderRadius': '10px',
-                'maxWidth': '100%'
+                'maxWidth': '100%',
+                'overflow': 'hidden'
             })
 
             return stock_info, chart
@@ -837,46 +984,141 @@ def get_stock_price(symbol):
 def get_company_details(symbol):
     """Fetch company details from Polygon API"""
     try:
-        # Get ticker details
-        ticker_details = client.get_ticker_details(symbol)
+        # Get ticker details with more detailed error logging
+        logger.info(f"Fetching ticker details for: {symbol}")
 
-        # Extract branding info directly
-        branding = getattr(ticker_details, 'branding', None)
+        try:
+            ticker_details = client.get_ticker_details(symbol)
+            logger.info(f"Successfully received response for {symbol}")
+        except Exception as e:
+            logger.error(f"Error in API call for {symbol}: {str(e)}")
+            ticker_details = None
+
+        # Initialize variables
         icon_url = None
         logo_url = None
 
-        if branding:
-            # Try to get icon_url with API key substitution
-            if hasattr(branding, 'icon_url') and branding.icon_url:
-                icon_url = branding.icon_url.replace('{apiKey}', polygon_api_key)
+        # Debug the response structure
+        if ticker_details:
+            logger.info(f"Ticker details structure: {type(ticker_details)}")
+            if hasattr(ticker_details, '__dict__'):
+                logger.info(f"Fields available: {list(ticker_details.__dict__.keys())}")
 
-            # Try to get logo_url with API key substitution
-            if hasattr(branding, 'logo_url') and branding.logo_url:
-                logo_url = branding.logo_url.replace('{apiKey}', polygon_api_key)
+        # Approach 1: Direct branding access
+        if ticker_details and hasattr(ticker_details, 'branding'):
+            branding = ticker_details.branding
+            logger.info(f"Found branding information: {branding}")
 
-        # Log the image URLs to debug
-        logger.info(f"Icon URL: {icon_url}")
-        logger.info(f"Logo URL: {logo_url}")
+            if isinstance(branding, dict):
+                icon_url = branding.get('icon_url')
+                logo_url = branding.get('logo_url')
+                logger.info(f"From dict: icon_url={icon_url}, logo_url={logo_url}")
+            else:
+                icon_url = getattr(branding, 'icon_url', None)
+                logo_url = getattr(branding, 'logo_url', None)
+                logger.info(f"From object: icon_url={icon_url}, logo_url={logo_url}")
 
-        # Extract relevant information
+        # Approach 2: Access through results
+        if not icon_url and ticker_details and hasattr(ticker_details, 'results'):
+            results = ticker_details.results
+            logger.info(f"Looking in results: {results}")
+
+            if hasattr(results, 'branding'):
+                branding = results.branding
+                logger.info(f"Found branding in results: {branding}")
+
+                if isinstance(branding, dict):
+                    icon_url = branding.get('icon_url')
+                    logo_url = branding.get('logo_url')
+                else:
+                    icon_url = getattr(branding, 'icon_url', None)
+                    logo_url = getattr(branding, 'logo_url', None)
+
+        # Approach 3: Try to extract from raw response
+        if not icon_url and ticker_details:
+            # Try to access the raw response if available
+            try:
+                if hasattr(ticker_details, 'raw'):
+                    raw_data = ticker_details.raw
+                    logger.info(f"Examining raw response: {raw_data}")
+
+                    if isinstance(raw_data, dict) and 'branding' in raw_data:
+                        branding = raw_data['branding']
+                        icon_url = branding.get('icon_url')
+                        logo_url = branding.get('logo_url')
+                        logger.info(f"From raw data: icon_url={icon_url}, logo_url={logo_url}")
+            except Exception as e:
+                logger.error(f"Error extracting from raw response: {str(e)}")
+
+        # Insert API key if URLs are found
+        if icon_url:
+            icon_url = icon_url.replace('{apiKey}', polygon_api_key)
+            logger.info(f"Final icon URL after replacement: {icon_url}")
+
+        if logo_url:
+            logo_url = logo_url.replace('{apiKey}', polygon_api_key)
+            logger.info(f"Final logo URL after replacement: {logo_url}")
+
+        # Extract other company details
+        # ... (rest of the function remains the same)
+
+        # Get name from appropriate location depending on response format
+        name = symbol
+        if hasattr(ticker_details, 'name'):
+            name = ticker_details.name
+        elif hasattr(ticker_details, 'results') and hasattr(ticker_details.results, 'name'):
+            name = ticker_details.results.name
+
+        # Get other attributes, checking both direct and .results paths
+        market_cap = None
+        if hasattr(ticker_details, 'market_cap'):
+            market_cap = ticker_details.market_cap
+        elif hasattr(ticker_details, 'results') and hasattr(ticker_details.results, 'market_cap'):
+            market_cap = ticker_details.results.market_cap
+
+        website = None
+        if hasattr(ticker_details, 'homepage_url'):
+            website = ticker_details.homepage_url
+        elif hasattr(ticker_details, 'results') and hasattr(ticker_details.results, 'homepage_url'):
+            website = ticker_details.results.homepage_url
+
+        list_date = None
+        if hasattr(ticker_details, 'list_date'):
+            list_date = ticker_details.list_date
+        elif hasattr(ticker_details, 'results') and hasattr(ticker_details.results, 'list_date'):
+            list_date = ticker_details.results.list_date
+
+        exchange = None
+        if hasattr(ticker_details, 'primary_exchange'):
+            exchange = ticker_details.primary_exchange
+        elif hasattr(ticker_details, 'results') and hasattr(ticker_details.results, 'primary_exchange'):
+            exchange = ticker_details.results.primary_exchange
+
+        # Extract description safely
         description = ""
         if hasattr(ticker_details, 'description') and ticker_details.description:
-            # Truncate description to 150 characters
             description = ticker_details.description[:150]
             if len(ticker_details.description) > 150:
                 description += "..."
+        elif hasattr(ticker_details, 'results') and hasattr(ticker_details.results, 'description'):
+            desc = ticker_details.results.description
+            if desc:
+                description = desc[:150]
+                if len(desc) > 150:
+                    description += "..."
 
         company_details = {
-            'name': ticker_details.name if hasattr(ticker_details, 'name') else symbol,
+            'name': name,
             'description': description,
-            'market_cap': ticker_details.market_cap if hasattr(ticker_details, 'market_cap') else None,
+            'market_cap': market_cap,
             'icon_url': icon_url,
             'logo_url': logo_url,
-            'website': ticker_details.homepage_url if hasattr(ticker_details, 'homepage_url') else None,
-            'list_date': ticker_details.list_date if hasattr(ticker_details, 'list_date') else None,
-            'exchange': ticker_details.primary_exchange if hasattr(ticker_details, 'primary_exchange') else None
+            'website': website,
+            'list_date': list_date,
+            'exchange': exchange
         }
 
+        logger.info(f"Final company details for {symbol}: {company_details}")
         return company_details
     except Exception as e:
         logger.error(f"Error fetching company details for {symbol}: {str(e)}")

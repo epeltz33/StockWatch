@@ -15,6 +15,7 @@ body {
     background-color: var(--background-color);
     color: var(--text-color);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow-x: hidden;
 }
 
 .stock-dashboard {
@@ -23,6 +24,254 @@ body {
     border-radius: 10px;
     background-color: var(--primary-color);
     color: #fff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Card Styling */
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background-color: var(--card-color);
+    margin-bottom: 20px;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 1rem;
+}
+
+/* Form Controls */
+.form-control {
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    font-size: 0.95rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+}
+
+/* Buttons */
+.btn {
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+    border-color: #2980b9;
+    transform: translateY(-1px);
+}
+
+/* Chart Container */
+.chart-container {
+    width: 100%;
+    height: 500px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: var(--card-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    padding: 5px;
+}
+
+.js-plotly-plot, .plot-container {
+    height: 100%;
+    width: 100%;
+}
+
+/* Company Info Container */
+.company-info-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Price Cards */
+.price-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    transition: transform 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    min-width: 120px;
+    flex: 1;
+}
+
+.price-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.price-card .label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+
+.price-card .value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Company Info Table */
+.company-info-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.company-info-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: top;
+}
+
+.company-info-table td:first-child {
+    font-weight: 600;
+    color: #666;
+    width: 30%;
+    white-space: nowrap;
+}
+
+.company-info-table td:last-child {
+    word-break: break-word;
+}
+
+/* Watchlist Styling */
+.watchlist-item {
+    padding: 10px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.watchlist-item:hover {
+    background-color: var(--secondary-color);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+
+    .card {
+        margin-bottom: 15px;
+    }
+
+    .price-card {
+        width: 100% !important;
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+        margin-bottom: 10px;
+        flex: 1 1 100%;
+    }
+
+    .company-info-table td:first-child {
+        width: 40%;
+    }
+
+    .chart-container {
+        height: 350px;
+    }
+
+    .btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
+    .input-group {
+        flex-direction: column;
+    }
+
+    .input-group > * {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}
+
+/* Dropdown Styling */
+.Select-control {
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.Select-menu-outer {
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Loading States */
+.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* Error States */
+.alert {
+    border-radius: 8px;
+    margin: 10px 0;
+}
+
+.alert-danger {
+    background-color: #fde8e8;
+    border-color: #fbd5d5;
+    color: #c53030;
+}
+
+/* Success States */
+.alert-success {
+    background-color: #e6ffed;
+    border-color: #b7eb8f;
+    color: #52c41a;
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
 }
 
 /* Company header styling */
@@ -57,23 +306,6 @@ body {
     font-size: 20px;
 }
 
-.card {
-    border: none;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease;
-    background-color: var(--card-color);
-}
-
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-}
-
-.card-body {
-    padding: 20px;
-}
-
 /* Stock card styles */
 .text-success {
     color: var(--positive-color) !important;
@@ -83,132 +315,12 @@ body {
     color: var(--negative-color) !important;
 }
 
-/* Button styling */
-.btn-primary {
-    background-color: var(--primary-color);
-    border-color: var(--primary-color);
-}
-
-.btn-primary:hover {
-    background-color: #2980b9;
-    border-color: #2980b9;
-}
-
-/* Input styling */
-.form-control:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
-}
-
-/* Company info table styling */
-.company-info-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.company-info-table tr {
-    border-bottom: 1px solid var(--border-color);
-}
-
-.company-info-table tr:last-child {
-    border-bottom: none;
-}
-
-.company-info-table td {
-    padding: 15px 10px;
-    vertical-align: top;
-}
-
-.company-info-table td:first-child {
-    font-weight: bold;
-    width: 30%;
-    color: #555;
-}
-
-/* Company info row styling */
-.company-info-row {
-    padding: 15px 0;
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-}
-
-.company-info-row:last-child {
-    border-bottom: none;
-}
-
-.company-info-label {
-    font-weight: bold;
-    width: 30%;
-    color: #555;
-    padding-right: 15px;
-}
-
-.company-info-value {
-    width: 70%;
-    line-height: 1.6;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .card {
-        margin-bottom: 20px;
-    }
-
-    .company-info-row {
-        flex-direction: column;
-    }
-
-    .company-info-label,
-    .company-info-value {
-        width: 100%;
-    }
-
-    .company-info-label {
-        margin-bottom: 5px;
-    }
-}
-
-/* Chart container */
-.dash-graph {
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-/* Card styles refinements */
-.card-title {
-    font-weight: bold;
-    margin-bottom: 10px;
-}
-
-/* Button styles refinements */
-.btn {
-    border-radius: 5px;
-    transition: all 0.3s ease;
-}
-
-.btn:hover {
-    opacity: 0.9;
-}
-
-/* DataTable styles */
-.dash-table-container {
-    overflow-x: auto;
-}
-
-/* Price card specific styles */
+/* Stock card styles refinements */
 .card-value {
     font-size: 22px;
     font-weight: bold;
     margin-bottom: 5px;
     white-space: nowrap;
-}
-
-.card-title {
-    font-size: 14px;
-    font-weight: bold;
-    color: #7f8c8d;
-    margin-bottom: 10px;
-    text-transform: uppercase;
 }
 
 .card-change-positive {
@@ -223,18 +335,67 @@ body {
     font-size: 16px;
 }
 
-/* Watchlist styling */
-.watchlist-item {
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-.watchlist-item:hover {
-    background-color: #f5f5f5;
-}
-
 /* Search input and button styling */
 .search-box {
     border-radius: 8px;
     overflow: hidden;
+}
+
+/* Handle broken company logos */
+.company-logo {
+    background-color: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    object-fit: contain !important;
+}
+
+.company-logo[src=""],
+.company-logo:not([src]) {
+    visibility: hidden;
+}
+
+/* Use pseudo-element to create a placeholder for broken images */
+.company-logo::before {
+    content: "";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    z-index: -1;
+}
+
+.company-logo:after {
+    content: attr(alt);
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 1.2rem;
+    z-index: -1;
+}
+
+/* Default fallback styles */
+.stock-symbol-letter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: bold;
+    font-size: 24px;
+    border-radius: 4px;
 }
