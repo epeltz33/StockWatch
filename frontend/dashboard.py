@@ -1052,15 +1052,14 @@ def get_company_details(symbol):
 
         # Insert API key if URLs are found
         if icon_url:
-            # Replace {apiKey} with the actual API key
-            icon_url = icon_url.replace('{apiKey}', 'Aod7ULP46zqcMsvlxoBNWbhkW9nRDlmd')
+            separator = '?' if '?' not in icon_url else '&'
+            icon_url = f"{icon_url}{separator}apiKey={polygon_api_key}"
             logger.info(f"Final icon URL after replacement: {icon_url}")
 
         if logo_url:
-            # Replace {apiKey} with the actual API key
-            logo_url = logo_url.replace('{apiKey}', 'Aod7ULP46zqcMsvlxoBNWbhkW9nRDlmd')
+            separator = '?' if '?' not in logo_url else '&'
+            logo_url = f"{logo_url}{separator}apiKey={polygon_api_key}"
             logger.info(f"Final logo URL after replacement: {logo_url}")
-
 
 
         # Get name from appropriate location depending on response format
