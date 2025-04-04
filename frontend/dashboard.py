@@ -174,11 +174,10 @@ def create_layout():
                 html.Div([
                     html.H2(id='welcome-message',
                             className='text-center mb-3'),
-                    html.H3('Your Stock Dashboard',
-                            className='text-center mb-4')
                 ], className='stock-dashboard')
             ], width=12)
         ], className='mb-4'),
+
 
         # Main Content Section
         dbc.Row([
