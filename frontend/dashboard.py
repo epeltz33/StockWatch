@@ -320,7 +320,7 @@ def register_callbacks(dash_app):
 
             # Get the specific button's click value from add_clicks
             button_index = next((i for i, btn_id in enumerate(add_ids)
-                               if btn_id['index'] == stock_symbol), None)
+                            if btn_id['index'] == stock_symbol), None)
 
             # Only proceed if we found the button and it was actually clicked
             if button_index is None or not add_clicks or button_index >= len(add_clicks) or not add_clicks[button_index]:
@@ -376,8 +376,8 @@ def register_callbacks(dash_app):
             # triggered_id is the dict {'type': 'remove...', 'index': STOCK_DB_ID}
             stock_id = triggered_id['index'] # This is the stock's primary key from the DB
             if not selected_watchlist_id:
-                 logger.warning(f"Attempted to remove stock ID {stock_id} but no watchlist selected.")
-                 return no_update, no_update, no_update_list
+                logger.warning(f"Attempted to remove stock ID {stock_id} but no watchlist selected.")
+                return no_update, no_update, no_update_list
 
             logger.info(f"Removing stock id {stock_id} from watchlist {selected_watchlist_id}")
             try:
@@ -447,28 +447,25 @@ def register_callbacks(dash_app):
                     return no_update, no_update, no_update # Error state
             # else: logger.debug(f"Watchlist view button trigger {triggered_prop} ignored (value <= 0 or None)")
 
-        # Scenario 2: The search button was clicked
+
         elif triggered_prop == 'search-button.n_clicks':
             if triggered_value is not None and triggered_value > 0:
                 if search_input: # Check if the search box has text
                     clicked_stock = search_input
                     trigger_source = 'search'
-                    # logger.info(f"Search button click detected with input: {clicked_stock}")
-                # else: logger.info("Search button clicked, but input was empty.")
-            # else: logger.debug("Search button trigger ignored (value <= 0 or None)")
+                    logger.info(f"Search button clicked for: {clicked_stock}")
 
         # --- Process if a valid click was identified ---
 
         if not clicked_stock or not trigger_source:
             # logger.info(f"Callback triggered by '{triggered_prop}', but not processed as a valid click action.")
             # If triggered but not by a valid click, don't change anything.
-            # Important: Avoid returning initial messages here, as that could overwrite existing valid data.
             return no_update, no_update, no_update
 
         # logger.info(f"Proceeding to fetch data for {clicked_stock} (Trigger: {trigger_source})")
         stock_info, chart = fetch_and_display_stock_data(clicked_stock)
 
-        # Create chart container with proper styling
+        # Create chart container
         chart_container = html.Div([
             dcc.Graph(
                 id='stock-chart',
@@ -779,20 +776,6 @@ def fetch_and_display_stock_data(stock_symbol):
                 # Try dedicated stock logo service first
                 display_logo = f"https://eodhistoricaldata.com/img/logos/US/{stock_symbol}.png"
                 logger.info(f"Using EOD logo URL: {display_logo}")
-
-                # Alternative: Try clearbit logo API if we have a website
-                if company_details and company_details.get('website'):
-                    website = company_details.get('website')
-                    if website:
-                        if not website.startswith('http'):
-                            website = f"https://{website}"
-                        try:
-                            domain = website.split('//')[1].split('/')[0] if '//' in website else ""
-                            if domain:
-                                clearbit_logo = f"https://logo.clearbit.com/{domain}?size=60"
-                                logger.info(f"Also prepared Clearbit URL as fallback: {clearbit_logo}")
-                        except Exception as e:
-                            logger.error(f"Error parsing website URL: {str(e)}")
 
             # Use a default image if no logo is available
             if not display_logo:
