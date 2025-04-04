@@ -155,9 +155,9 @@ client = RESTClient(api_key=polygon_api_key)
 
 def create_dash_app(flask_app):
     dash_app = dash.Dash(__name__, server=flask_app, url_base_pathname='/dash/',
-                         external_stylesheets=[
-                             dbc.themes.BOOTSTRAP, '/assets/custom.css'],
-                         assets_folder='assets')
+                        external_stylesheets=[
+                            dbc.themes.BOOTSTRAP, '/assets/custom.css'],
+                        assets_folder='assets')
 
     dash_app.layout = create_layout()
 
@@ -190,11 +190,11 @@ def create_layout():
                         html.H5("Search Stocks", className="card-title mb-3"),
                         dbc.InputGroup([
                             dbc.Input(id='stock-input', type='text',
-                                      placeholder='Enter a stock ticker...',
-                                      className='form-control'),
+                                    placeholder='Enter a stock ticker...',
+                                    className='form-control'),
                             dbc.InputGroupText(
                                 dbc.Button('Search', id='search-button',
-                                          color='primary', className='w-100')
+                                        color='primary', className='w-100')
                             )
                         ], className='mb-3'),
                         html.Div(id='stock-data')
@@ -206,19 +206,19 @@ def create_layout():
                     dbc.CardBody([
                         html.H5("Watchlists", className="card-title mb-3"),
                         dcc.Dropdown(id='watchlist-dropdown',
-                                   options=[],
-                                   placeholder='Select a watchlist',
-                                   className='mb-3'),
+                                options=[],
+                                placeholder='Select a watchlist',
+                            className='mb-3'),
                         dbc.InputGroup([
                             dbc.Input(id='new-watchlist-input',
-                                      type='text',
-                                      placeholder='Enter a new watchlist name...',
-                                      className='form-control'),
+                                    type='text',
+                                    placeholder='Enter a new watchlist name...',
+                                    className='form-control'),
                             dbc.InputGroupText(
                                 dbc.Button('Create',
-                                          id='create-watchlist-button',
-                                          color='primary',
-                                          className='w-100')
+                                        id='create-watchlist-button',
+                                        color='primary',
+                                        className='w-100')
                             )
                         ]),
                         html.Div(id='watchlist-section')
@@ -257,10 +257,10 @@ def register_callbacks(dash_app):
     def update_welcome_message(n_intervals):
         if current_user.is_authenticated:
             return f"Welcome to Your StockWatch Dashboard, {current_user.username}"
-        return "Welcome to Your StockWatch Dashboard"
+
 
     @dash_app.callback(Output('watchlist-dropdown', 'options'),
-                       Input('watchlist-interval', 'n_intervals'))
+                    Input('watchlist-interval', 'n_intervals'))
     def update_watchlist_dropdown(n_intervals):
         if current_user.is_authenticated:
             watchlists = current_user.watchlists.all()
@@ -269,80 +269,220 @@ def register_callbacks(dash_app):
 
     @dash_app.callback(
         [Output('watchlist-section', 'children'),
-         Output('watchlist-dropdown', 'value'),
-         Output({'type': 'add-to-watchlist', 'index': ALL}, 'children')],
+        Output('watchlist-dropdown', 'value'),
+        Output({'type': 'add-to-watchlist', 'index': ALL}, 'children')],
         [Input('create-watchlist-button', 'n_clicks'),
-         Input({'type': 'add-to-watchlist', 'index': ALL}, 'n_clicks'),
-         Input({'type': 'remove-from-watchlist', 'index': ALL}, 'n_clicks'),
-         Input('watchlist-dropdown', 'value')],
+        Input({'type': 'add-to-watchlist', 'index': ALL}, 'n_clicks'),
+        Input({'type': 'remove-from-watchlist', 'index': ALL}, 'n_clicks'),
+        Input('watchlist-dropdown', 'value')],
         [State('new-watchlist-input', 'value'),
-         State('watchlist-dropdown', 'value'),
-         State({'type': 'add-to-watchlist', 'index': ALL}, 'id')]
+        State({'type': 'add-to-watchlist', 'index': ALL}, 'id')]
     )
-    def update_watchlist(create_clicks, add_clicks, remove_clicks, selected_watchlist_id, new_watchlist_name, current_watchlist_id, add_ids):
+    def update_watchlist(create_clicks, add_clicks, remove_clicks, selected_watchlist_id, new_watchlist_name, add_ids):
         ctx = callback_context
-        if not ctx.triggered:
-            return no_update, no_update, [no_update] * len(add_ids)
+        triggered_id = ctx.triggered_id
 
-        trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        # Get the number of 'add-to-watchlist' buttons dynamically based on the State
+        # This is important because the number of these buttons can change.
+        num_add_buttons = len(add_ids) if add_ids else 0
+        no_update_list = [no_update] * num_add_buttons
 
-        if trigger_id == 'create-watchlist-button' and new_watchlist_name:
-            return create_new_watchlist(new_watchlist_name, add_ids)
-        elif 'add-to-watchlist' in trigger_id:
-            button_id = json.loads(trigger_id)
-            if add_clicks is not None and any(click is not None and click > 0 for click in add_clicks):
-                return add_stock_to_watchlist(button_id, current_watchlist_id, add_ids)
-        elif 'remove-from-watchlist' in trigger_id:
-            button_id = json.loads(trigger_id)
-            return remove_stock_from_watchlist(button_id, current_watchlist_id, add_ids)
-        elif trigger_id == 'watchlist-dropdown':
-            return update_watchlist_section(selected_watchlist_id), selected_watchlist_id, [no_update] * len(add_ids)
+        # If nothing triggered (initial load), do nothing
+        if not triggered_id:
+            return no_update, no_update, no_update_list
 
-        return no_update, no_update, [no_update] * len(add_ids)
+        # Determine the type of trigger (string or dict for pattern-matching)
+        trigger_type = None
+        if isinstance(triggered_id, dict) and 'type' in triggered_id:
+            trigger_type = triggered_id.get('type')
+        elif isinstance(triggered_id, str):
+            trigger_type = triggered_id # e.g., 'create-watchlist-button', 'watchlist-dropdown'
+
+        # --- Handle specific triggers ---
+
+        # Case 1: Create Watchlist Button Clicked
+        if trigger_type == 'create-watchlist-button' and new_watchlist_name:
+            try:
+                watchlist = Watchlist(name=new_watchlist_name, user_id=current_user.id)
+                db.session.add(watchlist)
+                db.session.commit()
+                logger.info(f"Created watchlist '{new_watchlist_name}' with id {watchlist.id}")
+                # Return updated section, new dropdown value, and no_update for add buttons
+                return update_watchlist_section(watchlist.id), watchlist.id, no_update_list
+            except SQLAlchemyError as e:
+                logger.error(f"Error creating watchlist: {str(e)}")
+                # Potentially return an error message to the user here
+                return no_update, no_update, no_update_list
+
+        # Case 2: Add Stock Button Clicked
+        elif trigger_type == 'add-to-watchlist':
+            # triggered_id is the dict {'type': 'add...', 'index': 'STOCK_SYMBOL'}
+            stock_symbol = triggered_id['index']
+
+            # Get the specific button's click value from add_clicks
+            button_index = next((i for i, btn_id in enumerate(add_ids)
+                               if btn_id['index'] == stock_symbol), None)
+
+            # Only proceed if we found the button and it was actually clicked
+            if button_index is None or not add_clicks or button_index >= len(add_clicks) or not add_clicks[button_index]:
+                logger.info(f"Add to watchlist ignored for {stock_symbol} - no valid click detected")
+                return no_update, no_update, no_update_list
+
+            # Ensure a watchlist is selected before adding
+            if not selected_watchlist_id:
+                logger.warning(f"Attempted to add {stock_symbol} but no watchlist selected.")
+                return no_update, no_update, no_update_list
+
+            logger.info(f"Adding stock {stock_symbol} to watchlist {selected_watchlist_id}")
+            try:
+                # Check if stock is already in the watchlist
+                watchlist = Watchlist.query.get(selected_watchlist_id)
+                if not watchlist:
+                    logger.warning(f"Watchlist {selected_watchlist_id} not found")
+                    return no_update, no_update, no_update_list
+
+                existing_stock = Stock.query.filter_by(symbol=stock_symbol).first()
+                if existing_stock and existing_stock in watchlist.stocks:
+                    logger.info(f"Stock {stock_symbol} already in watchlist {selected_watchlist_id}")
+                    return no_update, no_update, no_update_list
+
+                # Create or get the stock
+                stock = existing_stock or create_new_stock(stock_symbol)
+                if not stock:
+                    logger.error(f"Failed to create/get stock {stock_symbol}")
+                    return no_update, no_update, no_update_list
+
+                # Add the stock to the watchlist
+                watchlist.stocks.append(stock)
+                db.session.commit()
+                logger.info(f"Successfully added {stock_symbol} to watchlist {selected_watchlist_id}")
+
+                # Update button states
+                updated_add_button_texts = []
+                for button_state_id in add_ids:
+                    if button_state_id['index'] == stock_symbol:
+                        updated_add_button_texts.append("Added")
+                    else:
+                        updated_add_button_texts.append(no_update)
+
+                return update_watchlist_section(selected_watchlist_id), selected_watchlist_id, updated_add_button_texts
+
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"Error adding stock {stock_symbol} to watchlist {selected_watchlist_id}: {str(e)}")
+                return no_update, no_update, no_update_list
+
+        # Case 3: Remove Stock Button Clicked
+        elif trigger_type == 'remove-from-watchlist':
+            # triggered_id is the dict {'type': 'remove...', 'index': STOCK_DB_ID}
+            stock_id = triggered_id['index'] # This is the stock's primary key from the DB
+            if not selected_watchlist_id:
+                 logger.warning(f"Attempted to remove stock ID {stock_id} but no watchlist selected.")
+                 return no_update, no_update, no_update_list
+
+            logger.info(f"Removing stock id {stock_id} from watchlist {selected_watchlist_id}")
+            try:
+                stock = Stock.query.get(stock_id)
+                watchlist = Watchlist.query.get(selected_watchlist_id)
+                if watchlist and stock and stock in watchlist.stocks:
+                    watchlist.stocks.remove(stock)
+                    db.session.commit()
+                    logger.info(f"Successfully removed stock id {stock_id} from watchlist {selected_watchlist_id}")
+                # Return updated section, same dropdown value, no_update for add buttons
+                return update_watchlist_section(selected_watchlist_id), selected_watchlist_id, no_update_list
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"Error removing stock id {stock_id} from watchlist {selected_watchlist_id}: {str(e)}")
+                return no_update, no_update, no_update_list
+
+        # === Case 4: Watchlist Dropdown Changed ===
+        elif trigger_type == 'watchlist-dropdown':
+            logger.info(f"Watchlist dropdown changed to: {selected_watchlist_id}")
+            # *Crucially*, only update the watchlist section and the dropdown value itself.
+            # Return no_update for the add_to_watchlist button statuses.
+            return update_watchlist_section(selected_watchlist_id), selected_watchlist_id, no_update_list
+
+        # Default case: No recognized trigger or action needed
+        logger.debug(f"update_watchlist: No specific action taken for trigger {triggered_id}")
+        return no_update, no_update, no_update_list
 
     @dash_app.callback(
         [Output('stock-data', 'children'),
-         Output('stock-chart-container', 'children'),
-         Output('stock-input', 'value')],
-        [Input({'type': 'watchlist-stock', 'index': ALL}, 'n_clicks'),
-         Input('search-button', 'n_clicks')],
-        [State({'type': 'watchlist-stock', 'index': ALL}, 'id'),
-         State('stock-input', 'value')]
+        Output('stock-chart-container', 'children'),
+        Output('stock-input', 'value')],
+        [Input({'type': 'load-watchlist-stock', 'index': ALL}, 'n_clicks'),
+        Input('search-button', 'n_clicks')],
+        [State({'type': 'load-watchlist-stock', 'index': ALL}, 'id'),
+        State('stock-input', 'value')]
     )
     def update_stock_data(watchlist_clicks, search_clicks, watchlist_stock_ids, search_input):
         ctx = callback_context
-        if not ctx.triggered:
+        trigger_source = None # To track 'watchlist' or 'search'
+
+        # Check if the callback was triggered by anything
+        if not ctx.triggered or not ctx.triggered[0]:
+            # logger.info("update_stock_data: No trigger detected (initial load?)")
             return no_update, no_update, no_update
 
-        trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        # Get the specific property and value that triggered the callback
+        triggered_prop = ctx.triggered[0]['prop_id']
+        triggered_value = ctx.triggered[0]['value']
 
-        if 'watchlist-stock' in trigger_id:
-            clicked_stock = json.loads(trigger_id)['index']
-        elif trigger_id == 'search-button':
-            clicked_stock = search_input
-        else:
+        # logger.info(f"update_stock_data: Triggered by prop '{triggered_prop}' with value '{triggered_value}'")
+
+        # --- Check for valid click triggers ---
+
+        # Scenario 1: A watchlist stock span was clicked
+        # prop_id will be like '{"index":"AAPL","type":"load-watchlist-stock"}.n_clicks'
+        if triggered_prop.endswith('.n_clicks') and '"type":"load-watchlist-stock"' in triggered_prop:
+            if triggered_value is not None and triggered_value > 0:
+                # Extract the stock symbol (index) from the JSON part of the prop_id
+                json_part = triggered_prop.split('.')[0]
+                try:
+                    clicked_stock_info = json.loads(json_part)
+                    clicked_stock = clicked_stock_info.get('index')
+                    trigger_source = 'watchlist'
+                    # logger.info(f"Watchlist stock click detected for: {clicked_stock}")
+                except json.JSONDecodeError:
+                    logger.error(f"Failed to parse watchlist trigger prop_id: {triggered_prop}")
+                    return no_update, no_update, no_update # Error state
+            # else: logger.debug(f"Watchlist view button trigger {triggered_prop} ignored (value <= 0 or None)")
+
+        # Scenario 2: The search button was clicked
+        elif triggered_prop == 'search-button.n_clicks':
+            if triggered_value is not None and triggered_value > 0:
+                if search_input: # Check if the search box has text
+                    clicked_stock = search_input
+                    trigger_source = 'search'
+                    # logger.info(f"Search button click detected with input: {clicked_stock}")
+                # else: logger.info("Search button clicked, but input was empty.")
+            # else: logger.debug("Search button trigger ignored (value <= 0 or None)")
+
+        # --- Process if a valid click was identified ---
+
+        if not clicked_stock or not trigger_source:
+            # logger.info(f"Callback triggered by '{triggered_prop}', but not processed as a valid click action.")
+            # If triggered but not by a valid click, don't change anything.
+            # Important: Avoid returning initial messages here, as that could overwrite existing valid data.
             return no_update, no_update, no_update
 
-        if not clicked_stock:
-            return html.Div("Enter a stock ticker and click 'Search'"), html.Div("Please search for a stock to view its chart."), no_update
-
+        # logger.info(f"Proceeding to fetch data for {clicked_stock} (Trigger: {trigger_source})")
         stock_info, chart = fetch_and_display_stock_data(clicked_stock)
 
         # Create chart container with proper styling
         chart_container = html.Div([
             dcc.Graph(
                 id='stock-chart',
-                figure=chart,
-                style={'height': '100%', 'width': '100%'},
-                config={
-                    'displayModeBar': True,
-                    'scrollZoom': True,
-                    'responsive': True
-                }
+                figure=chart, # The chart figure generated by fetch_and_display_stock_data
+                style={'height': '100%', 'width': '100%'}, # Ensure chart fills container
+                config={'displayModeBar': True, 'scrollZoom': True, 'responsive': True}
             )
         ], className='chart-container')
 
-        return stock_info, chart_container, clicked_stock
+        # Decide whether to update the stock input field based on the trigger
+        stock_input_update = clicked_stock if trigger_source == 'search' else no_update
+
+        return stock_info, chart_container, stock_input_update
 
 
 def create_new_watchlist(new_watchlist_name, add_ids):
@@ -369,7 +509,7 @@ def add_stock_to_watchlist(button_id, watchlist_id, add_ids):
             watchlist.stocks.append(stock)
             db.session.commit()
         updated_add_ids = ['Added' if id['index'] ==
-                           stock_symbol else no_update for id in add_ids]
+                        stock_symbol else no_update for id in add_ids]
         return update_watchlist_section(watchlist_id), watchlist_id, updated_add_ids
     except Exception as e:
         logger.error(f"Error adding stock to watchlist: {str(e)}")
@@ -458,31 +598,77 @@ def create_empty_watchlist_section():
     return html.Div([
         html.H4("You don't have any watchlists yet."),
         dbc.Input(id='new-watchlist-input', type='text',
-                  placeholder='Enter a new watchlist name...', className='mb-2'),
+                placeholder='Enter a new watchlist name...', className='mb-2'),
         dbc.Button('Create Watchlist', id='create-watchlist-button',
-                   color='primary', className='mb-4')
+                color='primary', className='mb-4')
     ])
 
 
 def create_watchlist_content(watchlist):
     return dbc.Card([
         dbc.CardHeader(
-            html.H4(watchlist.name, className="text-center")),
+            html.H4(watchlist.name, className="text-center mb-0")),
         dbc.CardBody([
             dbc.ListGroup([
-                dbc.ListGroupItem
-                (
-                    [
-                        html.Span(stock.symbol, id={
-                                  'type': 'watchlist-stock', 'index': stock.symbol}, style={'cursor': 'pointer'}),
-                        html.Span(f" ({stock.name})", className='text-muted'),
-                        dbc.Button('Remove', id={
-                                   'type': 'remove-from-watchlist', 'index': stock.id}, color='danger', size='sm', className='float-end')
-                    ]
+                dbc.ListGroupItem(
+                    html.Div([
+                        # Left side: Stock info
+                        html.Div([
+                            html.Span(stock.symbol,
+                                    style={
+                                        'fontWeight': 'bold',
+                                        'fontSize': '1.1em',
+                                        'display': 'inline-block',
+                                        'marginRight': '8px'
+                                    }),
+                            html.Span(f"({stock.name})",
+                                    className='text-muted',
+                                    style={
+                                        'fontSize': '0.9em'
+                                    })
+                        ], style={
+                            'flex': '1',
+                            'minWidth': '0',  # Allows text truncation
+                            'overflow': 'hidden',
+                            'textOverflow': 'ellipsis',
+                            'whiteSpace': 'nowrap'
+                        }),
+
+                        # Right side: Buttons
+                        html.Div([
+                            dbc.Button(
+                                'View',
+                                id={'type': 'load-watchlist-stock', 'index': stock.symbol},
+                                color='info',
+                                size='sm',
+                                className='me-2'
+                            ),
+                            dbc.Button(
+                                'Remove',
+                                id={'type': 'remove-from-watchlist', 'index': stock.id},
+                                color='danger',
+                                size='sm'
+                            )
+                        ], style={
+                            'display': 'flex',
+                            'gap': '8px',
+                            'alignItems': 'center'
+                        })
+                    ], style={
+                        'display': 'flex',
+                        'justifyContent': 'space-between',
+                        'alignItems': 'center',
+                        'width': '100%',
+                        'gap': '16px'  # Space between stock info and buttons
+                    }),
+                    className='py-2'  # Add vertical padding to list items
                 ) for stock in watchlist.stocks
-            ], flush=True) if watchlist.stocks else html.P("No stocks added yet.")
-        ])
-    ])
+            ], flush=True) if watchlist.stocks else html.P(
+                "No stocks added yet.",
+                className="text-center text-muted py-3"
+            )
+        ], className='p-0')  # Remove default padding from card body
+    ], className='shadow-sm')
 
 def fetch_and_display_stock_data(stock_symbol):
     try:
@@ -670,7 +856,7 @@ def fetch_and_display_stock_data(stock_symbol):
                             n_clicks=0
                         ) if display_logo else html.Div(
                             html.Span(stock_symbol[0].upper(),
-                                     style={
+                                    style={
                                         'fontSize': '24px',
                                         'fontWeight': 'bold',
                                         'color': 'white',
@@ -682,7 +868,7 @@ def fetch_and_display_stock_data(stock_symbol):
                                         'width': '50px',
                                         'height': '50px',
                                         'lineHeight': '34px'
-                                     }),
+                                    }),
                             style={'marginRight': '15px'}
                         )
                     ], style={'display': 'inline-block', 'verticalAlign': 'middle'}),
@@ -690,11 +876,11 @@ def fetch_and_display_stock_data(stock_symbol):
                     # Company Name and Symbol
                     html.Div([
                         html.H3(stock_symbol,
-                               style={
-                                   'margin': '0',
-                                   'fontWeight': 'bold',
-                                   'fontSize': '24px'
-                               }),
+                            style={
+                                'margin': '0',
+                                'fontWeight': 'bold',
+                                'fontSize': '24px'
+                            }),
                         html.Div(company_name,
                                 style={
                                     'fontSize': '16px',
@@ -943,9 +1129,9 @@ def fetch_and_display_stock_data(stock_symbol):
         logger.error(f"Error fetching stock data: {str(e)}")
         return html.Div([
             html.H4(f"Error fetching data for {stock_symbol}",
-                   style={'color': COLORS['negative']}),
+                style={'color': COLORS['negative']}),
             html.P(f"Details: {str(e)}",
-                  style={'color': '#666'})
+                style={'color': '#666'})
         ], className="alert alert-danger m-3 p-4", style={
             'textAlign': 'center',
             'borderRadius': '10px'
@@ -1061,7 +1247,7 @@ def get_company_details(symbol):
             except Exception as e:
                 logger.error(f"Error extracting from raw response: {str(e)}")
 
-        # Insert API key if URLs are found
+
         if icon_url:
             separator = '?' if '?' not in icon_url else '&'
             icon_url = f"{icon_url}{separator}apiKey={polygon_api_key}"
