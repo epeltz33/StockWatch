@@ -1,9 +1,7 @@
 from flask import Flask, redirect, url_for
-from flask_caching import Cache
 from config import Config
-from app.extensions import db, migrate, login, cache  # Import cache from extensions
+from app.extensions import db, migrate, login
 from app.models import User
-from app.cli import delete_user, test_cache
 import os
 from dotenv import load_dotenv
 
@@ -18,23 +16,9 @@ def create_app(test_config=None):
     else:
         app.config.from_mapping(test_config)
 
-    app.config['SECRET_KEY'] = os.environ.get(
-        'SECRET_KEY', 'fallback_secret_key')
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
     db.init_app(app)
     migrate.init_app(app, db)
     login.init_app(app)
-    cache.init_app(app)  # Initialize cache
-
-    app.config['CACHE_TIMEOUTS'] = {
-    'price': 300,
-    'details': 86400,
-    'historical': 3600,
-    'fallback': 600
-}
-
-
 
     login.login_view = 'auth.login'
 
@@ -58,10 +42,12 @@ def create_app(test_config=None):
     def index():
         return redirect(url_for('main.landing'))
 
-    app.cli.add_command(delete_user)
-    app.cli.add_command(test_cache)
+    # Health check endpoint for DigitalOcean
+    @app.route('/health')
+    def health_check():
+        return {'status': 'healthy'}, 200
 
-    # Import create_dash_app outside of app_context
+    # Import create_dash_app
     from frontend.dashboard import create_dash_app
 
     with app.app_context():

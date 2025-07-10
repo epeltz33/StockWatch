@@ -462,7 +462,7 @@ def register_callbacks(dash_app):
             return no_update, no_update, no_update
 
         # logger.info(f"Proceeding to fetch data for {clicked_stock} (Trigger: {trigger_source})")
-        stock_info, chart = fetch_and_display_stock_data(clicked_stock, trigger_source)
+        stock_info, chart = fetch_and_display_stock_data(clicked_stock)
 
         # Create chart container
         chart_container = html.Div([
