@@ -2,12 +2,14 @@ from typing import Optional, Dict, List, Any
 from datetime import datetime, timedelta
 import logging
 import os
+from dotenv import load_dotenv
 from polygon import RESTClient
 from app.extensions import db, cache
 from app.models import Stock
 from sqlalchemy.exc import IntegrityError
 from app.utils.cache_manager import create_cache_decorator
 
+load_dotenv()
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
