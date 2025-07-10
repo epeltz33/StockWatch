@@ -4,10 +4,9 @@ import logging
 import os
 from dotenv import load_dotenv
 from polygon import RESTClient
-from app.extensions import db, cache
+from app.extensions import db
 from app.models import Stock
 from sqlalchemy.exc import IntegrityError
-from app.utils.cache_manager import create_cache_decorator
 
 load_dotenv()
 # Configure logging
@@ -17,20 +16,9 @@ logger = logging.getLogger(__name__)
 # Initialize Polygon client
 polygon_client = RESTClient(os.getenv('POLYGON_API_KEY'))
 
-# Create cache decorator instance
-cache_stock_data = create_cache_decorator(cache)
 
-@cache_stock_data
 def get_stock_price(symbol: str) -> Optional[float]:
-    """
-    Get current stock price with caching.
-
-    Args:
-        symbol (str): Stock symbol (e.g., 'AAPL')
-
-    Returns:
-        Optional[float]: Current stock price or None if unavailable
-    """
+    """Get current stock price from Polygon API"""
     try:
         date = get_most_recent_trading_day()
         resp = polygon_client.get_daily_open_close_agg(symbol, date)
@@ -39,19 +27,9 @@ def get_stock_price(symbol: str) -> Optional[float]:
         logger.error(f"Error fetching stock price for {symbol}: {str(e)}")
         return None
 
-@cache_stock_data
+
 def get_stock_data(symbol: str, from_date: str, to_date: str) -> List[Dict[str, Any]]:
-    """
-    Get historical stock data with enhanced caching.
-
-    Args:
-        symbol (str): Stock symbol (e.g., 'AAPL')
-        from_date (str): Start date in 'YYYY-MM-DD' format
-        to_date (str): End date in 'YYYY-MM-DD' format
-
-    Returns:
-        List[Dict[str, Any]]: List of historical stock data points
-    """
+    """Get historical stock data from Polygon API"""
     try:
         resp = polygon_client.get_aggs(symbol, 1, "day", from_date, to_date)
         if resp and hasattr(resp, 'results') and len(resp.results) > 0:
@@ -68,17 +46,9 @@ def get_stock_data(symbol: str, from_date: str, to_date: str) -> List[Dict[str, 
         logger.error(f"Error fetching historical data for {symbol}: {str(e)}")
         return []
 
-@cache_stock_data
+
 def get_company_details(symbol: str) -> Dict[str, Any]:
-    """
-    Get company details with caching.
-
-    Args:
-        symbol (str): Stock symbol (e.g., 'AAPL')
-
-    Returns:
-        Dict[str, Any]: Company details including name, market cap, etc.
-    """
+    """Get company details from Polygon API"""
     try:
         resp = polygon_client.get_ticker_details(symbol)
         if resp:
@@ -96,13 +66,9 @@ def get_company_details(symbol: str) -> Dict[str, Any]:
         logger.error(f"Error fetching company details for {symbol}: {str(e)}")
         return {}
 
-def get_most_recent_trading_day() -> str:
-    """
-    Calculate the most recent trading day, accounting for weekends and market hours.
 
-    Returns:
-        str: Date string in 'YYYY-MM-DD' format
-    """
+def get_most_recent_trading_day() -> str:
+    """Calculate the most recent trading day"""
     now = datetime.now()
     market_close_time = now.replace(hour=16, minute=0, second=0, microsecond=0)
 
@@ -123,26 +89,20 @@ def get_most_recent_trading_day() -> str:
 
     return most_recent_trading_day.strftime('%Y-%m-%d')
 
+
 # Database-related functions
 def get_all_stocks() -> List[Stock]:
     """Get all stocks from the database."""
     return Stock.query.all()
 
+
 def get_stock_by_symbol(symbol: str) -> Optional[Stock]:
     """Get a stock by its symbol from the database."""
     return Stock.query.filter_by(symbol=symbol).first()
 
+
 def create_stock(symbol: str, name: str) -> Optional[Stock]:
-    """
-    Create a new stock entry in the database.
-
-    Args:
-        symbol (str): Stock symbol
-        name (str): Company name
-
-    Returns:
-        Optional[Stock]: Created stock object or None if creation failed
-    """
+    """Create a new stock entry in the database."""
     stock = Stock(symbol=symbol, name=name)
     db.session.add(stock)
     try:
@@ -153,16 +113,9 @@ def create_stock(symbol: str, name: str) -> Optional[Stock]:
         logger.error(f"Failed to create stock {symbol}: IntegrityError")
         return None
 
+
 def delete_stock(symbol: str) -> bool:
-    """
-    Delete a stock from the database.
-
-    Args:
-        symbol (str): Stock symbol to delete
-
-    Returns:
-        bool: True if deletion was successful, False otherwise
-    """
+    """Delete a stock from the database."""
     stock = get_stock_by_symbol(symbol)
     if stock:
         try:
@@ -174,18 +127,3 @@ def delete_stock(symbol: str) -> bool:
             logger.error(f"Failed to delete stock {symbol}: {str(e)}")
             return False
     return False
-
-def clear_stock_cache(symbol: str) -> None:
-    """
-    Clear all cached data for a specific stock.
-
-    Args:
-        symbol (str): Stock symbol to clear cache for
-    """
-    try:
-        # Get the cache instance through the decorator
-        stock_cache = cache_stock_data.cache_instance
-        stock_cache.clear_symbol_cache(symbol)
-        logger.info(f"Successfully cleared cache for stock {symbol}")
-    except Exception as e:
-        logger.error(f"Error clearing cache for stock {symbol}: {str(e)}")
