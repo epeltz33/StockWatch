@@ -4,6 +4,8 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+gunicorn = "*"
+psycopg2-binary = "*"
 pyt = "*"
 flask = "*"
 flask-sqlalchemy = "*"
