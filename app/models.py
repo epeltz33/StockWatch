@@ -24,7 +24,7 @@ class Watchlist(db.Model):
     name = db.Column(db.String(64), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     stocks = db.relationship('Stock', secondary='watchlist_stocks',
-                             cascade='all, delete-orphan', single_parent=True)
+                            cascade='all, delete-orphan', single_parent=True)
 
     def __init__(self, name, user_id):
         self.name = name
