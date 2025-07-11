@@ -11,7 +11,7 @@ echo "Installing requirements..."
 pip install -r requirements.txt
 
 # Run any database migrations if needed
-# echo "Running database migrations..."
-# flask db upgrade
+  echo "Running database migrations..."
+  flask db upgrade
 
 echo "Build complete!"
