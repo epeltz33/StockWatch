@@ -1,0 +1,23 @@
+name: stockwatch
+region: nyc
+services:
+  - name: web
+    environment_slug: python
+    build_command: pip install -r requirements.txt
+    run_command: gunicorn --bind 0.0.0.0:$PORT wsgi:app --timeout 120
+    source_dir: /
+    envs:
+      - key: FLASK_ENV
+        value: "production"
+      - key: PORT
+        value: "8080"
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
