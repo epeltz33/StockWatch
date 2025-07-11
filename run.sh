@@ -1,5 +1,4 @@
 
-# StockWatch startup script for DigitalOcean
 
 echo "Starting StockWatch application..."
 
