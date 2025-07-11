@@ -1,29 +1,45 @@
-class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-this'
+import os
+import sys
+from pathlib import Path
 
-    # Handle DATABASE_URL properly for PostgreSQL
-    database_url = os.environ.get('DATABASE_URL')
-    if database_url:
-        # DigitalOcean provides postgres:// but SQLAlchemy needs postgresql://
-        if database_url.startswith('postgres://'):
-            database_url = database_url.replace('postgres://', 'postgresql://', 1)
+# Add the project root to Python path
+sys.path.insert(0, str(Path(__file__).parent))
 
-        # Add connection pool settings for DigitalOcean
-        SQLALCHEMY_DATABASE_URI = database_url
-        SQLALCHEMY_ENGINE_OPTIONS = {
-            'pool_pre_ping': True,
-            'pool_recycle': 300,
-            'connect_args': {
-                'sslmode': 'require',
-                'connect_timeout': 10
-            }
-        }
-    else:
-        SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(basedir, 'app.db')
-        SQLALCHEMY_ENGINE_OPTIONS = {}
+from app import create_app, db
+from app.models import User, Watchlist, Stock
 
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+def create_tables_safe():
+    """Create tables without dropping existing ones"""
+    print("Creating database tables (safe mode)...")
 
-    # Add explicit schema configuration
-    # This can help with permission issues
-    SQLALCHEMY_SCHEMA = os.environ.get('DB_SCHEMA', 'public')
+    app = create_app()
+
+    with app.app_context():
+        try:
+            # Create all tables (won't affect existing ones)
+            print("\nCreating tables...")
+            db.create_all()
+            print("✓ Tables created successfully!")
+
+            # Test the connection
+            print("\nTesting database connection...")
+            result = db.session.execute(db.text("SELECT 1"))
+            print("✓ Database connection successful!")
+
+            print("\n" + "="*60)
+            print("SUCCESS: Database is ready!")
+            print("You can now register users and use the application.")
+            print("="*60)
+
+            return True
+
+        except Exception as e:
+            print(f"\n✗ ERROR: Failed to create tables: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+if __name__ == "__main__":
+    print("StockWatch Database Table Creator")
+    print("="*60)
+    create_tables_safe()
