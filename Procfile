@@ -1,0 +1,1 @@
+web: gunicorn --bind 0.0.0.0:$PORT wsgi:app --log-level debug --timeout 120 --workers 1
