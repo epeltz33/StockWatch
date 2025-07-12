@@ -12,6 +12,7 @@ repomix-output.txt
 .Python
 env/
 venv/
+.venv/
 ENV/
 env.bak/
 venv.bak/
