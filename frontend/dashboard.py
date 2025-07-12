@@ -167,16 +167,6 @@ def create_dash_app(flask_app):
 
 def create_layout():
     return dbc.Container([
-        # Welcome Section with enhanced spacing
-        dbc.Row([
-            dbc.Col([
-                html.Div([
-                    html.H2(id='welcome-message',
-                            className='text-center mb-0'),
-                ], className='stock-dashboard')
-            ], width=12)
-        ], className='mb-5'),
-
         # Main Content Section with better spacing
         dbc.Row([
             # Left Sidebar with enhanced spacing
@@ -200,7 +190,7 @@ def create_layout():
                         ], className='mb-3'),
                         html.Div(id='stock-data')
                     ], className='p-4')
-                ], className='mb-4'),
+                ], className='mb-4', style={'border': 'none', 'boxShadow': 'none'}),
 
                 # Watchlist Section with enhanced spacing
                 dbc.Card([
@@ -226,7 +216,7 @@ def create_layout():
                         ], className='mb-3'),
                         html.Div(id='watchlist-section')
                     ], className='p-4')
-                ])
+                ], style={'border': 'none', 'boxShadow': 'none'})
             ], lg=4, md=12, className='mb-4'),
             dbc.Col([
                 # Chart Section
@@ -282,8 +272,6 @@ def register_callbacks(dash_app):
         ctx = callback_context
         triggered_id = ctx.triggered_id
 
-        # Get the number of 'add-to-watchlist' buttons dynamically based on the State
-        # This is important because the number of these buttons can change.
         num_add_buttons = len(add_ids) if add_ids else 0
         no_update_list = [no_update] * num_add_buttons
 
@@ -372,7 +360,6 @@ def register_callbacks(dash_app):
                 logger.error(f"Error adding stock {stock_symbol} to watchlist {selected_watchlist_id}: {str(e)}")
                 return no_update, no_update, no_update_list
 
-        # Case 3: Remove Stock Button Clicked
         elif trigger_type == 'remove-from-watchlist':
             # triggered_id is the dict {'type': 'remove...', 'index': STOCK_DB_ID}
             stock_id = triggered_id['index'] # This is the stock's primary key from the DB
@@ -761,7 +748,7 @@ def fetch_and_display_stock_data(stock_symbol):
             elif current_price is None:
                 current_price = 0
 
-            # Calculate change - SAFELY
+            # Calculate change
             previous_close = current_price  # Default fallback
             change_str = "0.00%"
             change_value = 0
