@@ -13,15 +13,28 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize Polygon client
-polygon_client = RESTClient(os.getenv('POLYGON_API_KEY'))
+# Initialize Polygon client if API key is available.
+api_key = os.getenv('POLYGON_API_KEY')
+polygon_client = RESTClient(api_key) if api_key else None
+
+
+def _get_client() -> RESTClient:
+    """Return a Polygon RESTClient, creating it if necessary."""
+    global polygon_client
+    if polygon_client is None:
+        key = os.getenv('POLYGON_API_KEY')
+        if not key:
+            raise RuntimeError('Polygon API key not configured')
+        polygon_client = RESTClient(key)
+    return polygon_client
 
 
 def get_stock_price(symbol: str) -> Optional[float]:
     """Get current stock price from Polygon API"""
     try:
         date = get_most_recent_trading_day()
-        resp = polygon_client.get_daily_open_close_agg(symbol, date)
+        client = _get_client()
+        resp = client.get_daily_open_close_agg(symbol, date)
         return resp.close if resp else None
     except Exception as e:
         logger.error(f"Error fetching stock price for {symbol}: {str(e)}")
@@ -31,7 +44,8 @@ def get_stock_price(symbol: str) -> Optional[float]:
 def get_stock_data(symbol: str, from_date: str, to_date: str) -> List[Dict[str, Any]]:
     """Get historical stock data from Polygon API"""
     try:
-        resp = polygon_client.get_aggs(symbol, 1, "day", from_date, to_date)
+        client = _get_client()
+        resp = client.get_aggs(symbol, 1, "day", from_date, to_date)
         if resp and hasattr(resp, 'results') and len(resp.results) > 0:
             return [
                 {
@@ -50,7 +64,8 @@ def get_stock_data(symbol: str, from_date: str, to_date: str) -> List[Dict[str, 
 def get_company_details(symbol: str) -> Dict[str, Any]:
     """Get company details from Polygon API"""
     try:
-        resp = polygon_client.get_ticker_details(symbol)
+        client = _get_client()
+        resp = client.get_ticker_details(symbol)
         if resp:
             return {
                 "name": resp.name,
