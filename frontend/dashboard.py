@@ -14,106 +14,142 @@ import logging
 import json
 from dash import dash_table
 
-# Define color scheme (using values from custom.css)
+# Define color scheme - Aligned with Design System v2.0
 COLORS = {
-    'primary': '#3498db',
-    'secondary': '#ecf0f1',
-    'text': '#2c3e50',
-    'positive': '#2ecc71',
-    'negative': '#e74c3c',
-    'background': '#f9f9f9',
+    # Primary palette
+    'primary': '#2563eb',        # Primary blue (primary-600)
+    'primary_light': '#3b82f6',  # Lighter primary (primary-500)
+    'primary_dark': '#1d4ed8',   # Darker primary (primary-700)
+
+    # Semantic colors
+    'positive': '#10b981',       # Success green (success-500)
+    'positive_light': '#ecfdf5', # Success background (success-50)
+    'negative': '#ef4444',       # Danger red (danger-500)
+    'negative_light': '#fef2f2', # Danger background (danger-50)
+
+    # Neutral palette
+    'text': '#111827',           # Primary text (gray-900)
+    'text_secondary': '#6b7280', # Secondary text (gray-500)
+    'text_muted': '#9ca3af',     # Muted text (gray-400)
+    'background': '#f9fafb',     # Page background (gray-50)
+    'surface': '#ffffff',        # Card/surface white
+    'border': '#e5e7eb',         # Border color (gray-200)
+    'border_light': '#f3f4f6',   # Light border (gray-100)
+
+    # Legacy aliases for compatibility
+    'secondary': '#f3f4f6',
     'card': '#ffffff'
 }
 
-# Define custom styles (integrating with custom.css)
+# Define custom styles - Aligned with Design System v2.0
 CUSTOM_STYLES = {
     'card': {
-        'borderRadius': '10px',
-        'marginBottom': '20px',
-        'boxShadow': '0 4px 8px rgba(0,0,0,0.1)',
-        'transition': 'all 0.3s ease'
+        'borderRadius': '16px',
+        'marginBottom': '24px',
+        'boxShadow': '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+        'border': '1px solid #f3f4f6',
+        'transition': 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
     },
     'button': {
-        'borderRadius': '5px',
-        'transition': 'all 0.3s ease'
+        'borderRadius': '8px',
+        'fontWeight': '500',
+        'transition': 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)'
     },
     'stock_logo': {
-        'height': '40px',
-        'width': 'auto',
-        'marginRight': '15px'
+        'height': '56px',
+        'width': '56px',
+        'objectFit': 'contain',
+        'marginRight': '20px',
+        'borderRadius': '8px',
+        'backgroundColor': '#f9fafb',
+        'padding': '4px',
+        'border': '1px solid #f3f4f6'
     },
     'stock_header': {
         'display': 'flex',
         'alignItems': 'center',
-        'marginBottom': '20px'
+        'marginBottom': '24px',
+        'gap': '20px'
     },
     'card_title': {
-        'fontSize': '14px',
-        'fontWeight': 'bold',
-        'color': '#7f8c8d',
-        'marginBottom': '10px',
-        'textTransform': 'uppercase'
+        'fontSize': '12px',
+        'fontWeight': '600',
+        'color': COLORS['text_secondary'],
+        'marginBottom': '8px',
+        'textTransform': 'uppercase',
+        'letterSpacing': '0.05em'
     },
     'card_value': {
-        'fontSize': '22px',
-        'fontWeight': 'bold',
-        'marginBottom': '5px'
+        'fontSize': '24px',
+        'fontWeight': '700',
+        'marginBottom': '4px',
+        'color': COLORS['text'],
+        'letterSpacing': '-0.025em'
     },
     'card_change_positive': {
         'color': COLORS['positive'],
-        'fontWeight': 'bold',
-        'fontSize': '16px'
+        'fontWeight': '600',
+        'fontSize': '14px',
+        'display': 'inline-flex',
+        'alignItems': 'center',
+        'gap': '4px'
     },
     'card_change_negative': {
         'color': COLORS['negative'],
-        'fontWeight': 'bold',
-        'fontSize': '16px'
+        'fontWeight': '600',
+        'fontSize': '14px',
+        'display': 'inline-flex',
+        'alignItems': 'center',
+        'gap': '4px'
     }
 }
 
 def create_stock_card(title, value, change=None):
-    """Create a simple, clean stock information card"""
+    """Create a modern, professional stock information card"""
     # Determine style based on change value
     change_style = {}
     change_value = 0
+    is_positive = False
+
     if change and change.strip('%'):
         try:
             change_value = float(change.strip('%'))
+            is_positive = change_value > 0
             change_style = {
-                'color': COLORS['positive'] if change_value > 0 else COLORS['negative'],
-                'fontWeight': 'bold',
-                'fontSize': '16px'
+                'color': COLORS['positive'] if is_positive else COLORS['negative'],
+                'fontWeight': '600',
+                'fontSize': '14px',
+                'display': 'inline-flex',
+                'alignItems': 'center',
+                'gap': '4px',
+                'padding': '4px 8px',
+                'borderRadius': '6px',
+                'backgroundColor': COLORS['positive_light'] if is_positive else COLORS['negative_light']
             }
         except ValueError:
             change_style = {}
 
     # Add arrow indicator based on change value
-    change_indicator = "▲ " if change_value > 0 else "▼ " if change_value < 0 else ""
+    change_indicator = "+" if change_value > 0 else "" if change_value < 0 else ""
     change_display = f"{change_indicator}{change}" if change else ""
 
     return html.Div([
-        html.Div(title, style={
-            'fontSize': '14px',
-            'fontWeight': 'bold',
-            'color': '#7f8c8d',
-            'marginBottom': '10px',
-            'textTransform': 'uppercase'
-        }),
-        html.Div(value, style={
-            'fontSize': '22px',
-            'fontWeight': 'bold',
-            'marginBottom': '5px',
-            'color': COLORS['text']
-        }),
+        html.Div(title, style=CUSTOM_STYLES['card_title']),
+        html.Div(value, style=CUSTOM_STYLES['card_value']),
         html.Div(change_display, style=change_style) if change is not None else html.Div()
     ], style={
-        'backgroundColor': 'white',
-        'borderRadius': '8px',
-        'padding': '15px',
+        'backgroundColor': COLORS['surface'],
+        'borderRadius': '12px',
+        'padding': '20px',
         'textAlign': 'center',
-        'boxShadow': '0 2px 4px rgba(0,0,0,0.05)',
+        'boxShadow': '0 1px 3px 0 rgb(0 0 0 / 0.1)',
+        'border': f"1px solid {COLORS['border_light']}",
         'height': '100%',
-        'minHeight': '120px'
+        'minHeight': '130px',
+        'display': 'flex',
+        'flexDirection': 'column',
+        'justifyContent': 'center',
+        'transition': 'all 0.2s ease'
     })
 def create_watchlist_table(data):
     return dash_table.DataTable(
@@ -704,15 +740,20 @@ def fetch_and_display_stock_data(stock_symbol):
             )])
 
             chart.update_layout(
-                title=f"{stock_symbol} Stock Price - Past Year",
-                xaxis_title="Date",
-                yaxis_title="Price ($)",
+                title=dict(
+                    text=f"{stock_symbol} Stock Price - Past Year",
+                    font=dict(size=18, color=COLORS['text'], family='Inter, -apple-system, sans-serif'),
+                    x=0,
+                    xanchor='left'
+                ),
+                xaxis_title=dict(text="Date", font=dict(size=13, color=COLORS['text_secondary'])),
+                yaxis_title=dict(text="Price ($)", font=dict(size=13, color=COLORS['text_secondary'])),
                 template="plotly_white",
-                margin=dict(l=40, r=40, t=50, b=40),
+                margin=dict(l=60, r=30, t=70, b=50),
                 hovermode="x unified",
-                paper_bgcolor=COLORS['background'],
-                plot_bgcolor=COLORS['background'],
-                font=dict(color=COLORS['text']),
+                paper_bgcolor=COLORS['surface'],
+                plot_bgcolor=COLORS['surface'],
+                font=dict(color=COLORS['text'], family='Inter, -apple-system, sans-serif'),
                 height=500,
                 autosize=True,
                 legend=dict(
@@ -720,23 +761,49 @@ def fetch_and_display_stock_data(stock_symbol):
                     yanchor="bottom",
                     y=1.02,
                     xanchor="right",
-                    x=1
+                    x=1,
+                    font=dict(size=12)
+                ),
+                xaxis=dict(
+                    showgrid=True,
+                    gridcolor=COLORS['border_light'],
+                    gridwidth=1,
+                    zeroline=False
+                ),
+                yaxis=dict(
+                    showgrid=True,
+                    gridcolor=COLORS['border_light'],
+                    gridwidth=1,
+                    zeroline=False,
+                    tickprefix='$'
+                ),
+                hoverlabel=dict(
+                    bgcolor=COLORS['surface'],
+                    font_size=13,
+                    font_family='Inter, -apple-system, sans-serif',
+                    bordercolor=COLORS['border']
                 )
             )
 
-            # Add selector buttons
+            # Add selector buttons with modern styling
             chart.update_xaxes(
                 rangeselector=dict(
                     buttons=list([
-                        dict(count=1, label="1m", step="month", stepmode="backward"),
-                        dict(count=6, label="6m", step="month", stepmode="backward"),
+                        dict(count=1, label="1M", step="month", stepmode="backward"),
+                        dict(count=3, label="3M", step="month", stepmode="backward"),
+                        dict(count=6, label="6M", step="month", stepmode="backward"),
                         dict(count=1, label="YTD", step="year", stepmode="todate"),
-                        dict(step="all")
+                        dict(label="1Y", step="all")
                     ]),
-                    bgcolor=COLORS['secondary'],
-                    activecolor=COLORS['primary'],
-                    font=dict(color=COLORS['text'])
-                )
+                    bgcolor=COLORS['background'],
+                    activecolor=COLORS['primary_light'],
+                    bordercolor=COLORS['border'],
+                    borderwidth=1,
+                    font=dict(color=COLORS['text'], size=12),
+                    x=0,
+                    y=1.1
+                ),
+                tickfont=dict(size=11, color=COLORS['text_secondary'])
             )
 
             # Get current price from service function

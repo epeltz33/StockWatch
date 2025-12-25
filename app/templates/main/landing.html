@@ -1,12 +1,52 @@
 {% extends "base.html" %}
 
+{% block title %}StockWatch - Track Your Investments{% endblock %}
+
 {% block content %}
 <div class="landing-container">
-  <h1>Welcome to StockWatch</h1>
-  <p>Your personal stock tracking assistant</p>
-  <div class="cta-buttons">
-    <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Login</a>
-    <a href="{{ url_for('auth.register') }}" class="btn btn-secondary">Register</a>
+  <div class="landing-hero">
+    <!-- Logo and Brand -->
+    <div class="landing-logo">
+      <div class="landing-logo-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 13h2v7H3v-7zm4-5h2v12H7V8zm4-5h2v17h-2V3zm4 8h2v9h-2v-9zm4-3h2v12h-2V8z" fill="currentColor"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Hero Content -->
+    <h1>StockWatch</h1>
+    <p class="landing-tagline">Your intelligent stock tracking companion. Monitor markets, build watchlists, and make informed investment decisions.</p>
+
+    <!-- Feature Cards -->
+    <div class="landing-features">
+      <div class="feature-card">
+        <div class="feature-card-icon">📈</div>
+        <h3>Real-Time Data</h3>
+        <p>Live stock prices and market updates</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">📋</div>
+        <h3>Watchlists</h3>
+        <p>Organize and track your favorite stocks</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">📊</div>
+        <h3>Visual Charts</h3>
+        <p>Interactive price history visualization</p>
+      </div>
+    </div>
+
+    <!-- CTA Buttons -->
+    <div class="cta-buttons">
+      <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Get Started</a>
+      <a href="{{ url_for('auth.register') }}" class="btn btn-secondary">Create Account</a>
+    </div>
+
+    <!-- Trust Indicator -->
+    <div class="landing-trust">
+      <p>Powered by real-time market data from Polygon.io</p>
+    </div>
   </div>
 </div>
 {% endblock %}
