@@ -15,6 +15,7 @@ venv/
 .venv/
 ENV/
 env.bak/
+.env
 venv.bak/
 *.egg-info/
 .installed.cfg

@@ -14,106 +14,121 @@ import logging
 import json
 from dash import dash_table
 
-# Define color scheme (using values from custom.css)
+# Define color scheme (modern professional palette)
 COLORS = {
-    'primary': '#3498db',
-    'secondary': '#ecf0f1',
-    'text': '#2c3e50',
-    'positive': '#2ecc71',
-    'negative': '#e74c3c',
-    'background': '#f9f9f9',
-    'card': '#ffffff'
+    'primary': '#1a91df',
+    'primary_dark': '#1574b3',
+    'primary_light': '#47a7e6',
+    'secondary': '#f1f5f9',
+    'text': '#1e293b',
+    'text_secondary': '#64748b',
+    'text_muted': '#94a3b8',
+    'positive': '#10b981',
+    'positive_light': '#ecfdf5',
+    'negative': '#ef4444',
+    'negative_light': '#fef2f2',
+    'background': '#f1f5f9',
+    'card': '#ffffff',
+    'border': '#e2e8f0',
+    'accent': '#0891b2'
 }
 
-# Define custom styles (integrating with custom.css)
+# Define custom styles (modern professional design system)
 CUSTOM_STYLES = {
     'card': {
-        'borderRadius': '10px',
-        'marginBottom': '20px',
-        'boxShadow': '0 4px 8px rgba(0,0,0,0.1)',
-        'transition': 'all 0.3s ease'
+        'borderRadius': '18px',
+        'marginBottom': '24px',
+        'boxShadow': '0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04)',
+        'border': f'1px solid {COLORS["border"]}',
+        'transition': 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        'overflow': 'hidden'
     },
     'button': {
-        'borderRadius': '5px',
-        'transition': 'all 0.3s ease'
+        'borderRadius': '10px',
+        'fontWeight': '600',
+        'transition': 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)'
     },
     'stock_logo': {
-        'height': '40px',
-        'width': 'auto',
-        'marginRight': '15px'
+        'height': '64px',
+        'width': '64px',
+        'objectFit': 'contain',
+        'marginRight': '20px',
+        'borderRadius': '14px',
+        'backgroundColor': '#ffffff',
+        'padding': '8px',
+        'border': '2px solid #f1f5f9',
+        'boxShadow': '0 1px 3px rgba(15, 23, 42, 0.06)'
     },
     'stock_header': {
         'display': 'flex',
         'alignItems': 'center',
-        'marginBottom': '20px'
+        'marginBottom': '24px'
     },
     'card_title': {
-        'fontSize': '14px',
-        'fontWeight': 'bold',
-        'color': '#7f8c8d',
-        'marginBottom': '10px',
-        'textTransform': 'uppercase'
+        'fontSize': '13px',
+        'fontWeight': '600',
+        'color': COLORS['text_secondary'],
+        'marginBottom': '8px',
+        'textTransform': 'uppercase',
+        'letterSpacing': '0.5px'
     },
     'card_value': {
-        'fontSize': '22px',
-        'fontWeight': 'bold',
-        'marginBottom': '5px'
+        'fontSize': '28px',
+        'fontWeight': '700',
+        'marginBottom': '4px',
+        'letterSpacing': '-0.5px',
+        'color': COLORS['text']
     },
     'card_change_positive': {
         'color': COLORS['positive'],
-        'fontWeight': 'bold',
-        'fontSize': '16px'
+        'fontWeight': '600',
+        'fontSize': '14px',
+        'backgroundColor': COLORS['positive_light'],
+        'padding': '4px 8px',
+        'borderRadius': '6px',
+        'display': 'inline-block'
     },
     'card_change_negative': {
         'color': COLORS['negative'],
-        'fontWeight': 'bold',
-        'fontSize': '16px'
+        'fontWeight': '600',
+        'fontSize': '14px',
+        'backgroundColor': COLORS['negative_light'],
+        'padding': '4px 8px',
+        'borderRadius': '6px',
+        'display': 'inline-block'
     }
 }
 
 def create_stock_card(title, value, change=None):
-    """Create a simple, clean stock information card"""
+    """Create a modern, polished stock information card"""
     # Determine style based on change value
     change_style = {}
     change_value = 0
     if change and change.strip('%'):
         try:
             change_value = float(change.strip('%'))
-            change_style = {
-                'color': COLORS['positive'] if change_value > 0 else COLORS['negative'],
-                'fontWeight': 'bold',
-                'fontSize': '16px'
-            }
+            change_style = CUSTOM_STYLES['card_change_positive'] if change_value > 0 else CUSTOM_STYLES['card_change_negative']
         except ValueError:
             change_style = {}
 
     # Add arrow indicator based on change value
-    change_indicator = "▲ " if change_value > 0 else "▼ " if change_value < 0 else ""
+    change_indicator = "↑ " if change_value > 0 else "↓ " if change_value < 0 else ""
     change_display = f"{change_indicator}{change}" if change else ""
 
     return html.Div([
-        html.Div(title, style={
-            'fontSize': '14px',
-            'fontWeight': 'bold',
-            'color': '#7f8c8d',
-            'marginBottom': '10px',
-            'textTransform': 'uppercase'
-        }),
-        html.Div(value, style={
-            'fontSize': '22px',
-            'fontWeight': 'bold',
-            'marginBottom': '5px',
-            'color': COLORS['text']
-        }),
+        html.Div(title, style=CUSTOM_STYLES['card_title']),
+        html.Div(value, style=CUSTOM_STYLES['card_value']),
         html.Div(change_display, style=change_style) if change is not None else html.Div()
     ], style={
-        'backgroundColor': 'white',
-        'borderRadius': '8px',
-        'padding': '15px',
+        'backgroundColor': COLORS['card'],
+        'borderRadius': '14px',
+        'padding': '20px',
         'textAlign': 'center',
-        'boxShadow': '0 2px 4px rgba(0,0,0,0.05)',
+        'boxShadow': '0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04)',
+        'border': f'1px solid {COLORS["border"]}',
         'height': '100%',
-        'minHeight': '120px'
+        'minHeight': '130px',
+        'transition': 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
     })
 def create_watchlist_table(data):
     return dash_table.DataTable(
@@ -451,20 +466,26 @@ def register_callbacks(dash_app):
         # logger.info(f"Proceeding to fetch data for {clicked_stock} (Trigger: {trigger_source})")
         stock_info, chart = fetch_and_display_stock_data(clicked_stock)
 
-        # Create chart container
+        # Create chart container with modern styling
         chart_container = html.Div([
             dcc.Graph(
                 id='stock-chart',
                 figure=chart,
                 style={'height': '500px', 'width': '100%'},
-                config={'displayModeBar': True, 'responsive': True}
+                config={
+                    'displayModeBar': True,
+                    'responsive': True,
+                    'displaylogo': False,
+                    'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+                }
             )
         ], style={
-            'backgroundColor': 'white',
-            'borderRadius': '10px',
-            'padding': '10px',
-            'boxShadow': '0 2px 4px rgba(0,0,0,0.05)',
-            'marginBottom': '20px'
+            'backgroundColor': COLORS['card'],
+            'borderRadius': '18px',
+            'padding': '16px',
+            'boxShadow': '0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.05)',
+            'border': f'1px solid {COLORS["border"]}',
+            'marginBottom': '24px'
         })
 
         # Decide whether to update the stock input field based on the trigger
@@ -584,20 +605,61 @@ def update_watchlist_section(watchlist_id):
 
 def create_empty_watchlist_section():
     return html.Div([
-        html.H4("You don't have any watchlists yet."),
+        html.Div([
+            html.Span("📋", style={'fontSize': '36px', 'marginBottom': '16px', 'display': 'block'}),
+            html.H4("Create your first watchlist", style={
+                'fontWeight': '700',
+                'color': COLORS['text'],
+                'marginBottom': '8px',
+                'fontSize': '18px'
+            }),
+            html.P("Track your favorite stocks in one place.", style={
+                'color': COLORS['text_muted'],
+                'fontSize': '14px',
+                'marginBottom': '24px'
+            })
+        ], style={'textAlign': 'center'}),
         dbc.Input(id='new-watchlist-input', type='text',
-                placeholder='Enter a new watchlist name...', className='mb-2'),
+                placeholder='Enter watchlist name...', className='mb-3'),
         dbc.Button('Create Watchlist', id='create-watchlist-button',
-                color='primary', className='mb-4')
-    ])
+                color='primary', className='w-100', style={
+                    'borderRadius': '10px',
+                    'padding': '12px 20px',
+                    'fontWeight': '600'
+                })
+    ], style={
+        'backgroundColor': COLORS['card'],
+        'borderRadius': '18px',
+        'padding': '32px 24px',
+        'border': f'1px solid {COLORS["border"]}',
+        'boxShadow': '0 1px 3px rgba(15, 23, 42, 0.06)'
+    })
 
 
 def create_watchlist_content(watchlist):
     return dbc.Card([
         dbc.CardHeader([
-            html.H5(watchlist.name, className="mb-0",
-                style={'fontWeight': '600', 'letterSpacing': '-0.3px'})
-        ], style={'padding': '20px 24px', 'backgroundColor': '#f8f9fa'}),
+            html.Div([
+                html.Div(style={
+                    'width': '4px',
+                    'height': '20px',
+                    'background': f'linear-gradient(180deg, {COLORS["primary"]} 0%, {COLORS["primary_dark"]} 100%)',
+                    'borderRadius': '4px',
+                    'marginRight': '12px'
+                }),
+                html.H5(watchlist.name, className="mb-0",
+                    style={
+                        'fontWeight': '700',
+                        'letterSpacing': '-0.3px',
+                        'color': COLORS['text'],
+                        'fontSize': '16px'
+                    })
+            ], style={'display': 'flex', 'alignItems': 'center'})
+        ], style={
+            'padding': '18px 24px',
+            'background': f'linear-gradient(180deg, {COLORS["secondary"]} 0%, {COLORS["card"]} 100%)',
+            'borderBottom': f'1px solid {COLORS["border"]}'
+        }),
 
         dbc.CardBody([
             dbc.ListGroup([
@@ -608,20 +670,21 @@ def create_watchlist_content(watchlist):
                             html.Span(stock.symbol,
                                     style={
                                         'fontWeight': '700',
-                                        'fontSize': '18px',
+                                        'fontSize': '16px',
                                         'display': 'inline-block',
-                                        'marginRight': '12px',
-                                        'letterSpacing': '-0.3px'
+                                        'marginRight': '10px',
+                                        'letterSpacing': '-0.3px',
+                                        'color': COLORS['text']
                                     }),
                             html.Span(f"{stock.name}",
-                                    className='text-muted',
                                     style={
-                                        'fontSize': '14px',
-                                        'fontWeight': '400'
+                                        'fontSize': '13px',
+                                        'fontWeight': '500',
+                                        'color': COLORS['text_muted']
                                     })
                         ], style={
                             'flex': '1',
-                            'minWidth': '0',  # Allows text truncation
+                            'minWidth': '0',
                             'overflow': 'hidden',
                             'textOverflow': 'ellipsis',
                             'whiteSpace': 'nowrap'
@@ -634,11 +697,11 @@ def create_watchlist_content(watchlist):
                                 id={'type': 'load-watchlist-stock', 'index': stock.symbol},
                                 color='info',
                                 size='sm',
-                                className='me-2',
                                 style={
-                                    'borderRadius': '6px',
-                                    'padding': '6px 16px',
-                                    'fontWeight': '500'
+                                    'borderRadius': '8px',
+                                    'padding': '6px 14px',
+                                    'fontWeight': '600',
+                                    'fontSize': '12px'
                                 }
                             ),
                             dbc.Button(
@@ -647,9 +710,10 @@ def create_watchlist_content(watchlist):
                                 color='danger',
                                 size='sm',
                                 style={
-                                    'borderRadius': '6px',
-                                    'padding': '6px 16px',
-                                    'fontWeight': '500'
+                                    'borderRadius': '8px',
+                                    'padding': '6px 14px',
+                                    'fontWeight': '600',
+                                    'fontSize': '12px'
                                 }
                             )
                         ], style={
@@ -662,22 +726,41 @@ def create_watchlist_content(watchlist):
                         'justifyContent': 'space-between',
                         'alignItems': 'center',
                         'width': '100%',
-                        'gap': '20px'
+                        'gap': '16px'
                     }),
-                    className='border-0 border-bottom',
-                    style={'padding': '16px 20px'}
+                    className='border-0',
+                    style={
+                        'padding': '14px 20px',
+                        'borderBottom': f'1px solid {COLORS["border"]}',
+                        'transition': 'background-color 0.15s ease'
+                    }
                 ) for stock in watchlist.stocks
             ], flush=True, className='border-0') if watchlist.stocks else
             html.Div([
-                html.P("No stocks added yet.",
-                    className="text-center text-muted mb-2",
-                    style={'fontSize': '16px'}),
-                html.P("Search for stocks above and add them to your watchlist.",
-                    className="text-center text-muted mb-0",
-                    style={'fontSize': '14px'})
+                html.Div([
+                    html.Span("📊", style={'fontSize': '32px', 'marginBottom': '12px', 'display': 'block'}),
+                    html.P("No stocks added yet",
+                        style={
+                            'fontSize': '15px',
+                            'fontWeight': '600',
+                            'color': COLORS['text'],
+                            'marginBottom': '6px'
+                        }),
+                    html.P("Search for stocks above and add them to your watchlist.",
+                        style={
+                            'fontSize': '13px',
+                            'color': COLORS['text_muted'],
+                            'margin': '0'
+                        })
+                ], style={'textAlign': 'center'})
             ], style={'padding': '40px 20px'})
         ], className='p-0')
-    ], className='shadow-sm')
+    ], style={
+        'border': f'1px solid {COLORS["border"]}',
+        'borderRadius': '18px',
+        'boxShadow': '0 1px 3px rgba(15, 23, 42, 0.06)',
+        'overflow': 'hidden'
+    })
 
 def fetch_and_display_stock_data(stock_symbol):
     try:
@@ -693,50 +776,84 @@ def fetch_and_display_stock_data(stock_symbol):
         # Convert to DataFrame
         df = pd.DataFrame(historical_data)
 
-        # Create chart using close prices
+        # Create chart using close prices with modern styling
         if 'close' in df.columns:
-            chart = go.Figure(data=[go.Scatter(
+            # Create gradient fill effect with scatter
+            chart = go.Figure()
+            
+            # Add gradient area fill
+            chart.add_trace(go.Scatter(
                 x=df['date'],
                 y=df['close'],
                 mode='lines',
-                line=dict(color=COLORS['primary'], width=2),
-                name=f"{stock_symbol} Price"
-            )])
+                line=dict(color=COLORS['primary'], width=2.5, shape='spline'),
+                fill='tozeroy',
+                fillcolor='rgba(26, 145, 223, 0.08)',
+                name=f"{stock_symbol}",
+                hovertemplate='<b>%{x}</b><br>$%{y:.2f}<extra></extra>'
+            ))
 
             chart.update_layout(
-                title=f"{stock_symbol} Stock Price - Past Year",
-                xaxis_title="Date",
-                yaxis_title="Price ($)",
+                title=dict(
+                    text=f'<b>{stock_symbol}</b> Stock Price',
+                    font=dict(size=20, color=COLORS['text'], family='Inter, -apple-system, sans-serif'),
+                    x=0.02,
+                    xanchor='left'
+                ),
+                xaxis_title=None,
+                yaxis_title=dict(text="Price ($)", font=dict(size=12, color=COLORS['text_secondary'])),
                 template="plotly_white",
-                margin=dict(l=40, r=40, t=50, b=40),
+                margin=dict(l=60, r=30, t=70, b=50),
                 hovermode="x unified",
-                paper_bgcolor=COLORS['background'],
-                plot_bgcolor=COLORS['background'],
-                font=dict(color=COLORS['text']),
-                height=500,
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color=COLORS['text'], family='Inter, -apple-system, sans-serif'),
+                height=480,
                 autosize=True,
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1
+                showlegend=False,
+                hoverlabel=dict(
+                    bgcolor=COLORS['card'],
+                    font_size=14,
+                    font_family='Inter, -apple-system, sans-serif',
+                    bordercolor=COLORS['border']
                 )
             )
 
-            # Add selector buttons
+            # Style axes
             chart.update_xaxes(
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='rgba(226, 232, 240, 0.5)',
+                showline=False,
+                tickfont=dict(size=11, color=COLORS['text_secondary']),
                 rangeselector=dict(
                     buttons=list([
-                        dict(count=1, label="1m", step="month", stepmode="backward"),
-                        dict(count=6, label="6m", step="month", stepmode="backward"),
+                        dict(count=1, label="1M", step="month", stepmode="backward"),
+                        dict(count=3, label="3M", step="month", stepmode="backward"),
+                        dict(count=6, label="6M", step="month", stepmode="backward"),
                         dict(count=1, label="YTD", step="year", stepmode="todate"),
-                        dict(step="all")
+                        dict(label="1Y", step="all")
                     ]),
-                    bgcolor=COLORS['secondary'],
+                    bgcolor='rgba(241, 245, 249, 0.8)',
                     activecolor=COLORS['primary'],
-                    font=dict(color=COLORS['text'])
-                )
+                    bordercolor=COLORS['border'],
+                    borderwidth=1,
+                    font=dict(color=COLORS['text'], size=12),
+                    x=0.02,
+                    xanchor='left',
+                    y=1.12
+                ),
+                rangeslider=dict(visible=False)
+            )
+            
+            chart.update_yaxes(
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='rgba(226, 232, 240, 0.5)',
+                showline=False,
+                tickfont=dict(size=11, color=COLORS['text_secondary']),
+                tickprefix='$',
+                tickformat=',.0f'
             )
 
             # Get current price from service function
@@ -817,186 +934,253 @@ def fetch_and_display_stock_data(stock_symbol):
             list_date = company_details.get('list_date', None) if company_details else None
             list_date_display = list_date if list_date else "N/A"
 
-            # Create clean, professional layout matching the screenshot
+            # Determine price change styling
+            price_change_style = {
+                'display': 'inline-flex',
+                'alignItems': 'center',
+                'gap': '3px',
+                'padding': '4px 10px',
+                'borderRadius': '6px',
+                'fontWeight': '600',
+                'fontSize': '13px',
+                'verticalAlign': 'middle'
+            }
+            if change_value > 0:
+                price_change_style['backgroundColor'] = COLORS['positive_light']
+                price_change_style['color'] = COLORS['positive']
+                arrow = "↑"
+            elif change_value < 0:
+                price_change_style['backgroundColor'] = COLORS['negative_light']
+                price_change_style['color'] = COLORS['negative']
+                arrow = "↓"
+            else:
+                price_change_style['backgroundColor'] = COLORS['secondary']
+                price_change_style['color'] = COLORS['text_secondary']
+                arrow = ""
+
+            # Create modern, professional layout
             stock_info = html.Div([
-                # Company Header Section
-                dbc.Card([
-                    dbc.CardBody([
+                # Company Header Card with gradient background and Add to Watchlist button
+                html.Div([
+                    html.Div([
+                        # Left side: Logo and Company Info
                         html.Div([
-                            # Logo
+                            # Logo with modern styling
                             html.Img(
                                 src=display_logo,
                                 alt=stock_symbol,
-                                style={
-                                    'height': '60px',
-                                    'width': '60px',
-                                    'objectFit': 'contain',
-                                    'marginRight': '20px'
-                                },
+                                style=CUSTOM_STYLES['stock_logo'],
                                 className='company-logo'
                             ) if display_logo else html.Div(
                                 html.Span(stock_symbol[0].upper(),
                                         style={
                                             'fontSize': '28px',
-                                            'fontWeight': 'bold',
-                                            'color': 'white',
-                                            'backgroundColor': COLORS['primary'],
-                                            'borderRadius': '8px',
-                                            'display': 'flex',
-                                            'alignItems': 'center',
-                                            'justifyContent': 'center',
-                                            'width': '60px',
-                                            'height': '60px',
-                                            'marginRight': '20px'
-                                        })
+                                            'fontWeight': '700',
+                                            'color': 'white'
+                                        }),
+                                style={
+                                    'background': f'linear-gradient(135deg, {COLORS["primary"]} 0%, {COLORS["primary_dark"]} 100%)',
+                                    'borderRadius': '14px',
+                                    'display': 'flex',
+                                    'alignItems': 'center',
+                                    'justifyContent': 'center',
+                                    'width': '64px',
+                                    'height': '64px',
+                                    'marginRight': '20px',
+                                    'boxShadow': '0 4px 14px rgba(26, 145, 223, 0.3)'
+                                }
                             ),
-
                             # Company Info
                             html.Div([
                                 html.H2(stock_symbol, style={
-                                    'margin': '0',
+                                    'margin': '0 0 4px 0',
                                     'fontWeight': '700',
-                                    'fontSize': '28px',
-                                    'letterSpacing': '-0.5px'
+                                    'fontSize': '26px',
+                                    'letterSpacing': '-0.5px',
+                                    'color': COLORS['text']
                                 }),
                                 html.P(company_name, style={
                                     'margin': '0',
-                                    'fontSize': '18px',
-                                    'color': '#6c757d'
+                                    'fontSize': '15px',
+                                    'color': COLORS['text_secondary'],
+                                    'fontWeight': '500'
                                 })
                             ])
                         ], style={
                             'display': 'flex',
-                            'alignItems': 'center'
-                        })
-                    ])
+                            'alignItems': 'center',
+                            'flex': '1'
+                        }),
+                        # Right side: Add to Watchlist Button
+                        html.Div([
+                            dbc.Button([
+                                html.Span("+ ", style={'fontWeight': '400', 'marginRight': '4px'}),
+                                "Add to Watchlist"
+                            ],
+                                id={'type': 'add-to-watchlist', 'index': stock_symbol},
+                                color='success',
+                                style={
+                                    'borderRadius': '10px',
+                                    'padding': '10px 20px',
+                                    'fontWeight': '600',
+                                    'fontSize': '14px',
+                                    'boxShadow': '0 2px 8px rgba(16, 185, 129, 0.3)',
+                                    'whiteSpace': 'nowrap'
+                                }
+                            )
+                        ])
+                    ], style={
+                        'display': 'flex',
+                        'alignItems': 'center',
+                        'justifyContent': 'space-between',
+                        'gap': '16px',
+                        'flexWrap': 'wrap'
+                    })
                 ], style={
-                    'border': 'none',
-                    'boxShadow': '0 1px 3px rgba(0,0,0,0.12)',
-                    'marginBottom': '20px'
+                    'background': f'linear-gradient(135deg, {COLORS["card"]} 0%, {COLORS["secondary"]} 100%)',
+                    'borderRadius': '18px',
+                    'padding': '24px',
+                    'marginBottom': '20px',
+                    'border': f'1px solid {COLORS["border"]}',
+                    'boxShadow': '0 1px 3px rgba(15, 23, 42, 0.06)'
                 }),
 
-                # Add to Watchlist Button
-                html.Div([
-                    dbc.Button(
-                        "Add to Watchlist",
-                        id={'type': 'add-to-watchlist', 'index': stock_symbol},
-                        color='success',
-                        size='lg',
-                        style={'width': '100%'}
-                    )
-                ], style={'marginBottom': '20px'}),
-
-                # All Company Information in Clean Table Format
+                # Company Details Card with Current Price at top
                 dbc.Card([
                     dbc.CardBody([
                         html.Table([
                             html.Tbody([
-                                # Current Price Row
+                                # Current Price Row (prominent)
                                 html.Tr([
                                     html.Td("Current Price", style={
-                                        'fontWeight': '500',
-                                        'color': '#6c757d',
+                                        'fontWeight': '600',
+                                        'color': COLORS['text_secondary'],
                                         'width': '40%',
-                                        'padding': '16px',
-                                        'borderBottom': '1px solid #dee2e6',
-                                        'backgroundColor': '#f8f9fa'
+                                        'padding': '18px 20px',
+                                        'borderBottom': f'1px solid {COLORS["border"]}',
+                                        'background': f'linear-gradient(90deg, {COLORS["secondary"]} 0%, {COLORS["card"]} 100%)',
+                                        'fontSize': '13px',
+                                        'textTransform': 'uppercase',
+                                        'letterSpacing': '0.5px'
                                     }),
                                     html.Td([
                                         html.Span(f"${current_price:.2f}", style={
-                                            'fontSize': '20px',
-                                            'fontWeight': '600',
-                                            'marginRight': '15px'
+                                            'fontSize': '22px',
+                                            'fontWeight': '700',
+                                            'color': COLORS['text'],
+                                            'letterSpacing': '-0.3px',
+                                            'marginRight': '12px'
                                         }),
-                                        html.Span(f"{dollar_change:+.2f} ({change_str})", style={
-                                            'color': COLORS['positive'] if change_value > 0 else COLORS['negative'] if change_value < 0 else '#6c757d',
-                                            'fontWeight': '500'
-                                        })
+                                        html.Span([
+                                            html.Span(f"{arrow} ", style={'fontSize': '11px'}),
+                                            html.Span(f"{dollar_change:+.2f} ({change_str})")
+                                        ], style=price_change_style)
                                     ], style={
-                                        'padding': '16px',
-                                        'borderBottom': '1px solid #dee2e6'
+                                        'padding': '18px 20px',
+                                        'borderBottom': f'1px solid {COLORS["border"]}'
                                     })
                                 ]),
 
                                 # Previous Close Row
                                 html.Tr([
                                     html.Td("Previous Close", style={
-                                        'fontWeight': '500',
-                                        'color': '#6c757d',
+                                        'fontWeight': '600',
+                                        'color': COLORS['text_secondary'],
                                         'width': '40%',
-                                        'padding': '16px',
-                                        'borderBottom': '1px solid #dee2e6',
-                                        'backgroundColor': '#f8f9fa'
+                                        'padding': '16px 20px',
+                                        'borderBottom': f'1px solid {COLORS["border"]}',
+                                        'background': f'linear-gradient(90deg, {COLORS["secondary"]} 0%, {COLORS["card"]} 100%)',
+                                        'fontSize': '13px',
+                                        'textTransform': 'uppercase',
+                                        'letterSpacing': '0.5px'
                                     }),
                                     html.Td(f"${previous_close:.2f}", style={
-                                        'padding': '16px',
-                                        'borderBottom': '1px solid #dee2e6',
-                                        'fontSize': '16px'
+                                        'padding': '16px 20px',
+                                        'borderBottom': f'1px solid {COLORS["border"]}',
+                                        'fontSize': '15px',
+                                        'fontWeight': '500',
+                                        'color': COLORS['text']
                                     })
                                 ]),
 
                                 # 52-Week Range Row
                                 html.Tr([
                                     html.Td("52-Week Range", style={
-                                        'fontWeight': '500',
-                                        'color': '#6c757d',
+                                        'fontWeight': '600',
+                                        'color': COLORS['text_secondary'],
                                         'width': '40%',
-                                        'padding': '16px',
-                                        'borderBottom': '1px solid #dee2e6',
-                                        'backgroundColor': '#f8f9fa'
+                                        'padding': '16px 20px',
+                                        'borderBottom': f'1px solid {COLORS["border"]}',
+                                        'background': f'linear-gradient(90deg, {COLORS["secondary"]} 0%, {COLORS["card"]} 100%)',
+                                        'fontSize': '13px',
+                                        'textTransform': 'uppercase',
+                                        'letterSpacing': '0.5px'
                                     }),
                                     html.Td(fifty_two_week_range, style={
-                                        'padding': '16px',
-                                        'borderBottom': '1px solid #dee2e6',
-                                        'fontSize': '16px'
+                                        'padding': '16px 20px',
+                                        'borderBottom': f'1px solid {COLORS["border"]}',
+                                        'fontSize': '15px',
+                                        'fontWeight': '500',
+                                        'color': COLORS['text']
                                     })
                                 ]),
 
-                                # Description Row
+                                # Market Cap Row
                                 html.Tr([
-                                    html.Td("Description", style={
-                                        'fontWeight': '500',
-                                        'color': '#6c757d',
+                                    html.Td("Market Cap", style={
+                                        'fontWeight': '600',
+                                        'color': COLORS['text_secondary'],
                                         'width': '40%',
-                                        'padding': '16px',
-                                        'borderBottom': '1px solid #dee2e6',
-                                        'backgroundColor': '#f8f9fa',
-                                        'verticalAlign': 'top'
-                                    }),
-                                    html.Td(company_details.get('description', "N/A") if company_details else "N/A", style={
-                                        'padding': '16px',
-                                        'borderBottom': '1px solid #dee2e6',
-                                        'fontSize': '16px',
-                                        'lineHeight': '1.6'
-                                    })
-                                ]),
-
-                                # Market Capitalization Row
-                                html.Tr([
-                                    html.Td("Market Capitalization", style={
-                                        'fontWeight': '500',
-                                        'color': '#6c757d',
-                                        'width': '40%',
-                                        'padding': '16px',
-                                        'borderBottom': '1px solid #dee2e6',
-                                        'backgroundColor': '#f8f9fa'
+                                        'padding': '16px 20px',
+                                        'borderBottom': f'1px solid {COLORS["border"]}',
+                                        'background': f'linear-gradient(90deg, {COLORS["secondary"]} 0%, {COLORS["card"]} 100%)',
+                                        'fontSize': '13px',
+                                        'textTransform': 'uppercase',
+                                        'letterSpacing': '0.5px'
                                     }),
                                     html.Td(market_cap_str, style={
-                                        'padding': '16px',
-                                        'borderBottom': '1px solid #dee2e6',
-                                        'fontSize': '16px'
+                                        'padding': '16px 20px',
+                                        'borderBottom': f'1px solid {COLORS["border"]}',
+                                        'fontSize': '15px',
+                                        'fontWeight': '500',
+                                        'color': COLORS['text']
+                                    })
+                                ]),
+
+                                # Exchange Row
+                                html.Tr([
+                                    html.Td("Exchange", style={
+                                        'fontWeight': '600',
+                                        'color': COLORS['text_secondary'],
+                                        'width': '40%',
+                                        'padding': '16px 20px',
+                                        'borderBottom': f'1px solid {COLORS["border"]}',
+                                        'background': f'linear-gradient(90deg, {COLORS["secondary"]} 0%, {COLORS["card"]} 100%)',
+                                        'fontSize': '13px',
+                                        'textTransform': 'uppercase',
+                                        'letterSpacing': '0.5px'
+                                    }),
+                                    html.Td(company_details.get('exchange', "N/A") if company_details else "N/A", style={
+                                        'padding': '16px 20px',
+                                        'borderBottom': f'1px solid {COLORS["border"]}',
+                                        'fontSize': '15px',
+                                        'fontWeight': '500',
+                                        'color': COLORS['text']
                                     })
                                 ]),
 
                                 # Website Row
                                 html.Tr([
                                     html.Td("Website", style={
-                                        'fontWeight': '500',
-                                        'color': '#6c757d',
+                                        'fontWeight': '600',
+                                        'color': COLORS['text_secondary'],
                                         'width': '40%',
-                                        'padding': '16px',
-                                        'borderBottom': '1px solid #dee2e6',
-                                        'backgroundColor': '#f8f9fa'
+                                        'padding': '16px 20px',
+                                        'borderBottom': f'1px solid {COLORS["border"]}',
+                                        'background': f'linear-gradient(90deg, {COLORS["secondary"]} 0%, {COLORS["card"]} 100%)',
+                                        'fontSize': '13px',
+                                        'textTransform': 'uppercase',
+                                        'letterSpacing': '0.5px'
                                     }),
                                     html.Td([
                                         html.A(website_display.replace('https://', '').replace('http://', ''),
@@ -1005,43 +1189,34 @@ def fetch_and_display_stock_data(stock_symbol):
                                             style={
                                                 'color': COLORS['primary'],
                                                 'textDecoration': 'none',
-                                                'fontSize': '16px'
-                                            }) if website else website_display
+                                                'fontSize': '15px',
+                                                'fontWeight': '500',
+                                                'transition': 'color 0.15s ease'
+                                            }) if website else html.Span("N/A", style={'color': COLORS['text_muted']})
                                     ], style={
-                                        'padding': '16px',
-                                        'borderBottom': '1px solid #dee2e6'
+                                        'padding': '16px 20px',
+                                        'borderBottom': f'1px solid {COLORS["border"]}'
                                     })
                                 ]),
 
-                                # List Date Row
+                                # Description Row
                                 html.Tr([
-                                    html.Td("List Date", style={
-                                        'fontWeight': '500',
-                                        'color': '#6c757d',
+                                    html.Td("About", style={
+                                        'fontWeight': '600',
+                                        'color': COLORS['text_secondary'],
                                         'width': '40%',
-                                        'padding': '16px',
-                                        'borderBottom': '1px solid #dee2e6',
-                                        'backgroundColor': '#f8f9fa'
+                                        'padding': '16px 20px',
+                                        'background': f'linear-gradient(90deg, {COLORS["secondary"]} 0%, {COLORS["card"]} 100%)',
+                                        'fontSize': '13px',
+                                        'textTransform': 'uppercase',
+                                        'letterSpacing': '0.5px',
+                                        'verticalAlign': 'top'
                                     }),
-                                    html.Td(list_date_display, style={
-                                        'padding': '16px',
-                                        'borderBottom': '1px solid #dee2e6',
-                                        'fontSize': '16px'
-                                    })
-                                ]),
-
-                                # Listing Exchange Row
-                                html.Tr([
-                                    html.Td("Listing Exchange", style={
-                                        'fontWeight': '500',
-                                        'color': '#6c757d',
-                                        'width': '40%',
-                                        'padding': '16px',
-                                        'backgroundColor': '#f8f9fa'
-                                    }),
-                                    html.Td(company_details.get('exchange', "N/A") if company_details else "N/A", style={
-                                        'padding': '16px',
-                                        'fontSize': '16px'
+                                    html.Td(company_details.get('description', "N/A") if company_details else "N/A", style={
+                                        'padding': '16px 20px',
+                                        'fontSize': '14px',
+                                        'lineHeight': '1.7',
+                                        'color': COLORS['text_secondary']
                                     })
                                 ])
                             ])
@@ -1052,9 +1227,9 @@ def fetch_and_display_stock_data(stock_symbol):
                         })
                     ], className='p-0')
                 ], style={
-                    'border': 'none',
-                    'boxShadow': '0 1px 3px rgba(0,0,0,0.12)',
-                    'borderRadius': '8px',
+                    'border': f'1px solid {COLORS["border"]}',
+                    'boxShadow': '0 1px 3px rgba(15, 23, 42, 0.06)',
+                    'borderRadius': '18px',
                     'overflow': 'hidden'
                 })
             ])
@@ -1066,13 +1241,27 @@ def fetch_and_display_stock_data(stock_symbol):
     except Exception as e:
         logger.error(f"Error fetching stock data: {str(e)}")
         return html.Div([
-            html.H4(f"Error fetching data for {stock_symbol}",
-                style={'color': COLORS['negative']}),
-            html.P(f"Details: {str(e)}",
-                style={'color': '#666'})
-        ], className="alert alert-danger m-3 p-4", style={
-            'textAlign': 'center',
-            'borderRadius': '10px'
+            html.Div([
+                html.Span("⚠️", style={'fontSize': '28px', 'marginBottom': '12px', 'display': 'block'}),
+                html.H4(f"Unable to load data for {stock_symbol}",
+                    style={
+                        'color': COLORS['negative'],
+                        'fontWeight': '600',
+                        'marginBottom': '8px'
+                    }),
+                html.P(f"Please check the ticker symbol and try again.",
+                    style={
+                        'color': COLORS['text_secondary'],
+                        'fontSize': '14px',
+                        'margin': '0'
+                    })
+            ], style={'textAlign': 'center'})
+        ], className="alert alert-danger", style={
+            'borderRadius': '14px',
+            'padding': '32px 24px',
+            'border': 'none',
+            'background': f'linear-gradient(135deg, {COLORS["negative_light"]} 0%, #fff5f5 100%)',
+            'borderLeft': f'4px solid {COLORS["negative"]}'
         }), go.Figure()
 
 def get_stock_data(symbol, start_date, end_date):
