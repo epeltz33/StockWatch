@@ -4,7 +4,7 @@ __pycache__/
 *$py.class
 *.pyc
 repomix-output.txt
-
+.cursor/
 # C extensions
 *.so
 
