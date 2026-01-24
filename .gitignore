@@ -74,3 +74,4 @@ dmypy.json
 .DS_Store
 Thumbs.db.env
 app/__pycache__.env
+.claude/
