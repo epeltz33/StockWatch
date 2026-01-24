@@ -14,102 +14,129 @@ import logging
 import json
 from dash import dash_table
 
-# Define color scheme (modern professional palette)
+# Define color scheme (modern dark glassmorphism palette)
 COLORS = {
-    'primary': '#1a91df',
-    'primary_dark': '#1574b3',
-    'primary_light': '#47a7e6',
-    'secondary': '#f1f5f9',
-    'text': '#1e293b',
-    'text_secondary': '#64748b',
+    'primary': '#38bdf8',
+    'primary_dark': '#0ea5e9',
+    'primary_light': '#7dd3fc',
+    'secondary': 'rgba(30, 41, 59, 0.8)',
+    'text': '#f1f5f9',
+    'text_secondary': '#cbd5e1',
     'text_muted': '#94a3b8',
-    'positive': '#10b981',
-    'positive_light': '#ecfdf5',
-    'negative': '#ef4444',
-    'negative_light': '#fef2f2',
-    'background': '#f1f5f9',
-    'card': '#ffffff',
-    'border': '#e2e8f0',
-    'accent': '#0891b2'
+    'positive': '#4ade80',
+    'positive_light': 'rgba(34, 197, 94, 0.15)',
+    'negative': '#f87171',
+    'negative_light': 'rgba(248, 113, 113, 0.15)',
+    'background': 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+    'background_solid': '#0f172a',
+    'card': 'rgba(30, 41, 59, 0.8)',
+    'card_solid': '#1e293b',
+    'border': 'rgba(148, 163, 184, 0.2)',
+    'border_hover': 'rgba(56, 189, 248, 0.4)',
+    'accent': '#06b6d4'
 }
 
-# Define custom styles (modern professional design system)
+# Define custom styles (modern dark glassmorphism design system)
 CUSTOM_STYLES = {
     'card': {
-        'borderRadius': '18px',
-        'marginBottom': '24px',
-        'boxShadow': '0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04)',
+        'borderRadius': '12px',
+        'marginBottom': '20px',
+        'boxShadow': '0 4px 30px rgba(0, 0, 0, 0.3)',
         'border': f'1px solid {COLORS["border"]}',
-        'transition': 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-        'overflow': 'hidden'
+        'transition': 'all 0.3s ease',
+        'overflow': 'hidden',
+        'backgroundColor': COLORS['card'],
+        'backdropFilter': 'blur(10px)',
+        'WebkitBackdropFilter': 'blur(10px)'
     },
     'button': {
-        'borderRadius': '10px',
-        'fontWeight': '600',
-        'transition': 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)'
+        'borderRadius': '8px',
+        'fontWeight': '500',
+        'transition': 'all 0.3s ease',
+        'border': f'1px solid {COLORS["border"]}',
+        'backgroundColor': 'rgba(56, 189, 248, 0.1)',
+        'color': COLORS['primary']
+    },
+    'button_primary': {
+        'borderRadius': '8px',
+        'fontWeight': '500',
+        'transition': 'all 0.3s ease',
+        'border': f'1px solid rgba(56, 189, 248, 0.3)',
+        'backgroundColor': 'rgba(56, 189, 248, 0.1)',
+        'color': COLORS['primary'],
+        'padding': '10px 20px'
     },
     'stock_logo': {
-        'height': '64px',
-        'width': '64px',
+        'height': '56px',
+        'width': '56px',
         'objectFit': 'contain',
-        'marginRight': '20px',
-        'borderRadius': '14px',
-        'backgroundColor': '#ffffff',
+        'marginRight': '16px',
+        'borderRadius': '12px',
+        'backgroundColor': 'rgba(30, 41, 59, 0.6)',
         'padding': '8px',
-        'border': '2px solid #f1f5f9',
-        'boxShadow': '0 1px 3px rgba(15, 23, 42, 0.06)'
+        'border': f'1px solid {COLORS["border"]}',
+        'boxShadow': '0 4px 15px rgba(0, 0, 0, 0.2)'
     },
     'stock_header': {
         'display': 'flex',
         'alignItems': 'center',
-        'marginBottom': '24px'
+        'marginBottom': '20px'
     },
     'card_title': {
-        'fontSize': '13px',
+        'fontSize': '0.85rem',
         'fontWeight': '600',
-        'color': COLORS['text_secondary'],
+        'color': COLORS['text_muted'],
         'marginBottom': '8px',
         'textTransform': 'uppercase',
         'letterSpacing': '0.5px'
     },
     'card_value': {
-        'fontSize': '28px',
+        'fontSize': '1.8rem',
         'fontWeight': '700',
-        'marginBottom': '4px',
+        'marginBottom': '6px',
         'letterSpacing': '-0.5px',
         'color': COLORS['text']
     },
     'card_change_positive': {
         'color': COLORS['positive'],
         'fontWeight': '600',
-        'fontSize': '14px',
-        'backgroundColor': COLORS['positive_light'],
-        'padding': '4px 8px',
-        'borderRadius': '6px',
+        'fontSize': '0.9rem',
         'display': 'inline-block'
     },
     'card_change_negative': {
         'color': COLORS['negative'],
         'fontWeight': '600',
-        'fontSize': '14px',
-        'backgroundColor': COLORS['negative_light'],
-        'padding': '4px 8px',
-        'borderRadius': '6px',
+        'fontSize': '0.9rem',
         'display': 'inline-block'
+    },
+    'metric_card': {
+        'backgroundColor': COLORS['card'],
+        'border': f'1px solid {COLORS["border"]}',
+        'borderRadius': '12px',
+        'padding': '20px',
+        'backdropFilter': 'blur(10px)',
+        'WebkitBackdropFilter': 'blur(10px)',
+        'transition': 'all 0.3s ease'
+    },
+    'section_title': {
+        'fontSize': '1.3rem',
+        'fontWeight': '600',
+        'color': COLORS['text'],
+        'marginBottom': '20px'
     }
 }
 
 def create_stock_card(title, value, change=None):
-    """Create a modern, polished stock information card"""
+    """Create a modern dark glassmorphism stock information card"""
     # Determine style based on change value
-    change_style = {}
+    change_style = {'color': COLORS['text_muted'], 'fontSize': '0.9rem'}
     change_value = 0
     if change and change.strip('%'):
         try:
             change_value = float(change.strip('%'))
             change_style = CUSTOM_STYLES['card_change_positive'] if change_value > 0 else CUSTOM_STYLES['card_change_negative']
         except ValueError:
-            change_style = {}
+            change_style = {'color': COLORS['text_muted'], 'fontSize': '0.9rem'}
 
     # Add arrow indicator based on change value
     change_indicator = "↑ " if change_value > 0 else "↓ " if change_value < 0 else ""
@@ -121,14 +148,15 @@ def create_stock_card(title, value, change=None):
         html.Div(change_display, style=change_style) if change is not None else html.Div()
     ], style={
         'backgroundColor': COLORS['card'],
-        'borderRadius': '14px',
+        'borderRadius': '12px',
         'padding': '20px',
-        'textAlign': 'center',
-        'boxShadow': '0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04)',
+        'boxShadow': '0 4px 30px rgba(0, 0, 0, 0.3)',
         'border': f'1px solid {COLORS["border"]}',
         'height': '100%',
-        'minHeight': '130px',
-        'transition': 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+        'minHeight': '120px',
+        'transition': 'all 0.3s ease',
+        'backdropFilter': 'blur(10px)',
+        'WebkitBackdropFilter': 'blur(10px)'
     })
 def create_watchlist_table(data):
     return dash_table.DataTable(
@@ -139,7 +167,16 @@ def create_watchlist_table(data):
             {"name": "Price", "id": "price"},
             {"name": "Change", "id": "change"}
         ],
-        style_cell={'textAlign': 'left'},
+        style_cell={
+            'textAlign': 'left',
+            'backgroundColor': 'transparent',
+            'color': COLORS['text'],
+            'border': 'none',
+            'borderBottom': f'1px solid {COLORS["border"]}',
+            'padding': '15px 20px',
+            'fontFamily': "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            'fontSize': '0.95rem'
+        },
         style_data_conditional=[
             {
                 'if': {'column_id': 'change', 'filter_query': '{change} > 0'},
@@ -148,13 +185,26 @@ def create_watchlist_table(data):
             {
                 'if': {'column_id': 'change', 'filter_query': '{change} < 0'},
                 'color': COLORS['negative']
+            },
+            {
+                'if': {'state': 'hover'},
+                'backgroundColor': 'rgba(56, 189, 248, 0.05)'
             }
         ],
         style_header={
-            'backgroundColor': COLORS['secondary'],
-            'fontWeight': 'bold'
+            'backgroundColor': 'rgba(15, 23, 42, 0.5)',
+            'fontWeight': '600',
+            'color': COLORS['text_muted'],
+            'textTransform': 'uppercase',
+            'letterSpacing': '0.5px',
+            'fontSize': '0.85rem',
+            'border': 'none',
+            'borderBottom': f'1px solid {COLORS["border"]}'
         },
-        style_table={'overflowX': 'auto'}
+        style_table={
+            'overflowX': 'auto',
+            'backgroundColor': 'transparent'
+        }
     )
 
 
@@ -182,76 +232,155 @@ def create_dash_app(flask_app):
 
 def create_layout():
     return dbc.Container([
-        # Main Content Section with better spacing
+        # Header Section
+        html.Div([
+            html.Div([
+                html.H1("StockWatch", style={
+                    'fontSize': '2.5rem',
+                    'fontWeight': '700',
+                    'background': 'linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%)',
+                    'WebkitBackgroundClip': 'text',
+                    'WebkitTextFillColor': 'transparent',
+                    'backgroundClip': 'text',
+                    'margin': '0'
+                }),
+            ]),
+            html.Div([
+                html.Span("Last Updated: ", style={'color': COLORS['text_muted']}),
+                html.Span(id='last-update-time', style={'color': COLORS['text_secondary']})
+            ], style={'fontSize': '0.9rem'})
+        ], style={
+            'display': 'flex',
+            'justifyContent': 'space-between',
+            'alignItems': 'center',
+            'flexWrap': 'wrap',
+            'gap': '20px',
+            'marginBottom': '30px',
+            'paddingBottom': '20px',
+            'borderBottom': f'1px solid {COLORS["border"]}'
+        }),
+
+        # Main Content Section
         dbc.Row([
-            # Left Sidebar with enhanced spacing
+            # Left Sidebar
             dbc.Col([
                 # Search Section
-                dbc.Card([
-                    dbc.CardBody([
-                        html.H5("Search Stocks", className="card-title"),
-                        dbc.InputGroup([
-                            dbc.Input(id='stock-input',
-                                    type='text',
-                                    placeholder='Enter a stock ticker (e.g., AAPL)...',
-                                    className='form-control'),
-                            dbc.InputGroupText(
-                                dbc.Button('Search',
-                                        id='search-button',
-                                        color='primary',
-                                        className='w-100',
-                                        style={'borderRadius': '0 8px 8px 0'})
-                            )
-                        ], className='mb-3'),
-                        html.Div(id='stock-data')
-                    ], className='p-4')
-                ], className='mb-4', style={'border': 'none', 'boxShadow': 'none'}),
+                html.Div([
+                    html.H5("Search Stocks", style={
+                        'fontSize': '1.2rem',
+                        'fontWeight': '600',
+                        'color': COLORS['text'],
+                        'marginBottom': '16px'
+                    }),
+                    dbc.InputGroup([
+                        dbc.Input(id='stock-input',
+                                type='text',
+                                placeholder='Enter ticker (e.g., AAPL)...',
+                                style={
+                                    'backgroundColor': 'rgba(15, 23, 42, 0.5)',
+                                    'border': f'1px solid {COLORS["border"]}',
+                                    'borderRadius': '8px 0 0 8px',
+                                    'color': COLORS['text'],
+                                    'padding': '12px 16px',
+                                    'fontSize': '0.95rem'
+                                }),
+                        dbc.Button('Search',
+                                id='search-button',
+                                style={
+                                    'backgroundColor': COLORS['primary'],
+                                    'border': 'none',
+                                    'borderRadius': '0 8px 8px 0',
+                                    'color': '#0f172a',
+                                    'fontWeight': '600',
+                                    'padding': '12px 20px'
+                                })
+                    ], className='mb-4'),
+                    html.Div(id='stock-data')
+                ], style={
+                    'backgroundColor': COLORS['card'],
+                    'borderRadius': '12px',
+                    'padding': '24px',
+                    'border': f'1px solid {COLORS["border"]}',
+                    'backdropFilter': 'blur(10px)',
+                    'WebkitBackdropFilter': 'blur(10px)',
+                    'marginBottom': '20px'
+                }),
 
-                # Watchlist Section with enhanced spacing
-                dbc.Card([
-                    dbc.CardBody([
-                        html.H5("Watchlists", className="card-title"),
-                        dcc.Dropdown(id='watchlist-dropdown',
-                                options=[],
-                                placeholder='Select a watchlist',
-                                className='mb-3',
-                                style={'minHeight': '48px'}),
-                        dbc.InputGroup([
-                            dbc.Input(id='new-watchlist-input',
-                                    type='text',
-                                    placeholder='Create a new watchlist...',
-                                    className='form-control'),
-                            dbc.InputGroupText(
-                                dbc.Button('Create',
-                                        id='create-watchlist-button',
-                                        color='primary',
-                                        className='w-100',
-                                        style={'borderRadius': '0 8px 8px 0'})
-                            )
-                        ], className='mb-3'),
-                        html.Div(id='watchlist-section')
-                    ], className='p-4')
-                ], style={'border': 'none', 'boxShadow': 'none'})
+                # Watchlist Section
+                html.Div([
+                    html.H5("Watchlists", style={
+                        'fontSize': '1.2rem',
+                        'fontWeight': '600',
+                        'color': COLORS['text'],
+                        'marginBottom': '16px'
+                    }),
+                    dcc.Dropdown(id='watchlist-dropdown',
+                            options=[],
+                            placeholder='Select a watchlist',
+                            className='mb-3 dark-dropdown',
+                            style={'minHeight': '44px'}),
+                    dbc.InputGroup([
+                        dbc.Input(id='new-watchlist-input',
+                                type='text',
+                                placeholder='New watchlist name...',
+                                style={
+                                    'backgroundColor': 'rgba(15, 23, 42, 0.5)',
+                                    'border': f'1px solid {COLORS["border"]}',
+                                    'borderRadius': '8px 0 0 8px',
+                                    'color': COLORS['text'],
+                                    'padding': '12px 16px',
+                                    'fontSize': '0.95rem'
+                                }),
+                        dbc.Button('Create',
+                                id='create-watchlist-button',
+                                style={
+                                    'backgroundColor': 'rgba(56, 189, 248, 0.1)',
+                                    'border': f'1px solid rgba(56, 189, 248, 0.3)',
+                                    'borderRadius': '0 8px 8px 0',
+                                    'color': COLORS['primary'],
+                                    'fontWeight': '500',
+                                    'padding': '12px 20px'
+                                })
+                    ], className='mb-4'),
+                    html.Div(id='watchlist-section')
+                ], style={
+                    'backgroundColor': COLORS['card'],
+                    'borderRadius': '12px',
+                    'padding': '24px',
+                    'border': f'1px solid {COLORS["border"]}',
+                    'backdropFilter': 'blur(10px)',
+                    'WebkitBackdropFilter': 'blur(10px)'
+                })
             ], lg=4, md=12, className='mb-4'),
+
             dbc.Col([
                 # Chart Section
-                dbc.Card([
-                    dbc.CardBody([
-                        html.Div(id='stock-chart-container',
-                            className='chart-container',
-                            style={'minHeight': '500px'})
-                    ], className='p-0')  # Chart container has its own padding
-                ], className='mb-4'),
+                html.Div([
+                    html.Div(id='stock-chart-container',
+                        className='chart-container',
+                        style={'minHeight': '480px'})
+                ], style={
+                    'backgroundColor': COLORS['card'],
+                    'borderRadius': '12px',
+                    'padding': '24px',
+                    'border': f'1px solid {COLORS["border"]}',
+                    'backdropFilter': 'blur(10px)',
+                    'WebkitBackdropFilter': 'blur(10px)',
+                    'marginBottom': '20px'
+                }),
 
                 # Company Info Section
                 html.Div(id='company-info-container',
                     className='company-info-container')
             ], lg=8, md=12)
-        ], className='g-4'),  # Add gutter spacing between columns
+        ], className='g-4'),
 
         # Update Interval
-        dcc.Interval(id='watchlist-interval', interval=30*1000, n_intervals=0)  # Update every 30 seconds
-    ], fluid=True, className='py-4', style={'maxWidth': '1400px'})
+        dcc.Interval(id='watchlist-interval', interval=30*1000, n_intervals=0)
+    ], fluid=True, className='py-4 dark-theme-container', style={
+        'maxWidth': '1600px',
+        'minHeight': '100vh'
+    })
 
 
 def register_callbacks(dash_app):
@@ -466,12 +595,18 @@ def register_callbacks(dash_app):
         # logger.info(f"Proceeding to fetch data for {clicked_stock} (Trigger: {trigger_source})")
         stock_info, chart = fetch_and_display_stock_data(clicked_stock)
 
-        # Create chart container with modern styling
+        # Create chart container with dark glassmorphism styling
         chart_container = html.Div([
+            html.Div(f"{clicked_stock} Stock Price", style={
+                'fontSize': '1.3rem',
+                'fontWeight': '600',
+                'color': COLORS['text'],
+                'marginBottom': '16px'
+            }),
             dcc.Graph(
                 id='stock-chart',
                 figure=chart,
-                style={'height': '500px', 'width': '100%'},
+                style={'height': '440px', 'width': '100%'},
                 config={
                     'displayModeBar': True,
                     'responsive': True,
@@ -480,12 +615,8 @@ def register_callbacks(dash_app):
                 }
             )
         ], style={
-            'backgroundColor': COLORS['card'],
-            'borderRadius': '18px',
-            'padding': '16px',
-            'boxShadow': '0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.05)',
-            'border': f'1px solid {COLORS["border"]}',
-            'marginBottom': '24px'
+            'backgroundColor': 'transparent',
+            'borderRadius': '12px'
         })
 
         # Decide whether to update the stock input field based on the trigger
@@ -606,159 +737,166 @@ def update_watchlist_section(watchlist_id):
 def create_empty_watchlist_section():
     return html.Div([
         html.Div([
-            html.Span("📋", style={'fontSize': '36px', 'marginBottom': '16px', 'display': 'block'}),
+            html.Span("📋", style={'fontSize': '32px', 'marginBottom': '12px', 'display': 'block'}),
             html.H4("Create your first watchlist", style={
-                'fontWeight': '700',
+                'fontWeight': '600',
                 'color': COLORS['text'],
                 'marginBottom': '8px',
-                'fontSize': '18px'
+                'fontSize': '1.1rem'
             }),
             html.P("Track your favorite stocks in one place.", style={
                 'color': COLORS['text_muted'],
-                'fontSize': '14px',
-                'marginBottom': '24px'
+                'fontSize': '0.9rem',
+                'marginBottom': '20px'
             })
         ], style={'textAlign': 'center'}),
         dbc.Input(id='new-watchlist-input', type='text',
-                placeholder='Enter watchlist name...', className='mb-3'),
+                placeholder='Enter watchlist name...', className='mb-3',
+                style={
+                    'backgroundColor': 'rgba(15, 23, 42, 0.5)',
+                    'border': f'1px solid {COLORS["border"]}',
+                    'borderRadius': '8px',
+                    'color': COLORS['text'],
+                    'padding': '12px 16px'
+                }),
         dbc.Button('Create Watchlist', id='create-watchlist-button',
-                color='primary', className='w-100', style={
-                    'borderRadius': '10px',
+                className='w-100', style={
+                    'borderRadius': '8px',
                     'padding': '12px 20px',
-                    'fontWeight': '600'
+                    'fontWeight': '500',
+                    'backgroundColor': COLORS['primary'],
+                    'border': 'none',
+                    'color': '#0f172a'
                 })
     ], style={
-        'backgroundColor': COLORS['card'],
-        'borderRadius': '18px',
-        'padding': '32px 24px',
+        'backgroundColor': 'rgba(30, 41, 59, 0.5)',
+        'borderRadius': '12px',
+        'padding': '24px 20px',
         'border': f'1px solid {COLORS["border"]}',
-        'boxShadow': '0 1px 3px rgba(15, 23, 42, 0.06)'
+        'textAlign': 'center'
     })
 
 
 def create_watchlist_content(watchlist):
-    return dbc.Card([
-        dbc.CardHeader([
+    return html.Div([
+        # Header
+        html.Div([
             html.Div([
                 html.Div(style={
-                    'width': '4px',
-                    'height': '20px',
+                    'width': '3px',
+                    'height': '18px',
                     'background': f'linear-gradient(180deg, {COLORS["primary"]} 0%, {COLORS["primary_dark"]} 100%)',
-                    'borderRadius': '4px',
-                    'marginRight': '12px'
+                    'borderRadius': '2px',
+                    'marginRight': '10px'
                 }),
                 html.H5(watchlist.name, className="mb-0",
                     style={
-                        'fontWeight': '700',
-                        'letterSpacing': '-0.3px',
+                        'fontWeight': '600',
                         'color': COLORS['text'],
-                        'fontSize': '16px'
+                        'fontSize': '1rem'
                     })
             ], style={'display': 'flex', 'alignItems': 'center'})
         ], style={
-            'padding': '18px 24px',
-            'background': f'linear-gradient(180deg, {COLORS["secondary"]} 0%, {COLORS["card"]} 100%)',
+            'padding': '16px 20px',
+            'background': 'rgba(15, 23, 42, 0.5)',
             'borderBottom': f'1px solid {COLORS["border"]}'
         }),
 
-        dbc.CardBody([
-            dbc.ListGroup([
-                dbc.ListGroupItem(
-                    html.Div([
-                        # Left side: Stock info
-                        html.Div([
-                            html.Span(stock.symbol,
-                                    style={
-                                        'fontWeight': '700',
-                                        'fontSize': '16px',
-                                        'display': 'inline-block',
-                                        'marginRight': '10px',
-                                        'letterSpacing': '-0.3px',
-                                        'color': COLORS['text']
-                                    }),
-                            html.Span(f"{stock.name}",
-                                    style={
-                                        'fontSize': '13px',
-                                        'fontWeight': '500',
-                                        'color': COLORS['text_muted']
-                                    })
-                        ], style={
-                            'flex': '1',
-                            'minWidth': '0',
-                            'overflow': 'hidden',
-                            'textOverflow': 'ellipsis',
-                            'whiteSpace': 'nowrap'
-                        }),
-
-                        # Right side: Buttons
-                        html.Div([
-                            dbc.Button(
-                                'View',
-                                id={'type': 'load-watchlist-stock', 'index': stock.symbol},
-                                color='info',
-                                size='sm',
-                                style={
-                                    'borderRadius': '8px',
-                                    'padding': '6px 14px',
-                                    'fontWeight': '600',
-                                    'fontSize': '12px'
-                                }
-                            ),
-                            dbc.Button(
-                                'Remove',
-                                id={'type': 'remove-from-watchlist', 'index': stock.id},
-                                color='danger',
-                                size='sm',
-                                style={
-                                    'borderRadius': '8px',
-                                    'padding': '6px 14px',
-                                    'fontWeight': '600',
-                                    'fontSize': '12px'
-                                }
-                            )
-                        ], style={
-                            'display': 'flex',
-                            'gap': '8px',
-                            'alignItems': 'center'
-                        })
-                    ], style={
-                        'display': 'flex',
-                        'justifyContent': 'space-between',
-                        'alignItems': 'center',
-                        'width': '100%',
-                        'gap': '16px'
-                    }),
-                    className='border-0',
-                    style={
-                        'padding': '14px 20px',
-                        'borderBottom': f'1px solid {COLORS["border"]}',
-                        'transition': 'background-color 0.15s ease'
-                    }
-                ) for stock in watchlist.stocks
-            ], flush=True, className='border-0') if watchlist.stocks else
+        # Content
+        html.Div([
             html.Div([
                 html.Div([
-                    html.Span("📊", style={'fontSize': '32px', 'marginBottom': '12px', 'display': 'block'}),
+                    # Left side: Stock info
+                    html.Div([
+                        html.Span(stock.symbol,
+                                style={
+                                    'fontWeight': '700',
+                                    'fontSize': '1rem',
+                                    'color': COLORS['primary'],
+                                    'marginRight': '10px',
+                                    'cursor': 'pointer'
+                                }),
+                        html.Span(f"{stock.name}",
+                                style={
+                                    'fontSize': '0.85rem',
+                                    'color': COLORS['text_muted']
+                                })
+                    ], style={
+                        'flex': '1',
+                        'minWidth': '0',
+                        'overflow': 'hidden',
+                        'textOverflow': 'ellipsis',
+                        'whiteSpace': 'nowrap'
+                    }),
+
+                    # Right side: Buttons
+                    html.Div([
+                        dbc.Button(
+                            'View',
+                            id={'type': 'load-watchlist-stock', 'index': stock.symbol},
+                            size='sm',
+                            style={
+                                'borderRadius': '6px',
+                                'padding': '6px 12px',
+                                'fontWeight': '500',
+                                'fontSize': '0.8rem',
+                                'backgroundColor': 'rgba(56, 189, 248, 0.1)',
+                                'border': f'1px solid rgba(56, 189, 248, 0.3)',
+                                'color': COLORS['primary']
+                            }
+                        ),
+                        dbc.Button(
+                            'Remove',
+                            id={'type': 'remove-from-watchlist', 'index': stock.id},
+                            size='sm',
+                            style={
+                                'borderRadius': '6px',
+                                'padding': '6px 12px',
+                                'fontWeight': '500',
+                                'fontSize': '0.8rem',
+                                'backgroundColor': 'rgba(248, 113, 113, 0.1)',
+                                'border': f'1px solid rgba(248, 113, 113, 0.3)',
+                                'color': COLORS['negative']
+                            }
+                        )
+                    ], style={
+                        'display': 'flex',
+                        'gap': '8px',
+                        'alignItems': 'center'
+                    })
+                ], style={
+                    'display': 'flex',
+                    'justifyContent': 'space-between',
+                    'alignItems': 'center',
+                    'width': '100%',
+                    'padding': '12px 16px',
+                    'borderBottom': f'1px solid {COLORS["border"]}',
+                    'transition': 'background-color 0.2s ease'
+                }) for stock in watchlist.stocks
+            ]) if watchlist.stocks else
+            html.Div([
+                html.Div([
+                    html.Span("📊", style={'fontSize': '28px', 'marginBottom': '10px', 'display': 'block'}),
                     html.P("No stocks added yet",
                         style={
-                            'fontSize': '15px',
-                            'fontWeight': '600',
+                            'fontSize': '0.95rem',
+                            'fontWeight': '500',
                             'color': COLORS['text'],
-                            'marginBottom': '6px'
+                            'marginBottom': '4px'
                         }),
-                    html.P("Search for stocks above and add them to your watchlist.",
+                    html.P("Search for stocks and add them here.",
                         style={
-                            'fontSize': '13px',
+                            'fontSize': '0.85rem',
                             'color': COLORS['text_muted'],
                             'margin': '0'
                         })
                 ], style={'textAlign': 'center'})
-            ], style={'padding': '40px 20px'})
-        ], className='p-0')
+            ], style={'padding': '30px 16px'})
+        ])
     ], style={
         'border': f'1px solid {COLORS["border"]}',
-        'borderRadius': '18px',
-        'boxShadow': '0 1px 3px rgba(15, 23, 42, 0.06)',
+        'borderRadius': '12px',
+        'backgroundColor': 'rgba(30, 41, 59, 0.5)',
         'overflow': 'hidden'
     })
 
@@ -781,51 +919,47 @@ def fetch_and_display_stock_data(stock_symbol):
             # Create gradient fill effect with scatter
             chart = go.Figure()
             
-            # Add gradient area fill
+            # Add gradient area fill with cyan/sky blue color
             chart.add_trace(go.Scatter(
                 x=df['date'],
                 y=df['close'],
                 mode='lines',
-                line=dict(color=COLORS['primary'], width=2.5, shape='spline'),
+                line=dict(color='#38bdf8', width=2.5, shape='spline'),
                 fill='tozeroy',
-                fillcolor='rgba(26, 145, 223, 0.08)',
+                fillcolor='rgba(56, 189, 248, 0.1)',
                 name=f"{stock_symbol}",
                 hovertemplate='<b>%{x}</b><br>$%{y:.2f}<extra></extra>'
             ))
 
             chart.update_layout(
-                title=dict(
-                    text=f'<b>{stock_symbol}</b> Stock Price',
-                    font=dict(size=20, color=COLORS['text'], family='Inter, -apple-system, sans-serif'),
-                    x=0.02,
-                    xanchor='left'
-                ),
+                title=None,
                 xaxis_title=None,
-                yaxis_title=dict(text="Price ($)", font=dict(size=12, color=COLORS['text_secondary'])),
-                template="plotly_white",
-                margin=dict(l=60, r=30, t=70, b=50),
+                yaxis_title=dict(text="Price ($)", font=dict(size=12, color=COLORS['text_muted'])),
+                template="plotly_dark",
+                margin=dict(l=60, r=30, t=40, b=50),
                 hovermode="x unified",
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color=COLORS['text'], family='Inter, -apple-system, sans-serif'),
-                height=480,
+                font=dict(color=COLORS['text'], family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"),
+                height=440,
                 autosize=True,
                 showlegend=False,
                 hoverlabel=dict(
-                    bgcolor=COLORS['card'],
+                    bgcolor='rgba(30, 41, 59, 0.95)',
                     font_size=14,
-                    font_family='Inter, -apple-system, sans-serif',
-                    bordercolor=COLORS['border']
+                    font_family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                    bordercolor='rgba(56, 189, 248, 0.3)',
+                    font_color=COLORS['text']
                 )
             )
 
-            # Style axes
+            # Style axes for dark theme
             chart.update_xaxes(
                 showgrid=True,
                 gridwidth=1,
-                gridcolor='rgba(226, 232, 240, 0.5)',
+                gridcolor='rgba(148, 163, 184, 0.1)',
                 showline=False,
-                tickfont=dict(size=11, color=COLORS['text_secondary']),
+                tickfont=dict(size=11, color=COLORS['text_muted']),
                 rangeselector=dict(
                     buttons=list([
                         dict(count=1, label="1M", step="month", stepmode="backward"),
@@ -834,11 +968,11 @@ def fetch_and_display_stock_data(stock_symbol):
                         dict(count=1, label="YTD", step="year", stepmode="todate"),
                         dict(label="1Y", step="all")
                     ]),
-                    bgcolor='rgba(241, 245, 249, 0.8)',
+                    bgcolor='rgba(30, 41, 59, 0.8)',
                     activecolor=COLORS['primary'],
-                    bordercolor=COLORS['border'],
+                    bordercolor='rgba(148, 163, 184, 0.2)',
                     borderwidth=1,
-                    font=dict(color=COLORS['text'], size=12),
+                    font=dict(color=COLORS['text_secondary'], size=12),
                     x=0.02,
                     xanchor='left',
                     y=1.12
@@ -849,9 +983,9 @@ def fetch_and_display_stock_data(stock_symbol):
             chart.update_yaxes(
                 showgrid=True,
                 gridwidth=1,
-                gridcolor='rgba(226, 232, 240, 0.5)',
+                gridcolor='rgba(148, 163, 184, 0.1)',
                 showline=False,
-                tickfont=dict(size=11, color=COLORS['text_secondary']),
+                tickfont=dict(size=11, color=COLORS['text_muted']),
                 tickprefix='$',
                 tickformat=',.0f'
             )
@@ -934,7 +1068,7 @@ def fetch_and_display_stock_data(stock_symbol):
             list_date = company_details.get('list_date', None) if company_details else None
             list_date_display = list_date if list_date else "N/A"
 
-            # Determine price change styling
+            # Determine price change styling for dark theme
             price_change_style = {
                 'display': 'inline-flex',
                 'alignItems': 'center',
@@ -942,30 +1076,30 @@ def fetch_and_display_stock_data(stock_symbol):
                 'padding': '4px 10px',
                 'borderRadius': '6px',
                 'fontWeight': '600',
-                'fontSize': '13px',
+                'fontSize': '0.9rem',
                 'verticalAlign': 'middle'
             }
             if change_value > 0:
-                price_change_style['backgroundColor'] = COLORS['positive_light']
+                price_change_style['backgroundColor'] = 'rgba(74, 222, 128, 0.15)'
                 price_change_style['color'] = COLORS['positive']
                 arrow = "↑"
             elif change_value < 0:
-                price_change_style['backgroundColor'] = COLORS['negative_light']
+                price_change_style['backgroundColor'] = 'rgba(248, 113, 113, 0.15)'
                 price_change_style['color'] = COLORS['negative']
                 arrow = "↓"
             else:
-                price_change_style['backgroundColor'] = COLORS['secondary']
-                price_change_style['color'] = COLORS['text_secondary']
+                price_change_style['backgroundColor'] = 'rgba(148, 163, 184, 0.1)'
+                price_change_style['color'] = COLORS['text_muted']
                 arrow = ""
 
-            # Create modern, professional layout
+            # Create dark glassmorphism layout
             stock_info = html.Div([
-                # Company Header Card with gradient background and Add to Watchlist button
+                # Company Header Card with dark styling
                 html.Div([
                     html.Div([
                         # Left side: Logo and Company Info
                         html.Div([
-                            # Logo with modern styling
+                            # Logo with dark theme styling
                             html.Img(
                                 src=display_logo,
                                 alt=stock_symbol,
@@ -974,20 +1108,20 @@ def fetch_and_display_stock_data(stock_symbol):
                             ) if display_logo else html.Div(
                                 html.Span(stock_symbol[0].upper(),
                                         style={
-                                            'fontSize': '28px',
+                                            'fontSize': '24px',
                                             'fontWeight': '700',
-                                            'color': 'white'
+                                            'color': '#0f172a'
                                         }),
                                 style={
                                     'background': f'linear-gradient(135deg, {COLORS["primary"]} 0%, {COLORS["primary_dark"]} 100%)',
-                                    'borderRadius': '14px',
+                                    'borderRadius': '12px',
                                     'display': 'flex',
                                     'alignItems': 'center',
                                     'justifyContent': 'center',
-                                    'width': '64px',
-                                    'height': '64px',
-                                    'marginRight': '20px',
-                                    'boxShadow': '0 4px 14px rgba(26, 145, 223, 0.3)'
+                                    'width': '56px',
+                                    'height': '56px',
+                                    'marginRight': '16px',
+                                    'boxShadow': '0 4px 15px rgba(56, 189, 248, 0.3)'
                                 }
                             ),
                             # Company Info
@@ -995,15 +1129,18 @@ def fetch_and_display_stock_data(stock_symbol):
                                 html.H2(stock_symbol, style={
                                     'margin': '0 0 4px 0',
                                     'fontWeight': '700',
-                                    'fontSize': '26px',
+                                    'fontSize': '1.8rem',
                                     'letterSpacing': '-0.5px',
-                                    'color': COLORS['text']
+                                    'background': 'linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%)',
+                                    'WebkitBackgroundClip': 'text',
+                                    'WebkitTextFillColor': 'transparent',
+                                    'backgroundClip': 'text'
                                 }),
                                 html.P(company_name, style={
                                     'margin': '0',
-                                    'fontSize': '15px',
-                                    'color': COLORS['text_secondary'],
-                                    'fontWeight': '500'
+                                    'fontSize': '0.95rem',
+                                    'color': COLORS['text_muted'],
+                                    'fontWeight': '400'
                                 })
                             ])
                         ], style={
@@ -1018,14 +1155,16 @@ def fetch_and_display_stock_data(stock_symbol):
                                 "Add to Watchlist"
                             ],
                                 id={'type': 'add-to-watchlist', 'index': stock_symbol},
-                                color='success',
                                 style={
-                                    'borderRadius': '10px',
+                                    'borderRadius': '8px',
                                     'padding': '10px 20px',
-                                    'fontWeight': '600',
-                                    'fontSize': '14px',
-                                    'boxShadow': '0 2px 8px rgba(16, 185, 129, 0.3)',
-                                    'whiteSpace': 'nowrap'
+                                    'fontWeight': '500',
+                                    'fontSize': '0.9rem',
+                                    'backgroundColor': 'rgba(74, 222, 128, 0.1)',
+                                    'border': '1px solid rgba(74, 222, 128, 0.3)',
+                                    'color': COLORS['positive'],
+                                    'whiteSpace': 'nowrap',
+                                    'transition': 'all 0.3s ease'
                                 }
                             )
                         ])
@@ -1037,200 +1176,201 @@ def fetch_and_display_stock_data(stock_symbol):
                         'flexWrap': 'wrap'
                     })
                 ], style={
-                    'background': f'linear-gradient(135deg, {COLORS["card"]} 0%, {COLORS["secondary"]} 100%)',
-                    'borderRadius': '18px',
-                    'padding': '24px',
-                    'marginBottom': '20px',
+                    'backgroundColor': COLORS['card'],
+                    'borderRadius': '12px',
+                    'padding': '20px',
+                    'marginBottom': '16px',
                     'border': f'1px solid {COLORS["border"]}',
-                    'boxShadow': '0 1px 3px rgba(15, 23, 42, 0.06)'
+                    'backdropFilter': 'blur(10px)',
+                    'WebkitBackdropFilter': 'blur(10px)'
                 }),
 
-                # Company Details Card with Current Price at top
-                dbc.Card([
-                    dbc.CardBody([
-                        html.Table([
-                            html.Tbody([
-                                # Current Price Row (prominent)
-                                html.Tr([
-                                    html.Td("Current Price", style={
-                                        'fontWeight': '600',
-                                        'color': COLORS['text_secondary'],
-                                        'width': '40%',
-                                        'padding': '18px 20px',
-                                        'borderBottom': f'1px solid {COLORS["border"]}',
-                                        'background': f'linear-gradient(90deg, {COLORS["secondary"]} 0%, {COLORS["card"]} 100%)',
-                                        'fontSize': '13px',
-                                        'textTransform': 'uppercase',
-                                        'letterSpacing': '0.5px'
-                                    }),
-                                    html.Td([
-                                        html.Span(f"${current_price:.2f}", style={
-                                            'fontSize': '22px',
-                                            'fontWeight': '700',
-                                            'color': COLORS['text'],
-                                            'letterSpacing': '-0.3px',
-                                            'marginRight': '12px'
-                                        }),
-                                        html.Span([
-                                            html.Span(f"{arrow} ", style={'fontSize': '11px'}),
-                                            html.Span(f"{dollar_change:+.2f} ({change_str})")
-                                        ], style=price_change_style)
-                                    ], style={
-                                        'padding': '18px 20px',
-                                        'borderBottom': f'1px solid {COLORS["border"]}'
-                                    })
-                                ]),
-
-                                # Previous Close Row
-                                html.Tr([
-                                    html.Td("Previous Close", style={
-                                        'fontWeight': '600',
-                                        'color': COLORS['text_secondary'],
-                                        'width': '40%',
-                                        'padding': '16px 20px',
-                                        'borderBottom': f'1px solid {COLORS["border"]}',
-                                        'background': f'linear-gradient(90deg, {COLORS["secondary"]} 0%, {COLORS["card"]} 100%)',
-                                        'fontSize': '13px',
-                                        'textTransform': 'uppercase',
-                                        'letterSpacing': '0.5px'
-                                    }),
-                                    html.Td(f"${previous_close:.2f}", style={
-                                        'padding': '16px 20px',
-                                        'borderBottom': f'1px solid {COLORS["border"]}',
-                                        'fontSize': '15px',
-                                        'fontWeight': '500',
-                                        'color': COLORS['text']
-                                    })
-                                ]),
-
-                                # 52-Week Range Row
-                                html.Tr([
-                                    html.Td("52-Week Range", style={
-                                        'fontWeight': '600',
-                                        'color': COLORS['text_secondary'],
-                                        'width': '40%',
-                                        'padding': '16px 20px',
-                                        'borderBottom': f'1px solid {COLORS["border"]}',
-                                        'background': f'linear-gradient(90deg, {COLORS["secondary"]} 0%, {COLORS["card"]} 100%)',
-                                        'fontSize': '13px',
-                                        'textTransform': 'uppercase',
-                                        'letterSpacing': '0.5px'
-                                    }),
-                                    html.Td(fifty_two_week_range, style={
-                                        'padding': '16px 20px',
-                                        'borderBottom': f'1px solid {COLORS["border"]}',
-                                        'fontSize': '15px',
-                                        'fontWeight': '500',
-                                        'color': COLORS['text']
-                                    })
-                                ]),
-
-                                # Market Cap Row
-                                html.Tr([
-                                    html.Td("Market Cap", style={
-                                        'fontWeight': '600',
-                                        'color': COLORS['text_secondary'],
-                                        'width': '40%',
-                                        'padding': '16px 20px',
-                                        'borderBottom': f'1px solid {COLORS["border"]}',
-                                        'background': f'linear-gradient(90deg, {COLORS["secondary"]} 0%, {COLORS["card"]} 100%)',
-                                        'fontSize': '13px',
-                                        'textTransform': 'uppercase',
-                                        'letterSpacing': '0.5px'
-                                    }),
-                                    html.Td(market_cap_str, style={
-                                        'padding': '16px 20px',
-                                        'borderBottom': f'1px solid {COLORS["border"]}',
-                                        'fontSize': '15px',
-                                        'fontWeight': '500',
-                                        'color': COLORS['text']
-                                    })
-                                ]),
-
-                                # Exchange Row
-                                html.Tr([
-                                    html.Td("Exchange", style={
-                                        'fontWeight': '600',
-                                        'color': COLORS['text_secondary'],
-                                        'width': '40%',
-                                        'padding': '16px 20px',
-                                        'borderBottom': f'1px solid {COLORS["border"]}',
-                                        'background': f'linear-gradient(90deg, {COLORS["secondary"]} 0%, {COLORS["card"]} 100%)',
-                                        'fontSize': '13px',
-                                        'textTransform': 'uppercase',
-                                        'letterSpacing': '0.5px'
-                                    }),
-                                    html.Td(company_details.get('exchange', "N/A") if company_details else "N/A", style={
-                                        'padding': '16px 20px',
-                                        'borderBottom': f'1px solid {COLORS["border"]}',
-                                        'fontSize': '15px',
-                                        'fontWeight': '500',
-                                        'color': COLORS['text']
-                                    })
-                                ]),
-
-                                # Website Row
-                                html.Tr([
-                                    html.Td("Website", style={
-                                        'fontWeight': '600',
-                                        'color': COLORS['text_secondary'],
-                                        'width': '40%',
-                                        'padding': '16px 20px',
-                                        'borderBottom': f'1px solid {COLORS["border"]}',
-                                        'background': f'linear-gradient(90deg, {COLORS["secondary"]} 0%, {COLORS["card"]} 100%)',
-                                        'fontSize': '13px',
-                                        'textTransform': 'uppercase',
-                                        'letterSpacing': '0.5px'
-                                    }),
-                                    html.Td([
-                                        html.A(website_display.replace('https://', '').replace('http://', ''),
-                                            href=website,
-                                            target="_blank",
-                                            style={
-                                                'color': COLORS['primary'],
-                                                'textDecoration': 'none',
-                                                'fontSize': '15px',
-                                                'fontWeight': '500',
-                                                'transition': 'color 0.15s ease'
-                                            }) if website else html.Span("N/A", style={'color': COLORS['text_muted']})
-                                    ], style={
-                                        'padding': '16px 20px',
-                                        'borderBottom': f'1px solid {COLORS["border"]}'
-                                    })
-                                ]),
-
-                                # Description Row
-                                html.Tr([
-                                    html.Td("About", style={
-                                        'fontWeight': '600',
-                                        'color': COLORS['text_secondary'],
-                                        'width': '40%',
-                                        'padding': '16px 20px',
-                                        'background': f'linear-gradient(90deg, {COLORS["secondary"]} 0%, {COLORS["card"]} 100%)',
-                                        'fontSize': '13px',
-                                        'textTransform': 'uppercase',
-                                        'letterSpacing': '0.5px',
-                                        'verticalAlign': 'top'
-                                    }),
-                                    html.Td(company_details.get('description', "N/A") if company_details else "N/A", style={
-                                        'padding': '16px 20px',
-                                        'fontSize': '14px',
-                                        'lineHeight': '1.7',
-                                        'color': COLORS['text_secondary']
-                                    })
-                                ])
+                # Company Details Card with dark theme styling
+                html.Div([
+                    # Section title
+                    html.Div("Stock Details", style={
+                        'fontSize': '0.9rem',
+                        'color': COLORS['primary'],
+                        'textTransform': 'uppercase',
+                        'letterSpacing': '1px',
+                        'marginBottom': '16px',
+                        'fontWeight': '600'
+                    }),
+                    
+                    # Info grid
+                    html.Div([
+                        # Current Price
+                        html.Div([
+                            html.Div("Current Price", style={
+                                'fontSize': '0.75rem',
+                                'color': COLORS['text_muted'],
+                                'textTransform': 'uppercase',
+                                'letterSpacing': '0.5px',
+                                'marginBottom': '6px'
+                            }),
+                            html.Div([
+                                html.Span(f"${current_price:.2f}", style={
+                                    'fontSize': '1.4rem',
+                                    'fontWeight': '700',
+                                    'color': COLORS['text'],
+                                    'marginRight': '10px',
+                                    'fontFamily': "'Monaco', 'Courier New', monospace"
+                                }),
+                                html.Span([
+                                    html.Span(f"{arrow} ", style={'fontSize': '0.75rem'}),
+                                    html.Span(f"{dollar_change:+.2f} ({change_str})")
+                                ], style=price_change_style)
                             ])
                         ], style={
-                            'width': '100%',
-                            'borderCollapse': 'collapse',
+                            'backgroundColor': 'rgba(30, 41, 59, 0.5)',
+                            'padding': '12px 16px',
+                            'borderRadius': '8px',
+                            'borderLeft': f'3px solid {COLORS["primary"]}'
+                        }),
+                        
+                        # Previous Close
+                        html.Div([
+                            html.Div("Previous Close", style={
+                                'fontSize': '0.75rem',
+                                'color': COLORS['text_muted'],
+                                'textTransform': 'uppercase',
+                                'letterSpacing': '0.5px',
+                                'marginBottom': '6px'
+                            }),
+                            html.Div(f"${previous_close:.2f}", style={
+                                'fontSize': '1.1rem',
+                                'fontWeight': '600',
+                                'color': COLORS['text'],
+                                'fontFamily': "'Monaco', 'Courier New', monospace"
+                            })
+                        ], style={
+                            'backgroundColor': 'rgba(30, 41, 59, 0.5)',
+                            'padding': '12px 16px',
+                            'borderRadius': '8px',
+                            'borderLeft': f'3px solid {COLORS["primary"]}'
+                        }),
+                        
+                        # 52-Week Range
+                        html.Div([
+                            html.Div("52-Week Range", style={
+                                'fontSize': '0.75rem',
+                                'color': COLORS['text_muted'],
+                                'textTransform': 'uppercase',
+                                'letterSpacing': '0.5px',
+                                'marginBottom': '6px'
+                            }),
+                            html.Div(fifty_two_week_range, style={
+                                'fontSize': '1.1rem',
+                                'fontWeight': '600',
+                                'color': COLORS['text'],
+                                'fontFamily': "'Monaco', 'Courier New', monospace"
+                            })
+                        ], style={
+                            'backgroundColor': 'rgba(30, 41, 59, 0.5)',
+                            'padding': '12px 16px',
+                            'borderRadius': '8px',
+                            'borderLeft': f'3px solid {COLORS["primary"]}'
+                        }),
+                        
+                        # Market Cap
+                        html.Div([
+                            html.Div("Market Cap", style={
+                                'fontSize': '0.75rem',
+                                'color': COLORS['text_muted'],
+                                'textTransform': 'uppercase',
+                                'letterSpacing': '0.5px',
+                                'marginBottom': '6px'
+                            }),
+                            html.Div(market_cap_str, style={
+                                'fontSize': '1.1rem',
+                                'fontWeight': '600',
+                                'color': COLORS['text'],
+                                'fontFamily': "'Monaco', 'Courier New', monospace"
+                            })
+                        ], style={
+                            'backgroundColor': 'rgba(30, 41, 59, 0.5)',
+                            'padding': '12px 16px',
+                            'borderRadius': '8px',
+                            'borderLeft': f'3px solid {COLORS["primary"]}'
+                        }),
+                        
+                        # Exchange
+                        html.Div([
+                            html.Div("Exchange", style={
+                                'fontSize': '0.75rem',
+                                'color': COLORS['text_muted'],
+                                'textTransform': 'uppercase',
+                                'letterSpacing': '0.5px',
+                                'marginBottom': '6px'
+                            }),
+                            html.Div(company_details.get('exchange', "N/A") if company_details else "N/A", style={
+                                'fontSize': '1.1rem',
+                                'fontWeight': '600',
+                                'color': COLORS['text'],
+                                'fontFamily': "'Monaco', 'Courier New', monospace"
+                            })
+                        ], style={
+                            'backgroundColor': 'rgba(30, 41, 59, 0.5)',
+                            'padding': '12px 16px',
+                            'borderRadius': '8px',
+                            'borderLeft': f'3px solid {COLORS["primary"]}'
+                        }),
+                        
+                        # Website
+                        html.Div([
+                            html.Div("Website", style={
+                                'fontSize': '0.75rem',
+                                'color': COLORS['text_muted'],
+                                'textTransform': 'uppercase',
+                                'letterSpacing': '0.5px',
+                                'marginBottom': '6px'
+                            }),
+                            html.A(website_display.replace('https://', '').replace('http://', ''),
+                                href=website,
+                                target="_blank",
+                                style={
+                                    'color': COLORS['primary'],
+                                    'textDecoration': 'none',
+                                    'fontSize': '1rem',
+                                    'fontWeight': '500'
+                                }) if website else html.Span("N/A", style={'color': COLORS['text_muted'], 'fontSize': '1rem'})
+                        ], style={
+                            'backgroundColor': 'rgba(30, 41, 59, 0.5)',
+                            'padding': '12px 16px',
+                            'borderRadius': '8px',
+                            'borderLeft': f'3px solid {COLORS["primary"]}'
+                        })
+                    ], style={
+                        'display': 'grid',
+                        'gridTemplateColumns': 'repeat(auto-fit, minmax(150px, 1fr))',
+                        'gap': '12px',
+                        'marginBottom': '20px'
+                    }),
+                    
+                    # Description section
+                    html.Div([
+                        html.Div("About", style={
+                            'fontSize': '0.9rem',
+                            'color': COLORS['primary'],
+                            'textTransform': 'uppercase',
+                            'letterSpacing': '1px',
+                            'marginBottom': '12px',
+                            'fontWeight': '600'
+                        }),
+                        html.P(company_details.get('description', "No description available.") if company_details else "No description available.", style={
+                            'color': COLORS['text_secondary'],
+                            'lineHeight': '1.6',
+                            'fontSize': '0.9rem',
                             'margin': '0'
                         })
-                    ], className='p-0')
+                    ]) if company_details and company_details.get('description') else html.Div()
                 ], style={
+                    'backgroundColor': COLORS['card'],
+                    'borderRadius': '12px',
+                    'padding': '24px',
                     'border': f'1px solid {COLORS["border"]}',
-                    'boxShadow': '0 1px 3px rgba(15, 23, 42, 0.06)',
-                    'borderRadius': '18px',
-                    'overflow': 'hidden'
+                    'backdropFilter': 'blur(10px)',
+                    'WebkitBackdropFilter': 'blur(10px)'
                 })
             ])
 
@@ -1252,15 +1392,15 @@ def fetch_and_display_stock_data(stock_symbol):
                 html.P(f"Please check the ticker symbol and try again.",
                     style={
                         'color': COLORS['text_secondary'],
-                        'fontSize': '14px',
+                        'fontSize': '0.9rem',
                         'margin': '0'
                     })
             ], style={'textAlign': 'center'})
-        ], className="alert alert-danger", style={
-            'borderRadius': '14px',
-            'padding': '32px 24px',
-            'border': 'none',
-            'background': f'linear-gradient(135deg, {COLORS["negative_light"]} 0%, #fff5f5 100%)',
+        ], style={
+            'borderRadius': '12px',
+            'padding': '30px 24px',
+            'border': f'1px solid rgba(248, 113, 113, 0.3)',
+            'backgroundColor': 'rgba(248, 113, 113, 0.1)',
             'borderLeft': f'4px solid {COLORS["negative"]}'
         }), go.Figure()
 

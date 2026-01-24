@@ -1,112 +1,39 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login - StockWatch</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      line-height: 1.6;
-      margin: 0;
-      padding: 20px;
-      background-color: #f4f4f4;
-    }
+{% block title %}Login - StockWatch{% endblock %}
 
-    .container {
-      max-width: 400px;
-      margin: auto;
-      background: white;
-      padding: 20px;
-      border-radius: 5px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-
-    h2 {
-      text-align: center;
-      color: #333;
-    }
-
-    form {
-      display: flex;
-      flex-direction: column;
-    }
-
-    label {
-      margin-top: 10px;
-    }
-
-    input {
-      padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-    }
-
-    button {
-      margin-top: 20px;
-      padding: 10px;
-      background-color: #5cb85c;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #4cae4c;
-    }
-
-    .flashes {
-      list-style-type: none;
-      padding: 0;
-    }
-
-    .flashes li {
-      background-color: #f8d7da;
-      border-color: #f5c6cb;
-      color: #721c24;
-      padding: 10px;
-      margin-bottom: 10px;
-      border-radius: 4px;
-    }
-
-    .register-link {
-      text-align: center;
-      margin-top: 15px;
-    }
-  </style>
-</head>
-
-<body>
-  <div class="container">
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card">
     <h2>Login to StockWatch</h2>
 
     {% with messages = get_flashed_messages() %}
     {% if messages %}
-    <ul class="flashes">
+    <div style="margin-bottom: 20px;">
       {% for message in messages %}
-      <li>{{ message }}</li>
+      <div class="alert alert-danger">{{ message }}</div>
       {% endfor %}
-    </ul>
+    </div>
     {% endif %}
     {% endwith %}
 
     <form method="POST">
-      <label for="email">Email:</label>
-      <input type="email" name="email" required>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" name="email" class="form-control" placeholder="Enter your email" required>
+      </div>
 
-      <label for="password">Password:</label>
-      <input type="password" name="password" required>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" name="password" class="form-control" placeholder="Enter your password" required>
+      </div>
 
-      <button type="submit">Login</button>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top: 10px;">Login</button>
     </form>
 
-    <div class="register-link">
+    <div style="text-align: center; margin-top: 24px; color: #94a3b8;">
       <p>Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a></p>
     </div>
   </div>
-</body>
-
-</html>
+</div>
+{% endblock %}

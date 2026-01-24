@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#38bdf8"/>
+      <stop offset="100%" style="stop-color:#0ea5e9"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="url(#bg)"/>
+  <!-- Chart line (upward trend) -->
+  <polyline 
+    points="5,22 10,18 14,20 18,14 22,16 27,8" 
+    fill="none" 
+    stroke="url(#line)" 
+    stroke-width="2.5" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"/>
+  <!-- Dot at the end -->
+  <circle cx="27" cy="8" r="2.5" fill="#4ade80"/>
+</svg>
