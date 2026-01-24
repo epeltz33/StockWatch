@@ -5,28 +5,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}StockWatch{% endblock %}</title>
-  <!-- Add your CSS links here -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <!-- Favicon -->
-  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
-  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
-  <i class="uis uis-usd-circle"></i>
-
-  <!-- If using Bootstrap -->
+  
+  <!-- Bootstrap CSS (load first so our styles can override) -->
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  
+  <!-- Custom CSS (load after Bootstrap to override) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.svg') }}">
+  
+  {% block head %}{% endblock %}
 </head>
 
 <body>
-  <header>
-    <!-- Add navigation bar here -->
-  </header>
-
-  <!-- Add section for flash messages -->
-  <div class="container">
+  <!-- Flash Messages -->
+  <div class="container" style="max-width: 1600px; padding-top: 20px;">
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     {% for category, message in messages %}
-    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert" style="border-radius: 12px;">
       {{ message }}
       <button type="button" class="close" data-dismiss="alert" aria-label="Close">
         <span aria-hidden="true">&times;</span>
@@ -42,16 +41,13 @@
     {% endblock %}
   </main>
 
-  <footer>
-    <!-- Add footer content here -->
-  </footer>
-
-  <!--   JavaScript links here -->
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-  <!--  Bootstrap -->
+  <!-- JavaScript -->
   <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  
+  {% block scripts %}{% endblock %}
 </body>
 
 </html>
