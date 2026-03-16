@@ -694,80 +694,25 @@ def update_watchlist_section(watchlist_id):
     if not watchlists:
         return create_empty_watchlist_section()
 
-    watchlist_options = [{'label': w.name, 'value': w.id} for w in watchlists]
-    watchlist_dropdown = dcc.Dropdown(
-        id='watchlist-dropdown',
-        options=watchlist_options,
-        value=watchlist_id,
-        className='mb-2'
-    )
-    create_watchlist_input = dbc.Input(
-        id='new-watchlist-input',
-        type='text',
-        placeholder='Enter a new watchlist name...',
-        className='mb-2'
-    )
-    create_watchlist_button = dbc.Button(
-        'Create Watchlist',
-        id='create-watchlist-button',
-        color='primary',
-        className='mb-4'
-    )
-
     if watchlist_id:
         watchlist = Watchlist.query.get(watchlist_id)
         if watchlist:
-            watchlist_content = create_watchlist_content(watchlist)
-            print(watchlist_content)
+            return create_watchlist_content(watchlist)
         else:
-            watchlist_content = html.P(
+            return html.P(
                 "Select a watchlist to view stocks or create a new watchlist.")
     else:
-        watchlist_content = html.P(
+        return html.P(
             "Select a watchlist to view stocks or create a new watchlist.")
-
-    return html.Div([
-        watchlist_dropdown,
-        create_watchlist_input,
-        create_watchlist_button,
-        watchlist_content
-    ])
 
 
 def create_empty_watchlist_section():
     return html.Div([
-        html.Div([
-            html.Span("📋", style={'fontSize': '32px', 'marginBottom': '12px', 'display': 'block'}),
-            html.H4("Create your first watchlist", style={
-                'fontWeight': '600',
-                'color': COLORS['text'],
-                'marginBottom': '8px',
-                'fontSize': '1.1rem'
-            }),
-            html.P("Track your favorite stocks in one place.", style={
-                'color': COLORS['text_muted'],
-                'fontSize': '0.9rem',
-                'marginBottom': '20px'
-            })
-        ], style={'textAlign': 'center'}),
-        dbc.Input(id='new-watchlist-input', type='text',
-                placeholder='Enter watchlist name...', className='mb-3',
-                style={
-                    'backgroundColor': 'rgba(15, 23, 42, 0.5)',
-                    'border': f'1px solid {COLORS["border"]}',
-                    'borderRadius': '8px',
-                    'color': COLORS['text'],
-                    'padding': '12px 16px'
-                }),
-        dbc.Button('Create Watchlist', id='create-watchlist-button',
-                className='w-100', style={
-                    'borderRadius': '8px',
-                    'padding': '12px 20px',
-                    'fontWeight': '500',
-                    'backgroundColor': COLORS['primary'],
-                    'border': 'none',
-                    'color': '#0f172a'
-                })
+        html.Span("📋", style={'fontSize': '32px', 'marginBottom': '12px', 'display': 'block'}),
+        html.P("Create your first watchlist above to start tracking stocks.", style={
+            'color': COLORS['text_muted'],
+            'fontSize': '0.9rem'
+        })
     ], style={
         'backgroundColor': 'rgba(30, 41, 59, 0.5)',
         'borderRadius': '12px',
