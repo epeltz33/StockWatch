@@ -1,20 +1,8 @@
-from flask import Blueprint, render_template, jsonify, request
+from flask import Blueprint, jsonify, request
 from app.services import stock_services
 from datetime import datetime, timedelta
 
 bp = Blueprint('stock', __name__)
-
-
-@bp.route('/')
-def list_stocks():
-    stocks = stock_services.get_all_stocks()
-    return render_template('stocks/list.html', stocks=stocks)
-
-
-@bp.route('/api')
-def api_stocks():
-    stocks = stock_services.get_all_stocks()
-    return jsonify([stock.to_dict() for stock in stocks])
 
 
 @bp.route('/api/<symbol>')
@@ -42,8 +30,4 @@ def stock_historical(symbol):
     if not data:
         return jsonify({"error": "Could not fetch historical data. Please try again later."}), 500
     return jsonify(data)
-
-
-
-
 
