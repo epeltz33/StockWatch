@@ -3,88 +3,152 @@
 
 # 📈 StockWatch
 
-## Overview
+A web application for monitoring stocks and managing personalized watchlists. Built with **Flask** and **Plotly Dash**, StockWatch provides real-time market data, interactive charts, and per-user portfolio tracking — all powered by the [Polygon.io](https://polygon.io/) API.
 
-The **StockWatch App** is a web-based application designed to help users monitor and manage their stock portfolios. Built with Flask for the backend and Plotly Dash for the frontend, this app allows users to track their favorite stocks, view historical data, and maintain a personalized watchlist.
+## ✨ Features
 
-## Features
+| Feature | Description |
+|---|---|
+| 🔐 **Authentication** | Secure registration & login with Flask-Login and hashed passwords |
+| 📊 **Live Market Data** | Current prices and company details via the Polygon.io REST API |
+| 📈 **Watchlist Management** | Create, view, and remove stocks across multiple watchlists |
+| 📉 **Interactive Charts** | Candlestick / line charts with volume overlays built in Plotly |
+| ⚡ **Caching** | Flask-Caching layer to reduce redundant API calls |
+| 🗄️ **Migrations** | Database schema managed with Flask-Migrate / Alembic |
 
-- 🔐 **User Authentication**: Secure registration and login functionalities.
-- 📊 **Stock Data Integration**: Fetch delayed stock data using the Polygon.io API.
-- 📈 **Watchlist Management**: Add, view, and remove stocks from your personalized watchlist.
-- 📉 **Data Visualization**: Interactive charts and graphs to visualize stock performance.
-- 📱 **Responsive Design**: Accessible on desktop.
+## 🏗️ Architecture
 
-## Technology Stack
+```text
+┌──────────────┐      ┌──────────────┐      ┌──────────────┐
+│   Browser    │◄────►│  Flask App   │◄────►│  PostgreSQL  │
+│              │      │  + Dash UI   │      │              │
+└──────────────┘      └──────┬───────┘      └──────────────┘
+                             │
+                             ▼
+                      ┌──────────────┐
+                      │ Polygon.io   │
+                      │ REST API     │
+                      └──────────────┘
+```
 
-- **Backend**: Flask, SQLAlchemy
-- **Frontend**: Plotly Dash, Dash Bootstrap Components, CSS
-- **Database**:PostreSQL
-- **API**: Massive ( was Polygon.io )
-- **Development Tools**: VScode, GitHub
-- **Deployment**: Digital Ocean
+### Tech Stack
 
-## Installation
+| Layer | Technologies |
+|---|---|
+| **Backend** | Flask, SQLAlchemy, Flask-Login, Flask-Caching, Gunicorn |
+| **Frontend** | Plotly Dash, Dash Bootstrap Components |
+| **Database** | PostgreSQL (production) · SQLite (development) |
+| **API** | [Polygon.io](https://polygon.io/) |
+| **Deployment** | DigitalOcean App Platform, Docker Compose |
+
+### Project Layout
+
+```text
+StockWatch/
+├── app/
+│   ├── blueprints/      # auth · main · stock · user route handlers
+│   ├── services/        # stock_services · user_services (business logic)
+│   ├── utils/           # cache_manager · cache_monitor
+│   ├── models.py        # User, Watchlist, Stock ORM models
+│   ├── extensions.py    # db, migrate, login, cache instances
+│   └── templates/       # Jinja2 HTML templates
+├── frontend/
+│   └── dashboard.py     # Plotly Dash interactive dashboard
+├── migrations/          # Alembic database migrations
+├── tests/               # pytest test suite
+├── config.py            # App configuration
+├── wsgi.py              # WSGI entry point
+├── docker-compose.yml   # Local PostgreSQL via Docker
+├── Pipfile              # Pipenv dependencies
+└── requirements.txt     # pip dependencies
+```
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Python 3.12
-- Pipenv
-  
+- **Python 3.11+**
+- **Pipenv** — `pip install pipenv`
+- **Docker** (optional, for local PostgreSQL)
+- A free [Polygon.io](https://polygon.io/) API key
 
-### Steps
+### 1. Clone the Repository
 
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/yourusername/stock-tracker-app.git
-   cd stock-tracker-app
-   ```
+```bash
+git clone https://github.com/epeltz33/StockWatch.git
+cd StockWatch
+```
 
-2. **Set Up Virtual Environment**:
-   ```bash
-   pipenv --python 3.12
-   pipenv install
-   ```
+### 2. Install Dependencies
 
-3. **Set Up Environment Variables**:
-   Create a `.env` file in the root directory and add your configuration:
-   ```plaintext
-   SECRET_KEY=your_secret_key
-   DATABASE_URL=mysql://username:password@localhost/dbname
-   POLYGON_API_KEY=your_polygon_api_key
-   ```
+```bash
+pipenv install
+```
 
-4. **Initialize the Database**:
-   ```bash
-   pipenv run flask db upgrade
-   ```
+### 3. Configure Environment Variables
 
-5. **Run the Application**:
-   ```bash
-   pipenv run flask run
-   ```
-   
+Create a `.env` file in the project root:
 
-## Usage
+```dotenv
+SECRET_KEY=your_secret_key
+DATABASE_URL=postgresql://stockwatch_user:stockwatch_password@localhost:5432/stockwatch
+POLYGON_API_KEY=your_polygon_api_key
+```
 
-1. **Register and Login**:
-   - Navigate to the registration page to create an account.
-   - Use your credentials to log in.
+> **Tip:** If `DATABASE_URL` is omitted, the app falls back to a local SQLite database.
 
-2. **Search for Stocks**:
-   - Use the search functionality to find stocks and view their data.
+### 4. Start the Database
 
-3. **Add to Watchlist**:
-   - Add stocks to your watchlist for easy tracking.
+```bash
+# Option A — Docker (recommended)
+docker compose up -d
 
-4. **View Data**:
-   - Access historical data visualized through interactive charts.
-     
+# Option B — Use an existing PostgreSQL instance and set DATABASE_URL accordingly
+```
 
+### 5. Run Migrations
 
-## Contact
+```bash
+pipenv run flask db upgrade
+```
 
-For questions or feedback, please contact [erpeltz@gmail.com](mailto:erpeltz@gmail.com).
+### 6. Start the Application
+
+```bash
+# Development
+pipenv run flask run
+
+# Production-style
+pipenv run gunicorn wsgi:app --bind 0.0.0.0:8080
+```
+
+The app will be available at **http://localhost:8080**.
+
+## 🧪 Running Tests
+
+```bash
+pipenv run pytest
+```
+
+## 🐳 Docker (Local Database)
+
+The included `docker-compose.yml` spins up a PostgreSQL 15 instance:
+
+```bash
+docker compose up -d    # start
+docker compose down      # stop
+```
+
+Default credentials (for local development only):
+
+| Variable | Value |
+|---|---|
+| `POSTGRES_DB` | `stockwatch` |
+| `POSTGRES_USER` | `stockwatch_user` |
+| `POSTGRES_PASSWORD` | `stockwatch_password` |
+
+## 📬 Contact
+
+Questions or feedback? Reach out at [erpeltz@gmail.com](mailto:erpeltz@gmail.com).
 
 ---
-
