@@ -1170,7 +1170,6 @@ def fetch_and_display_stock_data(stock_symbol):
                             'backgroundColor': 'rgba(30, 41, 59, 0.5)',
                             'padding': '12px 16px',
                             'borderRadius': '8px',
-                            'borderLeft': f'3px solid {COLORS["primary"]}'
                         }),
                         
                         # Previous Close
@@ -1192,7 +1191,6 @@ def fetch_and_display_stock_data(stock_symbol):
                             'backgroundColor': 'rgba(30, 41, 59, 0.5)',
                             'padding': '12px 16px',
                             'borderRadius': '8px',
-                            'borderLeft': f'3px solid {COLORS["primary"]}'
                         }),
                         
                         # 52-Week Range
@@ -1214,7 +1212,6 @@ def fetch_and_display_stock_data(stock_symbol):
                             'backgroundColor': 'rgba(30, 41, 59, 0.5)',
                             'padding': '12px 16px',
                             'borderRadius': '8px',
-                            'borderLeft': f'3px solid {COLORS["primary"]}'
                         }),
                         
                         # Market Cap
@@ -1236,7 +1233,6 @@ def fetch_and_display_stock_data(stock_symbol):
                             'backgroundColor': 'rgba(30, 41, 59, 0.5)',
                             'padding': '12px 16px',
                             'borderRadius': '8px',
-                            'borderLeft': f'3px solid {COLORS["primary"]}'
                         }),
                         
                         # Exchange
@@ -1258,7 +1254,6 @@ def fetch_and_display_stock_data(stock_symbol):
                             'backgroundColor': 'rgba(30, 41, 59, 0.5)',
                             'padding': '12px 16px',
                             'borderRadius': '8px',
-                            'borderLeft': f'3px solid {COLORS["primary"]}'
                         }),
                         
                         # Website
@@ -1283,7 +1278,6 @@ def fetch_and_display_stock_data(stock_symbol):
                             'backgroundColor': 'rgba(30, 41, 59, 0.5)',
                             'padding': '12px 16px',
                             'borderRadius': '8px',
-                            'borderLeft': f'3px solid {COLORS["primary"]}'
                         })
                     ], style={
                         'display': 'grid',
