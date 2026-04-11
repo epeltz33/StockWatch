@@ -2,6 +2,7 @@ import dash
 from dash import html, dcc, Input, Output, State, callback_context, no_update, ALL
 import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
+from plotly.subplots import make_subplots
 from polygon import RESTClient
 from datetime import datetime, timedelta
 import pandas as pd
@@ -126,6 +127,249 @@ CUSTOM_STYLES = {
     }
 }
 
+PERIODS = ['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y', '10Y', 'MAX']
+
+
+def filter_data_for_period(df, period):
+    """Filter OHLCV dataframe to the selected time period.
+
+    Period definitions (calendar-day based, using daily bars):
+    - 1D: last 1 calendar day (may show 1-2 bars depending on weekends)
+    - 5D: last 7 calendar days (~5 trading days)
+    - 1M: last 30 calendar days
+    - 6M: last 182 calendar days
+    - YTD: from January 1 of the current year
+    - 1Y: last 365 calendar days
+    - 5Y: last 1,825 calendar days
+    - 10Y: last 3,650 calendar days
+    - MAX: all available data
+
+    Percent change formula used downstream:
+        (last_close - first_close_in_range) / first_close_in_range * 100
+    """
+    if df.empty:
+        return df
+
+    now = datetime.now()
+
+    period_days = {
+        '1D': 1,
+        '5D': 7,
+        '1M': 30,
+        '6M': 182,
+        '1Y': 365,
+        '5Y': 365 * 5,
+        '10Y': 365 * 10,
+    }
+
+    if period == 'MAX':
+        return df
+    elif period == 'YTD':
+        cutoff = datetime(now.year, 1, 1).strftime('%Y-%m-%d')
+    elif period in period_days:
+        cutoff = (now - timedelta(days=period_days[period])).strftime('%Y-%m-%d')
+    else:
+        return df
+
+    filtered = df[df['date'] >= cutoff]
+    # Degrade gracefully: if filtering yields fewer than 2 bars, show the last 2
+    if len(filtered) < 2:
+        return df.tail(2)
+    return filtered
+
+
+def calculate_period_change(df):
+    """(last_close - first_close) / first_close * 100 over the filtered range."""
+    if df.empty or len(df) < 1:
+        return 0.0
+    first_close = df['close'].iloc[0]
+    last_close = df['close'].iloc[-1]
+    if first_close == 0:
+        return 0.0
+    return ((last_close - first_close) / first_close) * 100
+
+
+def create_stock_chart_figure(df, symbol):
+    """Price line + area (top) and volume bars (bottom) with shared x-axis.
+
+    Y-axes are placed on the right. Plotly's built-in rangeselector is omitted
+    so that the custom Dash period buttons are the sole period control.
+    """
+    fig = make_subplots(
+        rows=2, cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.02,
+        row_heights=[0.85, 0.15],
+    )
+
+    # --- price line with area fill ---
+    fig.add_trace(go.Scatter(
+        x=df['date'],
+        y=df['close'],
+        mode='lines',
+        line=dict(color='#38bdf8', width=2, shape='spline'),
+        fill='tozeroy',
+        fillcolor='rgba(56, 189, 248, 0.08)',
+        name='Price',
+        hovertemplate='<b>%{x}</b><br>$%{y:.2f}<extra></extra>',
+    ), row=1, col=1)
+
+    # --- volume bars (subtle, no axis labels) ---
+    if 'volume' in df.columns and df['volume'].notna().any():
+        colors = ['rgba(148, 163, 184, 0.20)' if i == 0
+                  else 'rgba(74, 222, 128, 0.20)' if df['close'].iloc[i] >= df['close'].iloc[i - 1]
+                  else 'rgba(248, 113, 113, 0.20)'
+                  for i in range(len(df))]
+
+        fig.add_trace(go.Bar(
+            x=df['date'],
+            y=df['volume'],
+            marker_color=colors,
+            name='Volume',
+            hovertemplate='Vol: %{y:,.0f}<extra></extra>',
+        ), row=2, col=1)
+
+    fig.update_layout(
+        title=None,
+        template='plotly_dark',
+        margin=dict(l=10, r=55, t=10, b=25),
+        hovermode='x unified',
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(
+            color=COLORS['text'],
+            family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        ),
+        height=440,
+        autosize=True,
+        showlegend=False,
+        hoverlabel=dict(
+            bgcolor='rgba(30, 41, 59, 0.95)',
+            font_size=13,
+            font_family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            bordercolor='rgba(56, 189, 248, 0.3)',
+            font_color=COLORS['text'],
+        ),
+        bargap=0.3,
+    )
+
+    # price y-axis (right)
+    fig.update_yaxes(
+        showgrid=True, gridwidth=1, gridcolor='rgba(148, 163, 184, 0.08)',
+        showline=False, tickfont=dict(size=11, color=COLORS['text_muted']),
+        tickprefix='$', tickformat=',.0f', side='right',
+        row=1, col=1,
+    )
+    # volume y-axis — hidden tick labels, just the bars for visual context
+    fig.update_yaxes(
+        showgrid=False, showline=False, showticklabels=False,
+        row=2, col=1,
+    )
+    # price x-axis — hide ticks (shared with volume below)
+    fig.update_xaxes(
+        showgrid=True, gridwidth=1, gridcolor='rgba(148, 163, 184, 0.08)',
+        showline=False, showticklabels=False,
+        row=1, col=1,
+    )
+    # volume x-axis — show date ticks here only
+    fig.update_xaxes(
+        showgrid=False, showline=False,
+        tickfont=dict(size=10, color=COLORS['text_muted']),
+        row=2, col=1,
+    )
+
+    return fig
+
+
+def _period_btn_style(is_active):
+    """Return inline style dict for a period pill button."""
+    return {
+        'borderRadius': '20px',
+        'padding': '5px 12px',
+        'fontSize': '0.78rem',
+        'fontWeight': '600' if is_active else '500',
+        'backgroundColor': 'rgba(56, 189, 248, 0.15)' if is_active else 'transparent',
+        'border': f'1px solid {COLORS["primary"]}' if is_active else f'1px solid {COLORS["border"]}',
+        'color': COLORS['primary'] if is_active else COLORS['text_muted'],
+        'cursor': 'pointer',
+        'lineHeight': '1.4',
+        'outline': 'none',
+    }
+
+
+def _period_badge(pct_change):
+    """Return (children_list, style_dict) for the active period badge."""
+    if pct_change > 0:
+        bg = COLORS['positive_light']
+        color = COLORS['positive']
+        text = f"+{pct_change:,.2f}%"
+    elif pct_change < 0:
+        bg = COLORS['negative_light']
+        color = COLORS['negative']
+        text = f"{pct_change:,.2f}%"
+    else:
+        bg = 'rgba(148, 163, 184, 0.1)'
+        color = COLORS['text_muted']
+        text = "0.00%"
+
+    children = [
+        # small caret pointing up toward the button
+        html.Div(style={
+            'width': '0', 'height': '0',
+            'borderLeft': '5px solid transparent',
+            'borderRight': '5px solid transparent',
+            'borderBottom': f'5px solid {bg}',
+            'margin': '3px auto 0 auto',
+        }),
+        html.Div(text, style={
+            'backgroundColor': bg,
+            'color': color,
+            'borderRadius': '10px',
+            'padding': '1px 8px',
+            'fontSize': '0.7rem',
+            'fontWeight': '600',
+            'whiteSpace': 'nowrap',
+        }),
+    ]
+    style = {'display': 'flex', 'flexDirection': 'column', 'alignItems': 'center'}
+    return children, style
+
+
+def build_period_toolbar(active_period, pct_change):
+    """Build the period-selector toolbar (buttons row + badge under active)."""
+    cols = []
+    for period in PERIODS:
+        is_active = period == active_period
+
+        badge_children, badge_style = (
+            _period_badge(pct_change) if is_active else ([], {'display': 'none'})
+        )
+
+        cols.append(html.Div([
+            html.Button(
+                period,
+                id={'type': 'period-btn', 'index': period},
+                n_clicks=0,
+                style=_period_btn_style(is_active),
+            ),
+            html.Div(
+                badge_children,
+                id={'type': 'period-badge', 'index': period},
+                style=badge_style,
+            ),
+        ], style={
+            'display': 'flex', 'flexDirection': 'column', 'alignItems': 'center',
+        }))
+
+    return html.Div(cols, style={
+        'display': 'flex',
+        'gap': '4px',
+        'justifyContent': 'flex-end',
+        'flexWrap': 'wrap',
+        'alignItems': 'flex-start',
+    })
+
+
 def create_stock_card(title, value, change=None):
     """Create a modern dark glassmorphism stock information card"""
     # Determine style based on change value
@@ -221,7 +465,8 @@ def create_dash_app(flask_app):
     dash_app = dash.Dash(__name__, server=flask_app, url_base_pathname='/dash/',
                         external_stylesheets=[
                             dbc.themes.BOOTSTRAP, '/assets/custom.css'],
-                        assets_folder='assets')
+                        assets_folder='assets',
+                        suppress_callback_exceptions=True)
 
     dash_app.layout = create_layout()
 
@@ -374,6 +619,10 @@ def create_layout():
                     className='company-info-container')
             ], lg=8, md=12)
         ], className='g-4'),
+
+        # Data stores for chart period selection
+        dcc.Store(id='stock-ohlcv-store', data=None),
+        dcc.Store(id='stock-symbol-store', data=None),
 
         # Update Interval
         dcc.Interval(id='watchlist-interval', interval=30*1000, n_intervals=0)
@@ -538,7 +787,9 @@ def register_callbacks(dash_app):
     @dash_app.callback(
         [Output('stock-data', 'children'),
         Output('stock-chart-container', 'children'),
-        Output('stock-input', 'value')],
+        Output('stock-input', 'value'),
+        Output('stock-ohlcv-store', 'data'),
+        Output('stock-symbol-store', 'data')],
         [Input({'type': 'load-watchlist-stock', 'index': ALL}, 'n_clicks'),
         Input('search-button', 'n_clicks')],
         [State({'type': 'load-watchlist-stock', 'index': ALL}, 'id'),
@@ -550,37 +801,29 @@ def register_callbacks(dash_app):
 
         # Check if the callback was triggered by anything
         if not ctx.triggered or not ctx.triggered[0]:
-            # logger.info("update_stock_data: No trigger detected (initial load?)")
-            return no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update
 
         # Get the specific property and value that triggered the callback
         triggered_prop = ctx.triggered[0]['prop_id']
         triggered_value = ctx.triggered[0]['value']
 
-        # logger.info(f"update_stock_data: Triggered by prop '{triggered_prop}' with value '{triggered_value}'")
-
         # --- Check for valid click triggers ---
 
         # Scenario 1: A watchlist stock span was clicked
-        # prop_id will be like '{"index":"AAPL","type":"load-watchlist-stock"}.n_clicks'
         if triggered_prop.endswith('.n_clicks') and '"type":"load-watchlist-stock"' in triggered_prop:
             if triggered_value is not None and triggered_value > 0:
-                # Extract the stock symbol (index) from the JSON part of the prop_id
                 json_part = triggered_prop.split('.')[0]
                 try:
                     clicked_stock_info = json.loads(json_part)
                     clicked_stock = clicked_stock_info.get('index')
                     trigger_source = 'watchlist'
-                    # logger.info(f"Watchlist stock click detected for: {clicked_stock}")
                 except json.JSONDecodeError:
                     logger.error(f"Failed to parse watchlist trigger prop_id: {triggered_prop}")
-                    return no_update, no_update, no_update # Error state
-            # else: logger.debug(f"Watchlist view button trigger {triggered_prop} ignored (value <= 0 or None)")
-
+                    return no_update, no_update, no_update, no_update, no_update
 
         elif triggered_prop == 'search-button.n_clicks':
             if triggered_value is not None and triggered_value > 0:
-                if search_input: # Check if the search box has text
+                if search_input:
                     clicked_stock = search_input
                     trigger_source = 'search'
                     logger.info(f"Search button clicked for: {clicked_stock}")
@@ -588,41 +831,101 @@ def register_callbacks(dash_app):
         # --- Process if a valid click was identified ---
 
         if not clicked_stock or not trigger_source:
-            # logger.info(f"Callback triggered by '{triggered_prop}', but not processed as a valid click action.")
-            # If triggered but not by a valid click, don't change anything.
-            return no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update
 
-        # logger.info(f"Proceeding to fetch data for {clicked_stock} (Trigger: {trigger_source})")
-        stock_info, chart = fetch_and_display_stock_data(clicked_stock)
+        stock_info, df = fetch_and_display_stock_data(clicked_stock)
 
-        # Create chart container with dark glassmorphism styling
+        if df.empty:
+            chart_container = html.Div(
+                f"No chart data available for {clicked_stock}",
+                style={'color': COLORS['text_muted'], 'padding': '40px', 'textAlign': 'center'},
+            )
+            stock_input_update = clicked_stock if trigger_source == 'search' else no_update
+            return stock_info, chart_container, stock_input_update, no_update, no_update
+
+        # Default period is 1Y; build initial chart and toolbar
+        default_period = '1Y'
+        filtered_df = filter_data_for_period(df, default_period)
+        pct_change = calculate_period_change(filtered_df)
+        chart_fig = create_stock_chart_figure(filtered_df, clicked_stock)
+        toolbar = build_period_toolbar(default_period, pct_change)
+
         chart_container = html.Div([
-            html.Div(f"{clicked_stock} Stock Price", style={
-                'fontSize': '1.3rem',
-                'fontWeight': '600',
-                'color': COLORS['text'],
-                'marginBottom': '16px'
+            # Top row: title (left) + period buttons (right)
+            html.Div([
+                html.Div(f"{clicked_stock} Stock Price", style={
+                    'fontSize': '1.3rem',
+                    'fontWeight': '600',
+                    'color': COLORS['text'],
+                }),
+                toolbar,
+            ], style={
+                'display': 'flex',
+                'justifyContent': 'space-between',
+                'alignItems': 'flex-start',
+                'flexWrap': 'wrap',
+                'gap': '10px',
+                'marginBottom': '8px',
             }),
             dcc.Graph(
                 id='stock-chart',
-                figure=chart,
+                figure=chart_fig,
                 style={'height': '440px', 'width': '100%'},
                 config={
                     'displayModeBar': True,
                     'responsive': True,
                     'displaylogo': False,
-                    'modeBarButtonsToRemove': ['lasso2d', 'select2d']
-                }
-            )
-        ], style={
-            'backgroundColor': 'transparent',
-            'borderRadius': '12px'
-        })
+                    'modeBarButtonsToRemove': ['lasso2d', 'select2d'],
+                },
+            ),
+        ], style={'backgroundColor': 'transparent', 'borderRadius': '12px'})
 
-        # Decide whether to update the stock input field based on the trigger
         stock_input_update = clicked_stock if trigger_source == 'search' else no_update
+        return stock_info, chart_container, stock_input_update, df.to_dict('records'), clicked_stock
 
-        return stock_info, chart_container, stock_input_update
+    # --- Period-button callback: filter data and update chart + badge ---
+    @dash_app.callback(
+        [Output('stock-chart', 'figure'),
+         Output({'type': 'period-btn', 'index': ALL}, 'style'),
+         Output({'type': 'period-badge', 'index': ALL}, 'children'),
+         Output({'type': 'period-badge', 'index': ALL}, 'style')],
+        Input({'type': 'period-btn', 'index': ALL}, 'n_clicks'),
+        [State('stock-ohlcv-store', 'data'),
+         State('stock-symbol-store', 'data'),
+         State({'type': 'period-btn', 'index': ALL}, 'id')],
+        prevent_initial_call=True,
+    )
+    def update_chart_period(n_clicks_list, stored_data, symbol, btn_ids):
+        ctx = callback_context
+        if not ctx.triggered or not stored_data:
+            raise dash.exceptions.PreventUpdate
+
+        triggered_id = ctx.triggered_id
+        if not triggered_id or not isinstance(triggered_id, dict):
+            raise dash.exceptions.PreventUpdate
+
+        active_period = triggered_id['index']
+        df = pd.DataFrame(stored_data)
+        filtered_df = filter_data_for_period(df, active_period)
+        pct_change = calculate_period_change(filtered_df)
+        fig = create_stock_chart_figure(filtered_df, symbol)
+
+        btn_styles = []
+        badge_children_list = []
+        badge_styles = []
+        for btn_id in btn_ids:
+            period = btn_id['index']
+            is_active = period == active_period
+            btn_styles.append(_period_btn_style(is_active))
+
+            if is_active:
+                children, style = _period_badge(pct_change)
+            else:
+                children, style = [], {'display': 'none'}
+            badge_children_list.append(children)
+            badge_styles.append(style)
+
+        return fig, btn_styles, badge_children_list, badge_styles
 
 
 def create_new_watchlist(new_watchlist_name, add_ids):
@@ -847,94 +1150,20 @@ def create_watchlist_content(watchlist):
 
 def fetch_and_display_stock_data(stock_symbol):
     try:
-        # Get historical data for the past year
+        # Fetch up to 10 years of daily OHLCV data so all period buttons
+        # (1D through MAX) can slice from the same dataset.
         end_date = datetime.now().strftime('%Y-%m-%d')
-        start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=365 * 10)).strftime('%Y-%m-%d')
         historical_data = get_stock_data(stock_symbol, start_date, end_date)
 
         if not historical_data:
             return html.Div(f"No historical data available for {stock_symbol}",
-                        className="alert alert-warning m-3 p-3"), go.Figure()
+                        className="alert alert-warning m-3 p-3"), pd.DataFrame()
 
         # Convert to DataFrame
         df = pd.DataFrame(historical_data)
 
-        # Create chart using close prices with modern styling
         if 'close' in df.columns:
-            # Create gradient fill effect with scatter
-            chart = go.Figure()
-            
-            # Add gradient area fill with cyan/sky blue color
-            chart.add_trace(go.Scatter(
-                x=df['date'],
-                y=df['close'],
-                mode='lines',
-                line=dict(color='#38bdf8', width=2.5, shape='spline'),
-                fill='tozeroy',
-                fillcolor='rgba(56, 189, 248, 0.1)',
-                name=f"{stock_symbol}",
-                hovertemplate='<b>%{x}</b><br>$%{y:.2f}<extra></extra>'
-            ))
-
-            chart.update_layout(
-                title=None,
-                xaxis_title=None,
-                yaxis_title=dict(text="Price ($)", font=dict(size=12, color=COLORS['text_muted'])),
-                template="plotly_dark",
-                margin=dict(l=60, r=30, t=40, b=50),
-                hovermode="x unified",
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color=COLORS['text'], family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"),
-                height=440,
-                autosize=True,
-                showlegend=False,
-                hoverlabel=dict(
-                    bgcolor='rgba(30, 41, 59, 0.95)',
-                    font_size=14,
-                    font_family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-                    bordercolor='rgba(56, 189, 248, 0.3)',
-                    font_color=COLORS['text']
-                )
-            )
-
-            # Style axes for dark theme
-            chart.update_xaxes(
-                showgrid=True,
-                gridwidth=1,
-                gridcolor='rgba(148, 163, 184, 0.1)',
-                showline=False,
-                tickfont=dict(size=11, color=COLORS['text_muted']),
-                rangeselector=dict(
-                    buttons=list([
-                        dict(count=1, label="1M", step="month", stepmode="backward"),
-                        dict(count=3, label="3M", step="month", stepmode="backward"),
-                        dict(count=6, label="6M", step="month", stepmode="backward"),
-                        dict(count=1, label="YTD", step="year", stepmode="todate"),
-                        dict(label="1Y", step="all")
-                    ]),
-                    bgcolor='rgba(30, 41, 59, 0.8)',
-                    activecolor=COLORS['primary'],
-                    bordercolor='rgba(148, 163, 184, 0.2)',
-                    borderwidth=1,
-                    font=dict(color=COLORS['text_secondary'], size=12),
-                    x=0.02,
-                    xanchor='left',
-                    y=1.12
-                ),
-                rangeslider=dict(visible=False)
-            )
-            
-            chart.update_yaxes(
-                showgrid=True,
-                gridwidth=1,
-                gridcolor='rgba(148, 163, 184, 0.1)',
-                showline=False,
-                tickfont=dict(size=11, color=COLORS['text_muted']),
-                tickprefix='$',
-                tickformat=',.0f'
-            )
-
             # Get current price from service function
             current_price = get_stock_price(stock_symbol)
 
@@ -1313,9 +1542,9 @@ def fetch_and_display_stock_data(stock_symbol):
                 })
             ])
 
-            return stock_info, chart
+            return stock_info, df
         else:
-            return html.Div(f"Insufficient data for {stock_symbol}", className="alert alert-warning m-3 p-3"), go.Figure()
+            return html.Div(f"Insufficient data for {stock_symbol}", className="alert alert-warning m-3 p-3"), pd.DataFrame()
 
     except Exception as e:
         logger.error(f"Error fetching stock data: {str(e)}")
@@ -1341,7 +1570,7 @@ def fetch_and_display_stock_data(stock_symbol):
             'border': f'1px solid rgba(248, 113, 113, 0.3)',
             'backgroundColor': 'rgba(248, 113, 113, 0.1)',
             'borderLeft': f'4px solid {COLORS["negative"]}'
-        }), go.Figure()
+        }), pd.DataFrame()
 
 def get_stock_data(symbol, start_date, end_date):
     """Fetch historical stock data from Polygon API"""
