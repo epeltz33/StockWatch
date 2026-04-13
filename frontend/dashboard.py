@@ -657,11 +657,12 @@ def register_callbacks(dash_app):
         [Input('create-watchlist-button', 'n_clicks'),
         Input({'type': 'add-to-watchlist', 'index': ALL}, 'n_clicks'),
         Input({'type': 'remove-from-watchlist', 'index': ALL}, 'n_clicks'),
+        Input({'type': 'delete-watchlist', 'index': ALL}, 'n_clicks'),
         Input('watchlist-dropdown', 'value')],
         [State('new-watchlist-input', 'value'),
         State({'type': 'add-to-watchlist', 'index': ALL}, 'id')]
     )
-    def update_watchlist(create_clicks, add_clicks, remove_clicks, selected_watchlist_id, new_watchlist_name, add_ids):
+    def update_watchlist(create_clicks, add_clicks, remove_clicks, delete_clicks, selected_watchlist_id, new_watchlist_name, add_ids):
         ctx = callback_context
         triggered_id = ctx.triggered_id
 
@@ -774,6 +775,22 @@ def register_callbacks(dash_app):
                 db.session.rollback()
                 logger.error(f"Error removing stock id {stock_id} from watchlist {selected_watchlist_id}: {str(e)}")
                 return no_update, no_update, no_update_list
+        # Case 4: Delete Watchlist Button Clicked
+        elif trigger_type == 'delete-watchlist':
+            watchlist_id = triggered_id['index']
+            logger.info(f"Deleting watchlist {watchlist_id}")
+            try:
+                watchlist = Watchlist.query.get(watchlist_id)
+                if watchlist and watchlist.user_id == current_user.id:
+                    db.session.delete(watchlist)
+                    db.session.commit()
+                    logger.info(f"Successfully deleted watchlist {watchlist_id}")
+                return update_watchlist_section(None), None, no_update_list
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"Error deleting watchlist {watchlist_id}: {str(e)}")
+                return no_update, no_update, no_update_list
+
         elif trigger_type == 'watchlist-dropdown':
             logger.info(f"Watchlist dropdown changed to: {selected_watchlist_id}")
             # *Crucially*, only update the watchlist section and the dropdown value itself.
@@ -1043,11 +1060,28 @@ def create_watchlist_content(watchlist):
                         'color': COLORS['text'],
                         'fontSize': '1rem'
                     })
-            ], style={'display': 'flex', 'alignItems': 'center'})
+            ], style={'display': 'flex', 'alignItems': 'center'}),
+            dbc.Button(
+                'Delete',
+                id={'type': 'delete-watchlist', 'index': watchlist.id},
+                size='sm',
+                style={
+                    'borderRadius': '6px',
+                    'padding': '6px 12px',
+                    'fontWeight': '500',
+                    'fontSize': '0.8rem',
+                    'backgroundColor': 'rgba(248, 113, 113, 0.1)',
+                    'border': f'1px solid rgba(248, 113, 113, 0.3)',
+                    'color': COLORS['negative']
+                }
+            )
         ], style={
             'padding': '16px 20px',
             'background': 'rgba(15, 23, 42, 0.5)',
-            'borderBottom': f'1px solid {COLORS["border"]}'
+            'borderBottom': f'1px solid {COLORS["border"]}',
+            'display': 'flex',
+            'justifyContent': 'space-between',
+            'alignItems': 'center'
         }),
 
         # Content

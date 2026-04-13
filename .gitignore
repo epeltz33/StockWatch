@@ -75,3 +75,5 @@ dmypy.json
 Thumbs.db.env
 app/__pycache__.env
 .claude/
+.cursor/
+.cursorrules
