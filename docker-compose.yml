@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
@@ -9,9 +7,10 @@ services:
       POSTGRES_USER: stockwatch_user
       POSTGRES_PASSWORD: stockwatch_password
     ports:
-      - "5432:5432"
+      - "15433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U stockwatch_user -d stockwatch" ]
       interval: 5s
