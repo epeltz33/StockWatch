@@ -464,7 +464,9 @@ client = RESTClient(api_key=polygon_api_key)
 def create_dash_app(flask_app):
     dash_app = dash.Dash(__name__, server=flask_app, url_base_pathname='/dash/',
                         external_stylesheets=[
-                            dbc.themes.BOOTSTRAP, '/assets/custom.css'],
+                            dbc.themes.BOOTSTRAP,
+                            'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+                            '/assets/custom.css'],
                         assets_folder='assets',
                         suppress_callback_exceptions=True)
 
@@ -473,6 +475,27 @@ def create_dash_app(flask_app):
     register_callbacks(dash_app)
 
     return dash_app
+
+
+def empty_state(icon, message, sub=None):
+    """Muted placeholder shown before a container has been populated by a callback."""
+    children = [
+        html.Div(icon, style={
+            'fontSize': '2.2rem', 'marginBottom': '12px', 'opacity': '0.6',
+        }),
+        html.Div(message, style={
+            'fontSize': '0.95rem', 'fontWeight': '500', 'color': COLORS['text_secondary'],
+        }),
+    ]
+    if sub:
+        children.append(html.Div(sub, style={
+            'fontSize': '0.85rem', 'color': COLORS['text_muted'], 'marginTop': '6px',
+        }))
+    return html.Div(children, style={
+        'display': 'flex', 'flexDirection': 'column', 'alignItems': 'center',
+        'justifyContent': 'center', 'textAlign': 'center',
+        'padding': '40px 20px', 'minHeight': '160px',
+    })
 
 
 def create_layout():
@@ -540,7 +563,12 @@ def create_layout():
                                     'padding': '12px 20px'
                                 })
                     ], className='mb-4'),
-                    html.Div(id='stock-data')
+                    dcc.Loading(
+                        id='loading-stock-data',
+                        type='circle',
+                        color=COLORS['primary'],
+                        children=html.Div(id='stock-data'),
+                    ),
                 ], style={
                     'backgroundColor': COLORS['card'],
                     'borderRadius': '12px',
@@ -587,7 +615,19 @@ def create_layout():
                                     'padding': '12px 20px'
                                 })
                     ], className='mb-4'),
-                    html.Div(id='watchlist-section')
+                    dcc.Loading(
+                        id='loading-watchlist',
+                        type='circle',
+                        color=COLORS['primary'],
+                        children=html.Div(
+                            id='watchlist-section',
+                            children=empty_state(
+                                '\u2605',
+                                'No watchlist selected',
+                                'Create one above or pick an existing watchlist.',
+                            ),
+                        ),
+                    ),
                 ], style={
                     'backgroundColor': COLORS['card'],
                     'borderRadius': '12px',
@@ -601,9 +641,21 @@ def create_layout():
             dbc.Col([
                 # Chart Section
                 html.Div([
-                    html.Div(id='stock-chart-container',
-                        className='chart-container',
-                        style={'minHeight': '480px'})
+                    dcc.Loading(
+                        id='loading-chart',
+                        type='circle',
+                        color=COLORS['primary'],
+                        children=html.Div(
+                            id='stock-chart-container',
+                            className='chart-container',
+                            style={'minHeight': '480px'},
+                            children=empty_state(
+                                '\U0001F4C8',
+                                'Search a ticker to begin',
+                                'Try AAPL, MSFT, or SNDK — press Enter to search.',
+                            ),
+                        ),
+                    ),
                 ], style={
                     'backgroundColor': COLORS['card'],
                     'borderRadius': '12px',
@@ -615,14 +667,31 @@ def create_layout():
                 }),
 
                 # Company Info Section
-                html.Div(id='company-info-container',
-                    className='company-info-container')
+                dcc.Loading(
+                    id='loading-company-info',
+                    type='circle',
+                    color=COLORS['primary'],
+                    children=html.Div(
+                        id='company-info-container',
+                        className='company-info-container',
+                    ),
+                ),
             ], lg=8, md=12)
         ], className='g-4'),
 
         # Data stores for chart period selection
         dcc.Store(id='stock-ohlcv-store', data=None),
         dcc.Store(id='stock-symbol-store', data=None),
+
+        # Toast feedback infrastructure
+        dcc.Store(id='toast-trigger', data=None),
+        html.Div(id='toast-container', style={
+            'position': 'fixed',
+            'top': '20px',
+            'right': '20px',
+            'zIndex': 1050,
+            'pointerEvents': 'none',
+        }),
 
         # Update Interval
         dcc.Interval(id='watchlist-interval', interval=30*1000, n_intervals=0)
@@ -653,7 +722,8 @@ def register_callbacks(dash_app):
     @dash_app.callback(
         [Output('watchlist-section', 'children'),
         Output('watchlist-dropdown', 'value'),
-        Output({'type': 'add-to-watchlist', 'index': ALL}, 'children')],
+        Output({'type': 'add-to-watchlist', 'index': ALL}, 'children'),
+        Output('toast-trigger', 'data')],
         [Input('create-watchlist-button', 'n_clicks'),
         Input({'type': 'add-to-watchlist', 'index': ALL}, 'n_clicks'),
         Input({'type': 'remove-from-watchlist', 'index': ALL}, 'n_clicks'),
@@ -669,9 +739,14 @@ def register_callbacks(dash_app):
         num_add_buttons = len(add_ids) if add_ids else 0
         no_update_list = [no_update] * num_add_buttons
 
+        def toast(message, kind='info'):
+            # nonce forces `toast-trigger` to register a change even if the
+            # message text repeats between events.
+            return {'message': message, 'type': kind, 'n': (ctx.triggered[0].get('value') if ctx.triggered else 0)}
+
         # If nothing triggered (initial load), do nothing
         if not triggered_id:
-            return no_update, no_update, no_update_list
+            return no_update, no_update, no_update_list, no_update
 
         # Determine the type of trigger (string or dict for pattern-matching)
         trigger_type = None
@@ -683,83 +758,72 @@ def register_callbacks(dash_app):
         # --- Handle specific triggers ---
 
         # Case 1: Create Watchlist Button Clicked
-        if trigger_type == 'create-watchlist-button' and new_watchlist_name:
+        if trigger_type == 'create-watchlist-button':
+            if not new_watchlist_name or not new_watchlist_name.strip():
+                return no_update, no_update, no_update_list, toast('Watchlist name cannot be empty.', 'danger')
             try:
-                watchlist = Watchlist(name=new_watchlist_name, user_id=current_user.id)
+                name = new_watchlist_name.strip()
+                watchlist = Watchlist(name=name, user_id=current_user.id)
                 db.session.add(watchlist)
                 db.session.commit()
-                logger.info(f"Created watchlist '{new_watchlist_name}' with id {watchlist.id}")
-                # Return updated section, new dropdown value, and no_update for add buttons
-                return update_watchlist_section(watchlist.id), watchlist.id, no_update_list
+                logger.info(f"Created watchlist '{name}' with id {watchlist.id}")
+                return (update_watchlist_section(watchlist.id), watchlist.id,
+                        no_update_list, toast(f'Created watchlist "{name}".', 'success'))
             except SQLAlchemyError as e:
+                db.session.rollback()
                 logger.error(f"Error creating watchlist: {str(e)}")
-                # Potentially return an error message to the user here
-                return no_update, no_update, no_update_list
+                return no_update, no_update, no_update_list, toast('Could not create watchlist.', 'danger')
 
         # Case 2: Add Stock Button Clicked
         elif trigger_type == 'add-to-watchlist':
-            # triggered_id is the dict {'type': 'add...', 'index': 'STOCK_SYMBOL'}
             stock_symbol = triggered_id['index']
 
-            # Get the specific button's click value from add_clicks
             button_index = next((i for i, btn_id in enumerate(add_ids)
                             if btn_id['index'] == stock_symbol), None)
 
-            # Only proceed if we found the button and it was actually clicked
             if button_index is None or not add_clicks or button_index >= len(add_clicks) or not add_clicks[button_index]:
                 logger.info(f"Add to watchlist ignored for {stock_symbol} - no valid click detected")
-                return no_update, no_update, no_update_list
+                return no_update, no_update, no_update_list, no_update
 
-            # Ensure a watchlist is selected before adding
             if not selected_watchlist_id:
                 logger.warning(f"Attempted to add {stock_symbol} but no watchlist selected.")
-                return no_update, no_update, no_update_list
+                return no_update, no_update, no_update_list, toast('Select a watchlist first.', 'danger')
 
             logger.info(f"Adding stock {stock_symbol} to watchlist {selected_watchlist_id}")
             try:
-                # Check if stock is already in the watchlist
                 watchlist = Watchlist.query.get(selected_watchlist_id)
                 if not watchlist:
-                    logger.warning(f"Watchlist {selected_watchlist_id} not found")
-                    return no_update, no_update, no_update_list
+                    return no_update, no_update, no_update_list, toast('Watchlist not found.', 'danger')
 
                 existing_stock = Stock.query.filter_by(symbol=stock_symbol).first()
                 if existing_stock and existing_stock in watchlist.stocks:
-                    logger.info(f"Stock {stock_symbol} already in watchlist {selected_watchlist_id}")
-                    return no_update, no_update, no_update_list
+                    return (no_update, no_update, no_update_list,
+                            toast(f'{stock_symbol} is already in "{watchlist.name}".', 'info'))
 
-                # Create or get the stock
                 stock = existing_stock or create_new_stock(stock_symbol)
                 if not stock:
-                    logger.error(f"Failed to create/get stock {stock_symbol}")
-                    return no_update, no_update, no_update_list
+                    return no_update, no_update, no_update_list, toast(f'Could not add {stock_symbol}.', 'danger')
 
-                # Add the stock to the watchlist
                 watchlist.stocks.append(stock)
                 db.session.commit()
                 logger.info(f"Successfully added {stock_symbol} to watchlist {selected_watchlist_id}")
 
-                # Update button states
-                updated_add_button_texts = []
-                for button_state_id in add_ids:
-                    if button_state_id['index'] == stock_symbol:
-                        updated_add_button_texts.append("Added")
-                    else:
-                        updated_add_button_texts.append(no_update)
-
-                return update_watchlist_section(selected_watchlist_id), selected_watchlist_id, updated_add_button_texts
+                # Reset every "Add" button text to its default — the watchlist
+                # list is fully re-rendered below, and this keeps the search-
+                # results "Add" button honest on repeat adds.
+                reset_texts = ['Add'] * num_add_buttons
+                return (update_watchlist_section(selected_watchlist_id), selected_watchlist_id,
+                        reset_texts, toast(f'Added {stock_symbol} to "{watchlist.name}".', 'success'))
 
             except Exception as e:
                 db.session.rollback()
                 logger.error(f"Error adding stock {stock_symbol} to watchlist {selected_watchlist_id}: {str(e)}")
-                return no_update, no_update, no_update_list
+                return no_update, no_update, no_update_list, toast(f'Could not add {stock_symbol}.', 'danger')
 
         elif trigger_type == 'remove-from-watchlist':
-            # triggered_id is the dict {'type': 'remove...', 'index': STOCK_DB_ID}
-            stock_id = triggered_id['index'] # This is the stock's primary key from the DB
+            stock_id = triggered_id['index']
             if not selected_watchlist_id:
-                logger.warning(f"Attempted to remove stock ID {stock_id} but no watchlist selected.")
-                return no_update, no_update, no_update_list
+                return no_update, no_update, no_update_list, no_update
 
             logger.info(f"Removing stock id {stock_id} from watchlist {selected_watchlist_id}")
             try:
@@ -768,38 +832,64 @@ def register_callbacks(dash_app):
                 if watchlist and stock and stock in watchlist.stocks:
                     watchlist.stocks.remove(stock)
                     db.session.commit()
-                    logger.info(f"Successfully removed stock id {stock_id} from watchlist {selected_watchlist_id}")
-                # Return updated section, same dropdown value, no_update for add buttons
-                return update_watchlist_section(selected_watchlist_id), selected_watchlist_id, no_update_list
+                    logger.info(f"Removed stock id {stock_id} from watchlist {selected_watchlist_id}")
+                    return (update_watchlist_section(selected_watchlist_id), selected_watchlist_id,
+                            no_update_list, toast(f'Removed {stock.symbol} from "{watchlist.name}".', 'success'))
+                return (update_watchlist_section(selected_watchlist_id), selected_watchlist_id,
+                        no_update_list, no_update)
             except Exception as e:
                 db.session.rollback()
-                logger.error(f"Error removing stock id {stock_id} from watchlist {selected_watchlist_id}: {str(e)}")
-                return no_update, no_update, no_update_list
-        # Case 4: Delete Watchlist Button Clicked
+                logger.error(f"Error removing stock id {stock_id}: {str(e)}")
+                return no_update, no_update, no_update_list, toast('Could not remove stock.', 'danger')
+
         elif trigger_type == 'delete-watchlist':
             watchlist_id = triggered_id['index']
             logger.info(f"Deleting watchlist {watchlist_id}")
             try:
                 watchlist = Watchlist.query.get(watchlist_id)
                 if watchlist and watchlist.user_id == current_user.id:
+                    name = watchlist.name
                     db.session.delete(watchlist)
                     db.session.commit()
-                    logger.info(f"Successfully deleted watchlist {watchlist_id}")
-                return update_watchlist_section(None), None, no_update_list
+                    return (update_watchlist_section(None), None,
+                            no_update_list, toast(f'Deleted watchlist "{name}".', 'success'))
+                return (update_watchlist_section(None), None,
+                        no_update_list, toast('Watchlist not found.', 'danger'))
             except Exception as e:
                 db.session.rollback()
                 logger.error(f"Error deleting watchlist {watchlist_id}: {str(e)}")
-                return no_update, no_update, no_update_list
+                return no_update, no_update, no_update_list, toast('Could not delete watchlist.', 'danger')
 
         elif trigger_type == 'watchlist-dropdown':
             logger.info(f"Watchlist dropdown changed to: {selected_watchlist_id}")
-            # *Crucially*, only update the watchlist section and the dropdown value itself.
-            # Return no_update for the add_to_watchlist button statuses.
-            return update_watchlist_section(selected_watchlist_id), selected_watchlist_id, no_update_list
-
+            return (update_watchlist_section(selected_watchlist_id), selected_watchlist_id,
+                    no_update_list, no_update)
 
         logger.debug(f"update_watchlist: No specific action taken for trigger {triggered_id}")
-        return no_update, no_update, no_update_list
+        return no_update, no_update, no_update_list, no_update
+
+    # --- Toast renderer ---
+    @dash_app.callback(
+        Output('toast-container', 'children'),
+        Input('toast-trigger', 'data'),
+        prevent_initial_call=True,
+    )
+    def render_toast(payload):
+        if not payload or not payload.get('message'):
+            return no_update
+        kind = payload.get('type', 'info')
+        icon_map = {'success': 'success', 'danger': 'danger', 'info': 'primary', 'warning': 'warning'}
+        header_map = {'success': 'Success', 'danger': 'Error', 'info': 'Notice', 'warning': 'Warning'}
+        return dbc.Toast(
+            payload['message'],
+            id={'type': 'toast-instance', 'index': payload.get('n', 0)},
+            header=header_map.get(kind, 'Notice'),
+            icon=icon_map.get(kind, 'primary'),
+            is_open=True,
+            dismissable=True,
+            duration=3500,
+            style={'pointerEvents': 'auto'},
+        )
 
     @dash_app.callback(
         [Output('stock-data', 'children'),
@@ -808,13 +898,15 @@ def register_callbacks(dash_app):
         Output('stock-ohlcv-store', 'data'),
         Output('stock-symbol-store', 'data')],
         [Input({'type': 'load-watchlist-stock', 'index': ALL}, 'n_clicks'),
-        Input('search-button', 'n_clicks')],
+        Input('search-button', 'n_clicks'),
+        Input('stock-input', 'n_submit')],
         [State({'type': 'load-watchlist-stock', 'index': ALL}, 'id'),
         State('stock-input', 'value')]
     )
-    def update_stock_data(watchlist_clicks, search_clicks, watchlist_stock_ids, search_input):
+    def update_stock_data(watchlist_clicks, search_clicks, search_submit, watchlist_stock_ids, search_input):
         ctx = callback_context
         trigger_source = None # To track 'watchlist' or 'search'
+        clicked_stock = None
 
         # Check if the callback was triggered by anything
         if not ctx.triggered or not ctx.triggered[0]:
@@ -838,12 +930,12 @@ def register_callbacks(dash_app):
                     logger.error(f"Failed to parse watchlist trigger prop_id: {triggered_prop}")
                     return no_update, no_update, no_update, no_update, no_update
 
-        elif triggered_prop == 'search-button.n_clicks':
+        elif triggered_prop in ('search-button.n_clicks', 'stock-input.n_submit'):
             if triggered_value is not None and triggered_value > 0:
                 if search_input:
-                    clicked_stock = search_input
+                    clicked_stock = search_input.strip().upper()
                     trigger_source = 'search'
-                    logger.info(f"Search button clicked for: {clicked_stock}")
+                    logger.info(f"Search triggered ({triggered_prop}) for: {clicked_stock}")
 
         # --- Process if a valid click was identified ---
 
@@ -889,10 +981,13 @@ def register_callbacks(dash_app):
                 figure=chart_fig,
                 style={'height': '440px', 'width': '100%'},
                 config={
-                    'displayModeBar': True,
+                    'displayModeBar': 'hover',
                     'responsive': True,
                     'displaylogo': False,
-                    'modeBarButtonsToRemove': ['lasso2d', 'select2d'],
+                    'modeBarButtonsToRemove': [
+                        'lasso2d', 'select2d', 'autoScale2d', 'toggleSpikelines',
+                        'hoverClosestCartesian', 'hoverCompareCartesian',
+                    ],
                 },
             ),
         ], style={'backgroundColor': 'transparent', 'borderRadius': '12px'})
