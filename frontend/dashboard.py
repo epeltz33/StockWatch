@@ -4,7 +4,8 @@ import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 from polygon import RESTClient
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
+from zoneinfo import ZoneInfo
 import pandas as pd
 import os
 from app import db
@@ -128,13 +129,16 @@ CUSTOM_STYLES = {
 }
 
 PERIODS = ['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y', '10Y', 'MAX']
+EASTERN_TZ = ZoneInfo("America/New_York")
+MARKET_OPEN_ET = time(9, 30)
+MARKET_CLOSE_ET = time(16, 0)
 
 
 def filter_data_for_period(df, period):
     """Filter OHLCV dataframe to the selected time period.
 
     Period definitions (calendar-day based, using daily bars):
-    - 1D: last 1 calendar day (may show 1-2 bars depending on weekends)
+    - 1D: unchanged here; the chart callback uses dedicated intraday bars
     - 5D: last 7 calendar days (~5 trading days)
     - 1M: last 30 calendar days
     - 6M: last 182 calendar days
@@ -152,8 +156,10 @@ def filter_data_for_period(df, period):
 
     now = datetime.now()
 
+    if period == '1D':
+        return df
+
     period_days = {
-        '1D': 1,
         '5D': 7,
         '1M': 30,
         '6M': 182,
@@ -189,12 +195,75 @@ def calculate_period_change(df):
     return ((last_close - first_close) / first_close) * 100
 
 
-def create_stock_chart_figure(df, symbol):
+def calculate_intraday_period_change(df):
+    """Return regular-session 1D performance from first bar open to latest close."""
+    if df.empty or len(df) < 1 or 'open' not in df.columns or 'close' not in df.columns:
+        return 0.0
+    session_open = df['open'].iloc[0]
+    latest_close = df['close'].iloc[-1]
+    if session_open == 0:
+        return 0.0
+    return ((latest_close - session_open) / session_open) * 100
+
+
+def _price_axis_range(df):
+    """Return a padded price range so chart movement is readable."""
+    price_columns = [col for col in ['low', 'high', 'close'] if col in df.columns]
+    if not price_columns:
+        return None
+
+    prices = pd.concat([pd.to_numeric(df[col], errors='coerce') for col in price_columns]).dropna()
+    if prices.empty:
+        return None
+
+    min_price = prices.min()
+    max_price = prices.max()
+    price_span = max_price - min_price
+    if price_span == 0:
+        padding = max(abs(max_price) * 0.005, 0.5)
+    else:
+        padding = max(price_span * 0.15, 0.25)
+    lower_bound = min_price - padding
+    if min_price > 0:
+        lower_bound = max(lower_bound, min_price * 0.9)
+    return [lower_bound, max_price + padding]
+
+
+def _price_tick_format(price_range):
+    """Use cents for tight ranges and whole dollars for wider ranges."""
+    if not price_range:
+        return ',.0f'
+    return ',.2f' if (price_range[1] - price_range[0]) < 20 else ',.0f'
+
+
+def _date_axis_tick_format(period):
+    """Return a readable date tick format for each daily chart period."""
+    if period in ('5D', '1M'):
+        return '%b %-d'
+    if period in ('5Y', '10Y', 'MAX'):
+        return '%Y'
+    return '%b %Y'
+
+
+def _date_axis_tick_spacing(period):
+    """Return a stable date tick spacing for each daily chart period."""
+    if period == '5D':
+        return 24 * 60 * 60 * 1000
+    if period == '1M':
+        return 7 * 24 * 60 * 60 * 1000
+    if period in ('5Y', '10Y', 'MAX'):
+        return 'M12'
+    return 'M1'
+
+
+def create_stock_chart_figure(df, symbol, period=None):
     """Price line + area (top) and volume bars (bottom) with shared x-axis.
 
     Y-axes are placed on the right. Plotly's built-in rangeselector is omitted
     so that the custom Dash period buttons are the sole period control.
     """
+    is_intraday = period == '1D'
+
     fig = make_subplots(
         rows=2, cols=1,
         shared_xaxes=True,
@@ -202,16 +271,52 @@ def create_stock_chart_figure(df, symbol):
         row_heights=[0.85, 0.15],
     )
 
+    if df.empty:
+        message = f"No intraday data available for {symbol}" if is_intraday else f"No chart data available for {symbol}"
+        fig.add_annotation(
+            text=message,
+            x=0.5,
+            y=0.5,
+            xref='paper',
+            yref='paper',
+            showarrow=False,
+            font=dict(size=14, color=COLORS['text_muted']),
+        )
+        fig.update_layout(
+            title=None,
+            template='plotly_dark',
+            margin=dict(l=10, r=55, t=10, b=25),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(
+                color=COLORS['text'],
+                family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            ),
+            height=440,
+            autosize=True,
+            showlegend=False,
+        )
+        fig.update_xaxes(visible=False)
+        fig.update_yaxes(visible=False)
+        return fig
+
+    x_col = 'datetime' if is_intraday and 'datetime' in df.columns else 'date'
+    price_hovertemplate = (
+        '<b>%{x|%I:%M %p}</b><br>$%{y:.2f}<extra></extra>'
+        if is_intraday
+        else '<b>%{x|%b %d, %Y}</b><br>$%{y:.2f}<extra></extra>'
+    )
+
     # --- price line with area fill ---
     fig.add_trace(go.Scatter(
-        x=df['date'],
+        x=df[x_col],
         y=df['close'],
         mode='lines',
         line=dict(color='#38bdf8', width=2, shape='spline'),
         fill='tozeroy',
         fillcolor='rgba(56, 189, 248, 0.08)',
         name='Price',
-        hovertemplate='<b>%{x}</b><br>$%{y:.2f}<extra></extra>',
+        hovertemplate=price_hovertemplate,
     ), row=1, col=1)
 
     # --- volume bars (subtle, no axis labels) ---
@@ -222,11 +327,15 @@ def create_stock_chart_figure(df, symbol):
                   for i in range(len(df))]
 
         fig.add_trace(go.Bar(
-            x=df['date'],
+            x=df[x_col],
             y=df['volume'],
             marker_color=colors,
             name='Volume',
-            hovertemplate='Vol: %{y:,.0f}<extra></extra>',
+            hovertemplate=(
+                '<b>%{x|%I:%M %p}</b><br>Vol: %{y:,.0f}<extra></extra>'
+                if is_intraday
+                else 'Vol: %{y:,.0f}<extra></extra>'
+            ),
         ), row=2, col=1)
 
     fig.update_layout(
@@ -253,13 +362,17 @@ def create_stock_chart_figure(df, symbol):
         bargap=0.3,
     )
 
-    # price y-axis (right)
-    fig.update_yaxes(
+    price_yaxis_options = dict(
         showgrid=True, gridwidth=1, gridcolor='rgba(148, 163, 184, 0.08)',
         showline=False, tickfont=dict(size=11, color=COLORS['text_muted']),
         tickprefix='$', tickformat=',.0f', side='right',
         row=1, col=1,
     )
+    price_range = _price_axis_range(df)
+    if price_range:
+        price_yaxis_options.update(range=price_range, tickformat=_price_tick_format(price_range))
+    # price y-axis (right)
+    fig.update_yaxes(**price_yaxis_options)
     # volume y-axis — hidden tick labels, just the bars for visual context
     fig.update_yaxes(
         showgrid=False, showline=False, showticklabels=False,
@@ -272,11 +385,20 @@ def create_stock_chart_figure(df, symbol):
         row=1, col=1,
     )
     # volume x-axis — show date ticks here only
-    fig.update_xaxes(
+    xaxis_options = dict(
         showgrid=False, showline=False,
         tickfont=dict(size=10, color=COLORS['text_muted']),
         row=2, col=1,
     )
+    if is_intraday:
+        xaxis_options.update(type='date', tickformat='%I:%M %p')
+    else:
+        xaxis_options.update(
+            type='date',
+            tickformat=_date_axis_tick_format(period),
+            dtick=_date_axis_tick_spacing(period),
+        )
+    fig.update_xaxes(**xaxis_options)
 
     return fig
 
@@ -681,6 +803,7 @@ def create_layout():
 
         # Data stores for chart period selection
         dcc.Store(id='stock-ohlcv-store', data=None),
+        dcc.Store(id='stock-intraday-store', data=None),
         dcc.Store(id='stock-symbol-store', data=None),
 
         # Toast feedback infrastructure
@@ -896,6 +1019,7 @@ def register_callbacks(dash_app):
         Output('stock-chart-container', 'children'),
         Output('stock-input', 'value'),
         Output('stock-ohlcv-store', 'data'),
+        Output('stock-intraday-store', 'data'),
         Output('stock-symbol-store', 'data')],
         [Input({'type': 'load-watchlist-stock', 'index': ALL}, 'n_clicks'),
         Input('search-button', 'n_clicks'),
@@ -910,7 +1034,7 @@ def register_callbacks(dash_app):
 
         # Check if the callback was triggered by anything
         if not ctx.triggered or not ctx.triggered[0]:
-            return no_update, no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update, no_update
 
         # Get the specific property and value that triggered the callback
         triggered_prop = ctx.triggered[0]['prop_id']
@@ -928,7 +1052,7 @@ def register_callbacks(dash_app):
                     trigger_source = 'watchlist'
                 except json.JSONDecodeError:
                     logger.error(f"Failed to parse watchlist trigger prop_id: {triggered_prop}")
-                    return no_update, no_update, no_update, no_update, no_update
+                    return no_update, no_update, no_update, no_update, no_update, no_update
 
         elif triggered_prop in ('search-button.n_clicks', 'stock-input.n_submit'):
             if triggered_value is not None and triggered_value > 0:
@@ -940,7 +1064,7 @@ def register_callbacks(dash_app):
         # --- Process if a valid click was identified ---
 
         if not clicked_stock or not trigger_source:
-            return no_update, no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update, no_update
 
         stock_info, df = fetch_and_display_stock_data(clicked_stock)
 
@@ -950,13 +1074,15 @@ def register_callbacks(dash_app):
                 style={'color': COLORS['text_muted'], 'padding': '40px', 'textAlign': 'center'},
             )
             stock_input_update = clicked_stock if trigger_source == 'search' else no_update
-            return stock_info, chart_container, stock_input_update, no_update, no_update
+            return stock_info, chart_container, stock_input_update, no_update, no_update, no_update
+
+        intraday_data = get_intraday_stock_data(clicked_stock)
 
         # Default period is 1Y; build initial chart and toolbar
         default_period = '1Y'
         filtered_df = filter_data_for_period(df, default_period)
         pct_change = calculate_period_change(filtered_df)
-        chart_fig = create_stock_chart_figure(filtered_df, clicked_stock)
+        chart_fig = create_stock_chart_figure(filtered_df, clicked_stock, period=default_period)
         toolbar = build_period_toolbar(default_period, pct_change)
 
         chart_container = html.Div([
@@ -993,7 +1119,7 @@ def register_callbacks(dash_app):
         ], style={'backgroundColor': 'transparent', 'borderRadius': '12px'})
 
         stock_input_update = clicked_stock if trigger_source == 'search' else no_update
-        return stock_info, chart_container, stock_input_update, df.to_dict('records'), clicked_stock
+        return stock_info, chart_container, stock_input_update, df.to_dict('records'), intraday_data, clicked_stock
 
     # --- Period-button callback: filter data and update chart + badge ---
     @dash_app.callback(
@@ -1003,11 +1129,12 @@ def register_callbacks(dash_app):
          Output({'type': 'period-badge', 'index': ALL}, 'style')],
         Input({'type': 'period-btn', 'index': ALL}, 'n_clicks'),
         [State('stock-ohlcv-store', 'data'),
+         State('stock-intraday-store', 'data'),
          State('stock-symbol-store', 'data'),
          State({'type': 'period-btn', 'index': ALL}, 'id')],
         prevent_initial_call=True,
     )
-    def update_chart_period(n_clicks_list, stored_data, symbol, btn_ids):
+    def update_chart_period(n_clicks_list, stored_data, intraday_data, symbol, btn_ids):
         ctx = callback_context
         if not ctx.triggered or not stored_data:
             raise dash.exceptions.PreventUpdate
@@ -1017,10 +1144,14 @@ def register_callbacks(dash_app):
             raise dash.exceptions.PreventUpdate
 
         active_period = triggered_id['index']
-        df = pd.DataFrame(stored_data)
-        filtered_df = filter_data_for_period(df, active_period)
-        pct_change = calculate_period_change(filtered_df)
-        fig = create_stock_chart_figure(filtered_df, symbol)
+        if active_period == '1D':
+            filtered_df = pd.DataFrame(intraday_data or [])
+            pct_change = calculate_intraday_period_change(filtered_df)
+        else:
+            df = pd.DataFrame(stored_data)
+            filtered_df = filter_data_for_period(df, active_period)
+            pct_change = calculate_period_change(filtered_df)
+        fig = create_stock_chart_figure(filtered_df, symbol, period=active_period)
 
         btn_styles = []
         badge_children_list = []
@@ -1710,7 +1841,10 @@ def get_stock_data(symbol, start_date, end_date):
             multiplier=1,
             timespan="day",
             from_=start_date,
-            to=end_date
+            to=end_date,
+            adjusted=True,
+            sort="asc",
+            limit=50000,
         )
 
         # Convert to list of dictionaries
@@ -1728,6 +1862,71 @@ def get_stock_data(symbol, start_date, end_date):
         return historical_data
     except Exception as e:
         logger.error(f"Error fetching historical data for {symbol}: {str(e)}")
+        return []
+
+
+def get_intraday_stock_data(symbol, max_lookback_days=7, aggregate_configs=None):
+    """Fetch regular-market intraday bars for the latest available session.
+
+    The 1D chart intentionally excludes pre-market and after-hours data. It
+    tries 1-minute bars first, then 5-minute bars for API plans that restrict
+    1-minute aggregates. If today's session has no bars yet (market closed,
+    weekend, or holiday), this walks backward over recent weekdays and returns
+    the first populated session.
+    """
+    aggregate_configs = aggregate_configs or ((1, "minute"), (5, "minute"))
+    try:
+        candidate_date = datetime.now(EASTERN_TZ).date()
+        attempted_weekdays = 0
+
+        while attempted_weekdays < max_lookback_days:
+            if candidate_date.weekday() >= 5:
+                candidate_date -= timedelta(days=1)
+                continue
+
+            attempted_weekdays += 1
+            date_str = candidate_date.strftime('%Y-%m-%d')
+            for multiplier, timespan in aggregate_configs:
+                try:
+                    aggs = client.get_aggs(
+                        ticker=symbol,
+                        multiplier=multiplier,
+                        timespan=timespan,
+                        from_=date_str,
+                        to=date_str,
+                        adjusted=True,
+                        sort="asc",
+                        limit=50000,
+                    )
+                except Exception as e:
+                    logger.warning(f"Intraday {multiplier}-{timespan} data unavailable for {symbol} on {date_str}: {str(e)}")
+                    continue
+
+                intraday_data = []
+                for agg in aggs or []:
+                    bar_dt = datetime.fromtimestamp(agg.timestamp / 1000, tz=ZoneInfo("UTC")).astimezone(EASTERN_TZ)
+                    if MARKET_OPEN_ET <= bar_dt.time() <= MARKET_CLOSE_ET:
+                        intraday_data.append({
+                            'datetime': bar_dt.isoformat(),
+                            'date': bar_dt.strftime('%Y-%m-%d'),
+                            'time': bar_dt.strftime('%H:%M'),
+                            'open': agg.open,
+                            'high': agg.high,
+                            'low': agg.low,
+                            'close': agg.close,
+                            'volume': agg.volume,
+                            'resolution': 'intraday',
+                            'interval': f"{multiplier}-{timespan}",
+                        })
+
+                if intraday_data:
+                    return intraday_data
+
+            candidate_date -= timedelta(days=1)
+
+        return []
+    except Exception as e:
+        logger.error(f"Error fetching intraday data for {symbol}: {str(e)}")
         return []
 
 
