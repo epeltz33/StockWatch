@@ -3,7 +3,7 @@
 
 # 📈 StockWatch
 
-A web application for monitoring stocks and managing personalized watchlists. Built with **Flask** and **Plotly Dash**, StockWatch provides real-time market data, interactive charts, and per-user watchlist tracking — all powered by the [Massive.com](https://massive.com/) API.
+A web application for monitoring stocks and managing personalized watchlists. Built with **Flask** and **Plotly Dash**, StockWatch provides live market data, interactive line charts, company fundamentals, and per-user watchlist management — all backed by the [Massive.com](https://massive.com/) API and **PostgreSQL**.
 
 ## Live Demo
 
@@ -30,12 +30,12 @@ A web application for monitoring stocks and managing personalized watchlists. Bu
 
 | Feature | Description |
 |---|---|
-| 🔐 **Authentication** | Secure registration & login with Flask-Login and hashed passwords |
+| 🔐 **Authentication** | Secure registration and login with Flask-Login and hashed passwords |
 | 📊 **Live Market Data** | Current prices and company details via the Massive.com REST API |
-| 📈 **Watchlist Management** | Create, view, and remove stocks across multiple watchlists |
-| 📉 **Interactive Charts** | Candlestick / line charts with volume overlays built in Plotly |
-| ⚡ **Caching** | Flask-Caching layer to reduce redundant API calls |
-| 🗄️ **Migrations** | Database schema managed with Flask-Migrate / Alembic |
+| 📈 **Watchlist Management** | Create and delete multiple watchlists; add or remove tickers |
+| 📉 **Interactive Charts** | Line charts with volume overlays and selectable periods (1D, 5D, 1M, 6M, YTD, 1Y, 5Y, 10Y, MAX) |
+| 🏢 **Company Fundamentals** | Logo, market cap, exchange, website, description, and day-over-day price change |
+| 🗄️ **Database Migrations** | Schema versioning with Flask-Migrate / Alembic (SQLite locally, PostgreSQL in production) |
 
 ## 🏗️ Architecture
 
@@ -56,7 +56,7 @@ A web application for monitoring stocks and managing personalized watchlists. Bu
 
 | Layer | Technologies |
 |---|---|
-| **Backend** | Flask, SQLAlchemy, Flask-Login, Flask-Caching, Gunicorn |
+| **Backend** | Flask, SQLAlchemy, Flask-Login, Gunicorn |
 | **Frontend** | Plotly Dash, Dash Bootstrap Components |
 | **Database** | PostgreSQL (production) · SQLite (development) |
 | **API** | [Massive.com](https://massive.com/) |
@@ -171,7 +171,7 @@ When prompted during blueprint setup, set:
 
 | Variable | Value |
 |---|---|
-| `POLYGON_API_KEY` | Your [Polygon.io](https://polygon.io/) API key |
+| `POLYGON_API_KEY` | Your [Massive.com](https://massive.com/) API key |
 
 `SECRET_KEY` and `DATABASE_URL` are generated automatically.
 

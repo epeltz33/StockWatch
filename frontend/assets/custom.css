@@ -403,12 +403,8 @@ body {
 }
 
 /* ========================================
-   Company Info Container
+   Company Logo
    ======================================== */
-.company-info-container {
-    width: 100%;
-}
-
 .company-logo {
     width: 56px;
     height: 56px;

@@ -14,7 +14,6 @@ from app.models import Watchlist, Stock
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 import json
-from dash import dash_table
 
 # Define color scheme (modern dark glassmorphism palette)
 COLORS = {
@@ -492,88 +491,6 @@ def build_period_toolbar(active_period, pct_change):
     })
 
 
-def create_stock_card(title, value, change=None):
-    """Create a modern dark glassmorphism stock information card"""
-    # Determine style based on change value
-    change_style = {'color': COLORS['text_muted'], 'fontSize': '0.9rem'}
-    change_value = 0
-    if change and change.strip('%'):
-        try:
-            change_value = float(change.strip('%'))
-            change_style = CUSTOM_STYLES['card_change_positive'] if change_value > 0 else CUSTOM_STYLES['card_change_negative']
-        except ValueError:
-            change_style = {'color': COLORS['text_muted'], 'fontSize': '0.9rem'}
-
-    # Add arrow indicator based on change value
-    change_indicator = "↑ " if change_value > 0 else "↓ " if change_value < 0 else ""
-    change_display = f"{change_indicator}{change}" if change else ""
-
-    return html.Div([
-        html.Div(title, style=CUSTOM_STYLES['card_title']),
-        html.Div(value, style=CUSTOM_STYLES['card_value']),
-        html.Div(change_display, style=change_style) if change is not None else html.Div()
-    ], style={
-        'backgroundColor': COLORS['card'],
-        'borderRadius': '12px',
-        'padding': '20px',
-        'boxShadow': '0 4px 30px rgba(0, 0, 0, 0.3)',
-        'border': f'1px solid {COLORS["border"]}',
-        'height': '100%',
-        'minHeight': '120px',
-        'transition': 'all 0.3s ease',
-        'backdropFilter': 'blur(10px)',
-        'WebkitBackdropFilter': 'blur(10px)'
-    })
-def create_watchlist_table(data):
-    return dash_table.DataTable(
-        data=data,
-        columns=[
-            {"name": "Symbol", "id": "symbol"},
-            {"name": "Company", "id": "company"},
-            {"name": "Price", "id": "price"},
-            {"name": "Change", "id": "change"}
-        ],
-        style_cell={
-            'textAlign': 'left',
-            'backgroundColor': 'transparent',
-            'color': COLORS['text'],
-            'border': 'none',
-            'borderBottom': f'1px solid {COLORS["border"]}',
-            'padding': '15px 20px',
-            'fontFamily': "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            'fontSize': '0.95rem'
-        },
-        style_data_conditional=[
-            {
-                'if': {'column_id': 'change', 'filter_query': '{change} > 0'},
-                'color': COLORS['positive']
-            },
-            {
-                'if': {'column_id': 'change', 'filter_query': '{change} < 0'},
-                'color': COLORS['negative']
-            },
-            {
-                'if': {'state': 'hover'},
-                'backgroundColor': 'rgba(56, 189, 248, 0.05)'
-            }
-        ],
-        style_header={
-            'backgroundColor': 'rgba(15, 23, 42, 0.5)',
-            'fontWeight': '600',
-            'color': COLORS['text_muted'],
-            'textTransform': 'uppercase',
-            'letterSpacing': '0.5px',
-            'fontSize': '0.85rem',
-            'border': 'none',
-            'borderBottom': f'1px solid {COLORS["border"]}'
-        },
-        style_table={
-            'overflowX': 'auto',
-            'backgroundColor': 'transparent'
-        }
-    )
-
-
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -624,27 +541,16 @@ def create_layout():
     return dbc.Container([
         # Header Section
         html.Div([
-            html.Div([
-                html.H1("StockWatch", style={
-                    'fontSize': '2.5rem',
-                    'fontWeight': '700',
-                    'background': 'linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%)',
-                    'WebkitBackgroundClip': 'text',
-                    'WebkitTextFillColor': 'transparent',
-                    'backgroundClip': 'text',
-                    'margin': '0'
-                }),
-            ]),
-            html.Div([
-                html.Span("Last Updated: ", style={'color': COLORS['text_muted']}),
-                html.Span(id='last-update-time', style={'color': COLORS['text_secondary']})
-            ], style={'fontSize': '0.9rem'})
+            html.H1("StockWatch", style={
+                'fontSize': '2.5rem',
+                'fontWeight': '700',
+                'background': 'linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%)',
+                'WebkitBackgroundClip': 'text',
+                'WebkitTextFillColor': 'transparent',
+                'backgroundClip': 'text',
+                'margin': '0'
+            }),
         ], style={
-            'display': 'flex',
-            'justifyContent': 'space-between',
-            'alignItems': 'center',
-            'flexWrap': 'wrap',
-            'gap': '20px',
             'marginBottom': '30px',
             'paddingBottom': '20px',
             'borderBottom': f'1px solid {COLORS["border"]}'
@@ -785,19 +691,7 @@ def create_layout():
                     'border': f'1px solid {COLORS["border"]}',
                     'backdropFilter': 'blur(10px)',
                     'WebkitBackdropFilter': 'blur(10px)',
-                    'marginBottom': '20px'
                 }),
-
-                # Company Info Section
-                dcc.Loading(
-                    id='loading-company-info',
-                    type='circle',
-                    color=COLORS['primary'],
-                    children=html.Div(
-                        id='company-info-container',
-                        className='company-info-container',
-                    ),
-                ),
             ], lg=8, md=12)
         ], className='g-4'),
 
@@ -825,15 +719,6 @@ def create_layout():
 
 
 def register_callbacks(dash_app):
-    @dash_app.callback(
-        Output('welcome-message', 'children'),
-        Input('watchlist-interval', 'n_intervals')
-    )
-    def update_welcome_message(n_intervals):
-        if current_user.is_authenticated:
-            return f"Welcome to Your StockWatch Dashboard, {current_user.username}"
-
-
     @dash_app.callback(Output('watchlist-dropdown', 'options'),
                     Input('watchlist-interval', 'n_intervals'))
     def update_watchlist_dropdown(n_intervals):
@@ -1169,51 +1054,6 @@ def register_callbacks(dash_app):
             badge_styles.append(style)
 
         return fig, btn_styles, badge_children_list, badge_styles
-
-
-def create_new_watchlist(new_watchlist_name, add_ids):
-    try:
-        watchlist = Watchlist(name=new_watchlist_name, user_id=current_user.id)
-        db.session.add(watchlist)
-        db.session.commit()
-        return update_watchlist_section(watchlist.id), watchlist.id, [no_update] * len(add_ids)
-    except SQLAlchemyError as e:
-        logger.error(f"Error creating watchlist: {str(e)}")
-        return no_update, no_update, [no_update] * len(add_ids)
-
-
-def add_stock_to_watchlist(button_id, watchlist_id, add_ids):
-    stock_symbol = button_id['index']
-    logger.info(f"Adding stock {stock_symbol} to watchlist {watchlist_id}")
-    try:
-        stock = Stock.query.filter_by(symbol=stock_symbol).first()
-        if not stock:
-            stock = create_new_stock(stock_symbol)
-
-        watchlist = Watchlist.query.get(watchlist_id)
-        if watchlist and stock not in watchlist.stocks:
-            watchlist.stocks.append(stock)
-            db.session.commit()
-        updated_add_ids = ['Added' if id['index'] ==
-                        stock_symbol else no_update for id in add_ids]
-        return update_watchlist_section(watchlist_id), watchlist_id, updated_add_ids
-    except Exception as e:
-        logger.error(f"Error adding stock to watchlist: {str(e)}")
-        return no_update, no_update, [no_update] * len(add_ids)
-
-
-def remove_stock_from_watchlist(button_id, watchlist_id, add_ids):
-    stock_id = button_id['index']
-    try:
-        stock = Stock.query.get(stock_id)
-        watchlist = Watchlist.query.get(watchlist_id)
-        if watchlist and stock in watchlist.stocks:
-            watchlist.stocks.remove(stock)
-            db.session.commit()
-        return update_watchlist_section(watchlist_id), watchlist_id, [no_update] * len(add_ids)
-    except Exception as e:
-        logger.error(f"Error removing stock from watchlist: {str(e)}")
-        return no_update, no_update, [no_update] * len(add_ids)
 
 
 def create_new_stock(stock_symbol):
