@@ -1,6 +1,14 @@
+# Exported from Render on 2026-06-18T03:51:41Z
+version: "1"
 databases:
-  - name: stockwatch-db
-    plan: basic-256mb
+- name: stockwatch-db
+  databaseName: stockwatch_db_gak1
+  user: stockwatch_db_gak1_user
+  plan: free
+  region: virginia
+  ipAllowList: []
+  postgresMajorVersion: "16"
+
 
 services:
   - type: web
