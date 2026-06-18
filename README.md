@@ -31,7 +31,7 @@ A web application for monitoring stocks and managing personalized watchlists. Bu
 | Feature | Description |
 |---|---|
 | 🔐 **Authentication** | Secure registration & login with Flask-Login and hashed passwords |
-| 📊 **Live Market Data** | Current prices and company details via the Polygon.io REST API |
+| 📊 **Live Market Data** | Current prices and company details via the Massive.com REST API |
 | 📈 **Watchlist Management** | Create, view, and remove stocks across multiple watchlists |
 | 📉 **Interactive Charts** | Candlestick / line charts with volume overlays built in Plotly |
 | ⚡ **Caching** | Flask-Caching layer to reduce redundant API calls |
@@ -47,7 +47,7 @@ A web application for monitoring stocks and managing personalized watchlists. Bu
                              │
                              ▼
                       ┌──────────────┐
-                      │ Polygon.io   │
+                      │Massive.com   │
                       │ REST API     │
                       └──────────────┘
 ```
@@ -59,7 +59,7 @@ A web application for monitoring stocks and managing personalized watchlists. Bu
 | **Backend** | Flask, SQLAlchemy, Flask-Login, Flask-Caching, Gunicorn |
 | **Frontend** | Plotly Dash, Dash Bootstrap Components |
 | **Database** | PostgreSQL (production) · SQLite (development) |
-| **API** | [Polygon.io](https://polygon.io/) |
+| **API** | [Massive.com](https://massive.com/) |
 | **Deployment** | Render, DigitalOcean App Platform, Docker Compose |
 
 ### Project Layout
@@ -91,7 +91,7 @@ StockWatch/
 - **Python 3.11+**
 - **Pipenv** — `pip install pipenv`
 - **Docker** (optional, for local PostgreSQL)
-- A free [Polygon.io](https://polygon.io/) API key
+- A free [Massive.com](https://massive.com/) API key
 
 ### 1. Clone the Repository
 
