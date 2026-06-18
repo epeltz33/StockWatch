@@ -15,8 +15,9 @@ services:
     name: stockwatch
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt && FLASK_APP=wsgi:app flask db upgrade
-    startCommand: gunicorn --bind 0.0.0.0:$PORT wsgi:app --timeout 120 --workers 1
+    region: virginia
+    buildCommand: pip install -r requirements.txt
+    startCommand: FLASK_APP=wsgi:app flask db upgrade && gunicorn --bind 0.0.0.0:$PORT wsgi:app --timeout 120 --workers 1
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
