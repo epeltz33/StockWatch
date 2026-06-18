@@ -17,7 +17,7 @@ services:
     plan: free
     region: virginia
     buildCommand: pip install -r requirements.txt
-    startCommand: FLASK_APP=wsgi:app flask db upgrade && gunicorn --bind 0.0.0.0:$PORT wsgi:app --timeout 120 --workers 1
+    startCommand: FLASK_APP=wsgi:app flask db upgrade && FLASK_APP=wsgi:app flask seed-demo-user && gunicorn --bind 0.0.0.0:$PORT wsgi:app --timeout 120 --workers 1
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
