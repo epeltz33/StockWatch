@@ -3,14 +3,17 @@ region: nyc
 services:
   - name: web
     environment_slug: python
-    build_command: pip install -r requirements.txt
-    run_command: gunicorn --bind 0.0.0.0:$PORT wsgi:app --timeout 120
+    build_command: pip install -r requirements.txt && FLASK_APP=wsgi:app flask db upgrade
+    run_command: gunicorn --bind 0.0.0.0:$PORT wsgi:app --timeout 120 --workers 1
     source_dir: /
     envs:
       - key: FLASK_ENV
         value: "production"
+      - key: FLASK_APP
+        value: "wsgi:app"
       - key: PORT
         value: "8080"
+      # Set DATABASE_URL, SECRET_KEY, and POLYGON_API_KEY in the App Platform dashboard.
     http_port: 8080
     instance_count: 1
     instance_size_slug: basic-xxs
