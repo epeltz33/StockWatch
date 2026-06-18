@@ -7,14 +7,24 @@ A web application for monitoring stocks and managing personalized watchlists. Bu
 
 ## Live Demo
 
-> Deploy using the steps below, then add your public URL here.
+> Live production deployment on Render:
 
 | | |
 |---|---|
-| **URL** | `https://your-app.onrender.com` |
+| **URL** | [https://stockwatch-cqzs.onrender.com](https://stockwatch-cqzs.onrender.com) |
 | **Demo login** | `demo@stockwatch.dev` / `Demo123!` |
 
 > Free-tier hosting may take ~30s to wake up on the first visit after idle time.
+
+### How to try the demo account
+
+1. Open [https://stockwatch-cqzs.onrender.com](https://stockwatch-cqzs.onrender.com)
+2. Click **Log In**
+3. Enter:
+   - Email: `demo@stockwatch.dev`
+   - Password: `Demo123!`
+
+> Reviewer note: This demo account is intentionally shared for evaluation and can be reset safely.
 
 ## ✨ Features
 
