@@ -3,7 +3,7 @@
 
 # 📈 StockWatch
 
-A web application for monitoring stocks and managing personalized watchlists. Built with **Flask** and **Plotly Dash**, StockWatch provides real-time market data, interactive charts, and per-user watchlist tracking — all powered by the [Polygon.io](https://polygon.io/) API.
+A web application for monitoring stocks and managing personalized watchlists. Built with **Flask** and **Plotly Dash**, StockWatch provides real-time market data, interactive charts, and per-user watchlist tracking — all powered by the [Massive.com](https://massive.com/) API.
 
 ## Live Demo
 
