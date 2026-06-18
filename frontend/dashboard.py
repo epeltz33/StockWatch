@@ -128,16 +128,40 @@ CUSTOM_STYLES = {
 }
 
 PERIODS = ['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y', '10Y', 'MAX']
+PERIOD_DISPLAY_LABELS = {
+    '1D': 'Today',
+}
+PERIOD_BUTTON_TITLES = {
+    '1D': 'Intraday prices for the latest regular session (9:30 AM–4:00 PM ET)',
+    '5D': 'Daily bars for the last ~5 trading days',
+    '1M': 'Daily bars for the last month',
+    '6M': 'Daily bars for the last 6 months',
+    'YTD': 'Daily bars since January 1',
+    '1Y': 'Daily bars for the last year',
+    '5Y': 'Daily bars for the last 5 years',
+    '10Y': 'Daily bars for the last 10 years',
+    'MAX': 'All available daily history',
+}
 EASTERN_TZ = ZoneInfo("America/New_York")
 MARKET_OPEN_ET = time(9, 30)
 MARKET_CLOSE_ET = time(16, 0)
+
+
+def period_display_label(period):
+    """Return the user-facing label for a chart period button."""
+    return PERIOD_DISPLAY_LABELS.get(period, period)
+
+
+def period_button_title(period):
+    """Return hover text describing what each period button shows."""
+    return PERIOD_BUTTON_TITLES.get(period, f'{period} chart')
 
 
 def filter_data_for_period(df, period):
     """Filter OHLCV dataframe to the selected time period.
 
     Period definitions (calendar-day based, using daily bars):
-    - 1D: unchanged here; the chart callback uses dedicated intraday bars
+    - 1D: not used here; the chart callback loads dedicated intraday bars instead
     - 5D: last 7 calendar days (~5 trading days)
     - 1M: last 30 calendar days
     - 6M: last 182 calendar days
@@ -192,6 +216,22 @@ def calculate_period_change(df):
     if first_close == 0:
         return 0.0
     return ((last_close - first_close) / first_close) * 100
+
+
+def calculate_fifty_two_week_range(df):
+    """Return formatted 52-week low/high from the last year of daily bars."""
+    filtered = filter_data_for_period(df, '1Y')
+    if filtered.empty or 'close' not in filtered.columns:
+        return "N/A"
+
+    if 'low' in filtered.columns and 'high' in filtered.columns:
+        low = filtered['low'].min()
+        high = filtered['high'].max()
+    else:
+        low = filtered['close'].min()
+        high = filtered['close'].max()
+
+    return f"${low:.2f} - ${high:.2f}"
 
 
 def calculate_intraday_period_change(df):
@@ -468,9 +508,10 @@ def build_period_toolbar(active_period, pct_change):
 
         cols.append(html.Div([
             html.Button(
-                period,
+                period_display_label(period),
                 id={'type': 'period-btn', 'index': period},
                 n_clicks=0,
+                title=period_button_title(period),
                 style=_period_btn_style(is_active),
             ),
             html.Div(
@@ -1313,13 +1354,8 @@ def fetch_and_display_stock_data(stock_symbol):
             if not display_logo:
                 display_logo = "/assets/default_stock_icon.svg"
 
-            # Calculate 52-week range
-            if not df.empty and 'close' in df.columns:
-                fifty_two_week_low = df['low'].min() if 'low' in df.columns else df['close'].min()
-                fifty_two_week_high = df['high'].max() if 'high' in df.columns else df['close'].max()
-                fifty_two_week_range = f"${fifty_two_week_low:.2f} - ${fifty_two_week_high:.2f}"
-            else:
-                fifty_two_week_range = "N/A"
+            # Calculate 52-week range from the last year of data, not the full history.
+            fifty_two_week_range = calculate_fifty_two_week_range(df)
 
             # Format market cap
             market_cap = company_details.get('market_cap', "N/A") if company_details else "N/A"

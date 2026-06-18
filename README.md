@@ -33,7 +33,7 @@ A web application for monitoring stocks and managing personalized watchlists. Bu
 | 🔐 **Authentication** | Secure registration and login with Flask-Login and hashed passwords |
 | 📊 **Live Market Data** | Current prices and company details via the Massive.com REST API |
 | 📈 **Watchlist Management** | Create and delete multiple watchlists; add or remove tickers |
-| 📉 **Interactive Charts** | Line charts with volume overlays and selectable periods (1D, 5D, 1M, 6M, YTD, 1Y, 5Y, 10Y, MAX) |
+| 📉 **Interactive Charts** | Line charts with volume overlays; **Today** shows intraday session bars, other periods use daily history (5D–MAX) |
 | 🏢 **Company Fundamentals** | Logo, market cap, exchange, website, description, and day-over-day price change |
 | 🗄️ **Database Migrations** | Schema versioning with Flask-Migrate / Alembic (SQLite locally, PostgreSQL in production) |
 
