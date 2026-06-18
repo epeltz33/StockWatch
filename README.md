@@ -165,6 +165,8 @@ When prompted during blueprint setup, set:
 
 `SECRET_KEY` and `DATABASE_URL` are generated automatically.
 
+> **Note:** Migrations run in the **start command**, not the build command. Render's internal database hostname is only reachable at runtime, not during builds.
+
 ### 5. Seed the demo account
 
 After the first successful deploy, open the Render **Shell** for the web service and run:
