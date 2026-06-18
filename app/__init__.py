@@ -89,5 +89,11 @@ def create_app(test_config=None):
         import traceback
         traceback.print_exc()
 
+    from app.cli import delete_user, seed_demo_user, test_cache
+
+    app.cli.add_command(delete_user)
+    app.cli.add_command(seed_demo_user)
+    app.cli.add_command(test_cache)
+
     print("✓ Flask application created successfully")
     return app

@@ -1,0 +1,27 @@
+databases:
+  - name: stockwatch-db
+    plan: basic-256mb
+
+services:
+  - type: web
+    name: stockwatch
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && FLASK_APP=wsgi:app flask db upgrade
+    startCommand: gunicorn --bind 0.0.0.0:$PORT wsgi:app --timeout 120 --workers 1
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: FLASK_APP
+        value: wsgi:app
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stockwatch-db
+          property: connectionString
+      - key: POLYGON_API_KEY
+        sync: false

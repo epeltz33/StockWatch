@@ -3,7 +3,18 @@
 
 # 📈 StockWatch
 
-A web application for monitoring stocks and managing personalized watchlists. Built with **Flask** and **Plotly Dash**, StockWatch provides real-time market data, interactive charts, and per-user portfolio tracking — all powered by the [Polygon.io](https://polygon.io/) API.
+A web application for monitoring stocks and managing personalized watchlists. Built with **Flask** and **Plotly Dash**, StockWatch provides real-time market data, interactive charts, and per-user watchlist tracking — all powered by the [Polygon.io](https://polygon.io/) API.
+
+## Live Demo
+
+> Deploy using the steps below, then add your public URL here.
+
+| | |
+|---|---|
+| **URL** | `https://your-app.onrender.com` |
+| **Demo login** | `demo@stockwatch.dev` / `Demo123!` |
+
+> Free-tier hosting may take ~30s to wake up on the first visit after idle time.
 
 ## ✨ Features
 
@@ -39,7 +50,7 @@ A web application for monitoring stocks and managing personalized watchlists. Bu
 | **Frontend** | Plotly Dash, Dash Bootstrap Components |
 | **Database** | PostgreSQL (production) · SQLite (development) |
 | **API** | [Polygon.io](https://polygon.io/) |
-| **Deployment** | DigitalOcean App Platform, Docker Compose |
+| **Deployment** | Render, DigitalOcean App Platform, Docker Compose |
 
 ### Project Layout
 
@@ -91,7 +102,7 @@ Create a `.env` file in the project root:
 
 ```dotenv
 SECRET_KEY=your_secret_key
-DATABASE_URL=postgresql://stockwatch_user:stockwatch_password@localhost:5432/stockwatch
+DATABASE_URL=postgresql://stockwatch_user:stockwatch_password@localhost:15433/stockwatch
 POLYGON_API_KEY=your_polygon_api_key
 ```
 
@@ -123,6 +134,58 @@ pipenv run gunicorn wsgi:app --bind 0.0.0.0:8080
 ```
 
 The app will be available at **http://localhost:8080**.
+
+## 🌐 Deploy to Render (Recommended)
+
+StockWatch ships with a [`render.yaml`](render.yaml) blueprint for one-click deployment.
+
+### 1. Push to GitHub
+
+Ensure your repo is pushed to GitHub (Render deploys from Git).
+
+### 2. Create a Render account
+
+Sign up at [render.com](https://render.com) and connect your GitHub account.
+
+### 3. Create a Blueprint
+
+1. Go to **Dashboard → New → Blueprint**
+2. Select the `StockWatch` repository
+3. Render will detect `render.yaml` and provision:
+   - A **PostgreSQL** database (`stockwatch-db`, ~$7/mo)
+   - A **web service** (`stockwatch`, free tier with cold starts)
+
+### 4. Set secrets
+
+When prompted during blueprint setup, set:
+
+| Variable | Value |
+|---|---|
+| `POLYGON_API_KEY` | Your [Polygon.io](https://polygon.io/) API key |
+
+`SECRET_KEY` and `DATABASE_URL` are generated automatically.
+
+### 5. Seed the demo account
+
+After the first successful deploy, open the Render **Shell** for the web service and run:
+
+```bash
+flask seed-demo-user
+```
+
+### 6. Verify
+
+- `https://your-app.onrender.com/health` → `{"status": "healthy"}`
+- Log in with `demo@stockwatch.dev` / `Demo123!`
+- Search a ticker and confirm chart data loads
+
+### Alternative: DigitalOcean App Platform
+
+Use [`app.yaml`](app.yaml) instead. You will need to:
+
+1. Add a **Managed PostgreSQL** database in the DO dashboard
+2. Set `DATABASE_URL`, `SECRET_KEY`, and `POLYGON_API_KEY` as encrypted env vars
+3. Connect the GitHub repo — migrations run automatically on build
 
 ## 🧪 Running Tests
 
