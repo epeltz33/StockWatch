@@ -8,7 +8,7 @@ root_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(root_dir))
 
 from app import create_app
-from app.extensions import db, cache
+from app.extensions import db, cache  # noqa: E402
 
 @pytest.fixture
 def app():

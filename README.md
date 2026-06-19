@@ -4,6 +4,7 @@
 # 📈 StockWatch
 
 [![CI](https://github.com/epeltz33/StockWatch/actions/workflows/ci.yml/badge.svg)](https://github.com/epeltz33/StockWatch/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A web application for monitoring stocks and managing personalized watchlists. Built with **Flask** and **Plotly Dash**, StockWatch provides live market data, interactive line charts, company fundamentals, and per-user watchlist management — all backed by the [Massive.com](https://massive.com/) API and **PostgreSQL**.
 
@@ -37,6 +38,7 @@ A web application for monitoring stocks and managing personalized watchlists. Bu
 | 📈 **Watchlist Management** | Create and delete multiple watchlists; add or remove tickers |
 | 📉 **Interactive Charts** | Line charts with volume overlays; **Today** shows intraday session bars, other periods use daily history (5D–MAX) |
 | 🏢 **Company Fundamentals** | Logo, market cap, exchange, website, description, and day-over-day price change |
+| ⚡ **Response Caching** | Cuts redundant Massive.com API calls with a 5-minute price cache, 24-hour company details cache |
 | 🗄️ **Database Migrations** | Schema versioning with Flask-Migrate / Alembic (SQLite locally, PostgreSQL in production) |
 
 ## 🏗️ Architecture
@@ -88,64 +90,79 @@ StockWatch/
 
 ## 🚀 Getting Started
 
+The quickest way to clone and run StockWatch locally is with **SQLite** — no database server, no Docker, no ports to configure. You only need Python and a free API key. (Want production parity with PostgreSQL instead? See the **Run against PostgreSQL** section just below.)
+
 ### Prerequisites
 
 - **Python 3.11+**
 - **Pipenv** — `pip install pipenv`
-- **Docker** (optional, for local PostgreSQL)
 - A free [Massive.com](https://massive.com/) API key
 
-### 1. Clone the Repository
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/epeltz33/StockWatch.git
 cd StockWatch
-```
-
-### 2. Install Dependencies
-
-```bash
 pipenv install
 ```
 
-### 3. Configure Environment Variables
+### 2. Configure environment variables
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root. For the SQLite quickstart, **leave `DATABASE_URL` out** — the app automatically falls back to a local SQLite file (`app.db`):
 
 ```dotenv
-SECRET_KEY=your_secret_key
-DATABASE_URL=postgresql://stockwatch_user:stockwatch_password@localhost:15433/stockwatch
-POLYGON_API_KEY=your_polygon_api_key
+SECRET_KEY=any-random-string
+POLYGON_API_KEY=your_massive_api_key
 ```
 
-> **Tip:** If `DATABASE_URL` is omitted, the app falls back to a local SQLite database.
-
-### 4. Start the Database
-
-```bash
-# Option A — Docker (recommended)
-docker compose up -d
-
-# Option B — Use an existing PostgreSQL instance and set DATABASE_URL accordingly
-```
-
-### 5. Run Migrations
+### 3. Create the database schema
 
 ```bash
 pipenv run flask db upgrade
 ```
 
-### 6. Start the Application
+This creates `app.db` with all tables. `FLASK_APP` is already set in `.flaskenv`, so no extra flags are needed.
+
+### 4. (Optional) Seed the demo account
 
 ```bash
-# Development
-pipenv run flask run
-
-# Production-style
-pipenv run gunicorn wsgi:app --bind 0.0.0.0:8080
+pipenv run flask seed-demo-user
 ```
 
-The app will be available at **http://localhost:8080**.
+Creates the demo account (`demo@stockwatch.dev` / `Demo123!`) with a pre-populated watchlist, so you can log in and see data right away instead of starting from an empty app.
+
+### 5. Run the app
+
+```bash
+pipenv run flask run --port 8080
+```
+
+The app is available at **http://localhost:8080**.
+
+> For a production-style server, use Gunicorn instead: `pipenv run gunicorn wsgi:app --bind 0.0.0.0:8080`
+
+---
+
+### 🐘 Run against PostgreSQL (optional)
+
+For parity with the production database, run PostgreSQL locally with the bundled Docker setup. The container is published on host port **15433** (mapped to its internal `5432`) so it won't clash with a Postgres you may already have running:
+
+```bash
+docker compose up -d
+```
+
+Then point `DATABASE_URL` at it in your `.env` and re-run migrations:
+
+```dotenv
+SECRET_KEY=any-random-string
+POLYGON_API_KEY=your_massive_api_key
+DATABASE_URL=postgresql://stockwatch_user:stockwatch_password@localhost:15433/stockwatch
+```
+
+```bash
+pipenv run flask db upgrade
+pipenv run flask run --port 8080
+```
 
 ## 🌐 Deploy to Render (Recommended)
 
@@ -216,13 +233,20 @@ docker compose up -d    # start
 docker compose down      # stop
 ```
 
-Default credentials (for local development only):
+Default connection details (for local development only):
 
 | Variable | Value |
 |---|---|
+| **Host port** | `15433` (mapped to the container's internal `5432`) |
 | `POSTGRES_DB` | `stockwatch` |
 | `POSTGRES_USER` | `stockwatch_user` |
 | `POSTGRES_PASSWORD` | `stockwatch_password` |
+
+Connect with `DATABASE_URL=postgresql://stockwatch_user:stockwatch_password@localhost:15433/stockwatch`.
+
+## 📄 License
+
+Released under the [MIT License](LICENSE).
 
 ## 📬 Contact
 

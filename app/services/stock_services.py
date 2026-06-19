@@ -4,8 +4,9 @@ import logging
 import os
 from dotenv import load_dotenv
 from polygon import RESTClient
-from app.extensions import db
+from app.extensions import db, cache
 from app.models import Stock
+from app.utils.cache_manager import StockCache
 from sqlalchemy.exc import IntegrityError
 
 load_dotenv()
@@ -30,12 +31,20 @@ def _get_client() -> RESTClient:
 
 
 def get_stock_price(symbol: str) -> Optional[float]:
-    """Get current stock price from Polygon API"""
+    """Get current stock price from Polygon API (cached for 5 minutes)."""
+    stock_cache = StockCache(cache)
+    cached_price = stock_cache.get_cached_data(symbol, "price")
+    if cached_price is not None:
+        return cached_price
+
     try:
         date = get_most_recent_trading_day()
         client = _get_client()
         resp = client.get_daily_open_close_agg(symbol, date)
-        return resp.close if resp else None
+        price = resp.close if resp else None
+        if price is not None:
+            stock_cache.set_cached_data(symbol, "price", price)
+        return price
     except Exception as e:
         logger.error(f"Error fetching stock price for {symbol}: {str(e)}")
         return None
@@ -62,12 +71,17 @@ def get_stock_data(symbol: str, from_date: str, to_date: str) -> List[Dict[str, 
 
 
 def get_company_details(symbol: str) -> Dict[str, Any]:
-    """Get company details from Polygon API"""
+    """Get company details from Polygon API (cached for 24 hours)."""
+    stock_cache = StockCache(cache)
+    cached_details = stock_cache.get_cached_data(symbol, "details")
+    if cached_details is not None:
+        return cached_details
+
     try:
         client = _get_client()
         resp = client.get_ticker_details(symbol)
         if resp:
-            return {
+            details = {
                 "name": resp.name,
                 "market_cap": resp.market_cap,
                 "primary_exchange": resp.primary_exchange,
@@ -76,6 +90,8 @@ def get_company_details(symbol: str) -> Dict[str, Any]:
                 "industry": getattr(resp, 'industry', 'N/A'),
                 "website": getattr(resp, 'url', 'N/A')
             }
+            stock_cache.set_cached_data(symbol, "details", details)
+            return details
         return {}
     except Exception as e:
         logger.error(f"Error fetching company details for {symbol}: {str(e)}")
