@@ -24,9 +24,9 @@ A full-stack web app taken end to end — designed, built, deployed, and running
 
 ## 🖼️ Screenshots
 
-| Dashboard search | Chart with period pills |
-|---|---|
-| ![Dashboard search](docs/screenshots/dashboard-search.png) | ![Chart with period pills](docs/screenshots/chart-period-pills.png) |
+| Dashboard search | 
+|---|
+| ![Dashboard search](docs/screenshots/dashboard-search.png) |
 
 | Watchlist management |
 |---|
