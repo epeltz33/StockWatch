@@ -64,7 +64,7 @@ dmypy.json
 
 # AWS specific
 *.pem
-
+plan.md
 # Logs and databases
 *.log
 *.sql

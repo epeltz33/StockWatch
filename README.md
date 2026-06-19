@@ -3,6 +3,8 @@
 
 # 📈 StockWatch
 
+[![CI](https://github.com/epeltz33/StockWatch/actions/workflows/ci.yml/badge.svg)](https://github.com/epeltz33/StockWatch/actions/workflows/ci.yml)
+
 A web application for monitoring stocks and managing personalized watchlists. Built with **Flask** and **Plotly Dash**, StockWatch provides live market data, interactive line charts, company fundamentals, and per-user watchlist management — all backed by the [Massive.com](https://massive.com/) API and **PostgreSQL**.
 
 ## Live Demo
