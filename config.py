@@ -19,3 +19,8 @@ class Config:
         SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(basedir, 'app.db')
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # Caching (Flask-Caching). SimpleCache is in-process; set CACHE_TYPE to
+    # RedisCache (with CACHE_REDIS_URL) for multi-worker deployments.
+    CACHE_TYPE = os.environ.get('CACHE_TYPE', 'SimpleCache')
+    CACHE_DEFAULT_TIMEOUT = 300
