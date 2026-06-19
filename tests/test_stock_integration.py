@@ -29,15 +29,13 @@ def test_full_stock_workflow(app, test_cache):
 
             # Set up historical data response
             mock_agg = Mock()
-            mock_agg.t = int(datetime.now().timestamp() * 1000)
-            mock_agg.c = 150.0
-            mock_agg.v = 1000000
-            mock_agg.o = 149.0
-            mock_agg.h = 151.0
-            mock_agg.l = 148.0
-            mock_response = Mock()
-            mock_response.results = [mock_agg]
-            mock_polygon.get_aggs.return_value = mock_response
+            mock_agg.timestamp = int(datetime.now().timestamp() * 1000)
+            mock_agg.open = 149.0
+            mock_agg.high = 151.0
+            mock_agg.low = 148.0
+            mock_agg.close = 150.0
+            mock_agg.volume = 1000000
+            mock_polygon.get_aggs.return_value = [mock_agg]
 
             # Import services inside context
             from app.services.stock_services import (
@@ -102,7 +100,7 @@ def test_error_handling(app, test_cache):
 
             # Test error handling for each service
             assert get_stock_price("AAPL") is None
-            assert get_company_details("AAPL") == {}
+            assert get_company_details("AAPL") is None
             assert get_stock_data("AAPL", "2024-01-01", "2024-01-31") == []
 
 @pytest.mark.integration
