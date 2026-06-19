@@ -5,6 +5,7 @@ DEFAULT_TIMEOUTS: Dict[str, int] = {
     'price': 300,       # 5 minutes
     'details': 86400,   # 24 hours
     'historical': 3600, # 1 hour
+    'intraday': 300,    # 5 minutes
     'fallback': 600     # default/fallback timeout
 }
 

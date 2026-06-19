@@ -3,14 +3,17 @@ from dash import html, dcc, Input, Output, State, callback_context, no_update, A
 import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
-from polygon import RESTClient
-from datetime import datetime, timedelta, time
-from zoneinfo import ZoneInfo
+from datetime import datetime, timedelta
 import pandas as pd
-import os
 from app import db
 from flask_login import current_user
 from app.models import Watchlist, Stock
+from app.services.stock_services import (
+    get_stock_data,
+    get_stock_price,
+    get_company_details,
+    get_intraday_stock_data,
+)
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 import json
@@ -142,9 +145,6 @@ PERIOD_BUTTON_TITLES = {
     '10Y': 'Daily bars for the last 10 years',
     'MAX': 'All available daily history',
 }
-EASTERN_TZ = ZoneInfo("America/New_York")
-MARKET_OPEN_ET = time(9, 30)
-MARKET_CLOSE_ET = time(16, 0)
 
 
 def period_display_label(period):
@@ -535,10 +535,6 @@ def build_period_toolbar(active_period, pct_change):
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Initialize Polygon client
-polygon_api_key = os.getenv('POLYGON_API_KEY')
-client = RESTClient(api_key=polygon_api_key)
 
 
 def create_dash_app(flask_app):
@@ -1002,7 +998,7 @@ def register_callbacks(dash_app):
             stock_input_update = clicked_stock if trigger_source == 'search' else no_update
             return stock_info, chart_container, stock_input_update, no_update, no_update, no_update
 
-        intraday_data = get_intraday_stock_data(clicked_stock)
+        intraday_data = []
 
         # Default period is 1Y; build initial chart and toolbar
         default_period = '1Y'
@@ -1052,7 +1048,8 @@ def register_callbacks(dash_app):
         [Output('stock-chart', 'figure'),
          Output({'type': 'period-btn', 'index': ALL}, 'style'),
          Output({'type': 'period-badge', 'index': ALL}, 'children'),
-         Output({'type': 'period-badge', 'index': ALL}, 'style')],
+         Output({'type': 'period-badge', 'index': ALL}, 'style'),
+         Output('stock-intraday-store', 'data')],
         Input({'type': 'period-btn', 'index': ALL}, 'n_clicks'),
         [State('stock-ohlcv-store', 'data'),
          State('stock-intraday-store', 'data'),
@@ -1070,7 +1067,11 @@ def register_callbacks(dash_app):
             raise dash.exceptions.PreventUpdate
 
         active_period = triggered_id['index']
+        intraday_update = no_update
         if active_period == '1D':
+            if not intraday_data and symbol:
+                intraday_data = get_intraday_stock_data(symbol)
+                intraday_update = intraday_data
             filtered_df = pd.DataFrame(intraday_data or [])
             pct_change = calculate_intraday_period_change(filtered_df)
         else:
@@ -1094,15 +1095,14 @@ def register_callbacks(dash_app):
             badge_children_list.append(children)
             badge_styles.append(style)
 
-        return fig, btn_styles, badge_children_list, badge_styles
+        return fig, btn_styles, badge_children_list, badge_styles, intraday_update
 
 
 def create_new_stock(stock_symbol):
     try:
         logger.info(f"Creating new stock: {stock_symbol}")
-        stock_details = client.get_ticker_details(stock_symbol)
-        stock_name = stock_details.name if hasattr(
-            stock_details, 'name') else stock_symbol
+        company_details = get_company_details(stock_symbol)
+        stock_name = company_details.get('name', stock_symbol) if company_details else stock_symbol
         stock = Stock(symbol=stock_symbol, name=stock_name)
         db.session.add(stock)
         db.session.commit()
@@ -1298,8 +1298,20 @@ def fetch_and_display_stock_data(stock_symbol):
         historical_data = get_stock_data(stock_symbol, start_date, end_date)
 
         if not historical_data:
-            return html.Div(f"No historical data available for {stock_symbol}",
-                        className="alert alert-warning m-3 p-3"), pd.DataFrame()
+            return html.Div(
+                [
+                    html.P(
+                        f"No historical data available for {stock_symbol}",
+                        style={'marginBottom': '8px', 'fontWeight': '500'},
+                    ),
+                    html.P(
+                        "Market data may be temporarily rate-limited. "
+                        "Please wait a moment and try again.",
+                        style={'fontSize': '0.85rem', 'color': COLORS['text_muted'], 'margin': '0'},
+                    ),
+                ],
+                className="alert alert-warning m-3 p-3",
+            ), pd.DataFrame()
 
         # Convert to DataFrame
         df = pd.DataFrame(historical_data)
@@ -1708,253 +1720,3 @@ def fetch_and_display_stock_data(stock_symbol):
             'borderLeft': f'4px solid {COLORS["negative"]}'
         }), pd.DataFrame()
 
-def get_stock_data(symbol, start_date, end_date):
-    """Fetch historical stock data from Polygon API"""
-    try:
-        # Use the Polygon API client to get aggregates (historical data)
-        aggs = client.get_aggs(
-            ticker=symbol,
-            multiplier=1,
-            timespan="day",
-            from_=start_date,
-            to=end_date,
-            adjusted=True,
-            sort="asc",
-            limit=50000,
-        )
-
-        # Convert to list of dictionaries
-        historical_data = []
-        for agg in aggs:
-            historical_data.append({
-                'date': datetime.fromtimestamp(agg.timestamp/1000).strftime('%Y-%m-%d'),
-                'open': agg.open,
-                'high': agg.high,
-                'low': agg.low,
-                'close': agg.close,
-                'volume': agg.volume
-            })
-
-        return historical_data
-    except Exception as e:
-        logger.error(f"Error fetching historical data for {symbol}: {str(e)}")
-        return []
-
-
-def get_intraday_stock_data(symbol, max_lookback_days=7, aggregate_configs=None):
-    """Fetch regular-market intraday bars for the latest available session.
-
-    The 1D chart intentionally excludes pre-market and after-hours data. It
-    tries 1-minute bars first, then 5-minute bars for API plans that restrict
-    1-minute aggregates. If today's session has no bars yet (market closed,
-    weekend, or holiday), this walks backward over recent weekdays and returns
-    the first populated session.
-    """
-    aggregate_configs = aggregate_configs or ((1, "minute"), (5, "minute"))
-    try:
-        candidate_date = datetime.now(EASTERN_TZ).date()
-        attempted_weekdays = 0
-
-        while attempted_weekdays < max_lookback_days:
-            if candidate_date.weekday() >= 5:
-                candidate_date -= timedelta(days=1)
-                continue
-
-            attempted_weekdays += 1
-            date_str = candidate_date.strftime('%Y-%m-%d')
-            for multiplier, timespan in aggregate_configs:
-                try:
-                    aggs = client.get_aggs(
-                        ticker=symbol,
-                        multiplier=multiplier,
-                        timespan=timespan,
-                        from_=date_str,
-                        to=date_str,
-                        adjusted=True,
-                        sort="asc",
-                        limit=50000,
-                    )
-                except Exception as e:
-                    logger.warning(f"Intraday {multiplier}-{timespan} data unavailable for {symbol} on {date_str}: {str(e)}")
-                    continue
-
-                intraday_data = []
-                for agg in aggs or []:
-                    bar_dt = datetime.fromtimestamp(agg.timestamp / 1000, tz=ZoneInfo("UTC")).astimezone(EASTERN_TZ)
-                    if MARKET_OPEN_ET <= bar_dt.time() <= MARKET_CLOSE_ET:
-                        intraday_data.append({
-                            'datetime': bar_dt.isoformat(),
-                            'date': bar_dt.strftime('%Y-%m-%d'),
-                            'time': bar_dt.strftime('%H:%M'),
-                            'open': agg.open,
-                            'high': agg.high,
-                            'low': agg.low,
-                            'close': agg.close,
-                            'volume': agg.volume,
-                            'resolution': 'intraday',
-                            'interval': f"{multiplier}-{timespan}",
-                        })
-
-                if intraday_data:
-                    return intraday_data
-
-            candidate_date -= timedelta(days=1)
-
-        return []
-    except Exception as e:
-        logger.error(f"Error fetching intraday data for {symbol}: {str(e)}")
-        return []
-
-
-def get_stock_price(symbol):
-    """Fetch current stock price from Polygon API"""
-    try:
-        # Get the last trade for the symbol
-        last_trade = client.get_last_trade(symbol)
-        return last_trade.price if last_trade else None
-    except Exception as e:
-        logger.error(f"Error fetching price for {symbol}: {str(e)}")
-        return None
-
-def get_company_details(symbol):
-    """Fetch company details from Polygon API"""
-    try:
-        # Get ticker details with more detailed error logging
-        logger.info(f"Fetching ticker details for: {symbol}")
-
-        try:
-            ticker_details = client.get_ticker_details(symbol)
-            logger.info(f"Successfully received response for {symbol}")
-        except Exception as e:
-            logger.error(f"Error in API call for {symbol}: {str(e)}")
-            ticker_details = None
-
-        # Initialize variables
-        icon_url = None
-        logo_url = None
-
-        # Debug the response structure
-        if ticker_details:
-            logger.info(f"Ticker details structure: {type(ticker_details)}")
-            if hasattr(ticker_details, '__dict__'):
-                logger.info(f"Fields available: {list(ticker_details.__dict__.keys())}")
-
-        # Approach 1: Direct branding access
-        if ticker_details and hasattr(ticker_details, 'branding'):
-            branding = ticker_details.branding
-            logger.info(f"Found branding information: {branding}")
-
-            if isinstance(branding, dict):
-                icon_url = branding.get('icon_url')
-                logo_url = branding.get('logo_url')
-                logger.info(f"From dict: icon_url={icon_url}, logo_url={logo_url}")
-            else:
-                icon_url = getattr(branding, 'icon_url', None)
-                logo_url = getattr(branding, 'logo_url', None)
-                logger.info(f"From object: icon_url={icon_url}, logo_url={logo_url}")
-
-        # Approach 2: Access through results
-        if not icon_url and ticker_details and hasattr(ticker_details, 'results'):
-            results = ticker_details.results
-            logger.info(f"Looking in results: {results}")
-
-            if hasattr(results, 'branding'):
-                branding = results.branding
-                logger.info(f"Found branding in results: {branding}")
-
-                if isinstance(branding, dict):
-                    icon_url = branding.get('icon_url')
-                    logo_url = branding.get('logo_url')
-                else:
-                    icon_url = getattr(branding, 'icon_url', None)
-                    logo_url = getattr(branding, 'logo_url', None)
-
-        # Approach 3: Try to extract from raw response
-        if not icon_url and ticker_details:
-            # Try to access the raw response if available
-            try:
-                if hasattr(ticker_details, 'raw'):
-                    raw_data = ticker_details.raw
-                    logger.info(f"Examining raw response: {raw_data}")
-
-                    if isinstance(raw_data, dict) and 'branding' in raw_data:
-                        branding = raw_data['branding']
-                        icon_url = branding.get('icon_url')
-                        logo_url = branding.get('logo_url')
-                        logger.info(f"From raw data: icon_url={icon_url}, logo_url={logo_url}")
-            except Exception as e:
-                logger.error(f"Error extracting from raw response: {str(e)}")
-
-
-        if icon_url:
-            separator = '?' if '?' not in icon_url else '&'
-            icon_url = f"{icon_url}{separator}apiKey={polygon_api_key}"
-            logger.info(f"Final icon URL after replacement: {icon_url}")
-
-        if logo_url:
-            separator = '?' if '?' not in logo_url else '&'
-            logo_url = f"{logo_url}{separator}apiKey={polygon_api_key}"
-            logger.info(f"Final logo URL after replacement: {logo_url}")
-
-
-        # Get name from appropriate location depending on response format
-        name = symbol
-        if hasattr(ticker_details, 'name'):
-            name = ticker_details.name
-        elif hasattr(ticker_details, 'results') and hasattr(ticker_details.results, 'name'):
-            name = ticker_details.results.name
-
-        # Get other attributes, checking both direct and .results paths
-        market_cap = None
-        if hasattr(ticker_details, 'market_cap'):
-            market_cap = ticker_details.market_cap
-        elif hasattr(ticker_details, 'results') and hasattr(ticker_details.results, 'market_cap'):
-            market_cap = ticker_details.results.market_cap
-
-        website = None
-        if hasattr(ticker_details, 'homepage_url'):
-            website = ticker_details.homepage_url
-        elif hasattr(ticker_details, 'results') and hasattr(ticker_details.results, 'homepage_url'):
-            website = ticker_details.results.homepage_url
-
-        list_date = None
-        if hasattr(ticker_details, 'list_date'):
-            list_date = ticker_details.list_date
-        elif hasattr(ticker_details, 'results') and hasattr(ticker_details.results, 'list_date'):
-            list_date = ticker_details.results.list_date
-
-        exchange = None
-        if hasattr(ticker_details, 'primary_exchange'):
-            exchange = ticker_details.primary_exchange
-        elif hasattr(ticker_details, 'results') and hasattr(ticker_details.results, 'primary_exchange'):
-            exchange = ticker_details.results.primary_exchange
-
-        # Extract description safely
-        description = ""
-        if hasattr(ticker_details, 'description') and ticker_details.description:
-            description = ticker_details.description[:150]
-            if len(ticker_details.description) > 150:
-                description += "..."
-        elif hasattr(ticker_details, 'results') and hasattr(ticker_details.results, 'description'):
-            desc = ticker_details.results.description
-            if desc:
-                description = desc[:150]
-                if len(desc) > 150:
-                    description += "..."
-
-        company_details = {
-            'name': name,
-            'description': description,
-            'market_cap': market_cap,
-            'icon_url': icon_url,
-            'logo_url': logo_url,
-            'website': website,
-            'list_date': list_date,
-            'exchange': exchange
-        }
-
-        logger.info(f"Final company details for {symbol}: {company_details}")
-        return company_details
-    except Exception as e:
-        logger.error(f"Error fetching company details for {symbol}: {str(e)}")
-        return None

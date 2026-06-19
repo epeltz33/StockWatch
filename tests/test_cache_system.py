@@ -65,15 +65,15 @@ def test_cache_timeouts(stock_cache, mock_cache):
 def test_historical_data_handling(mock_polygon, app, test_cache):
     """Test historical data retrieval and caching."""
     with app.app_context():
-        # Mock historical data response
         mock_result = Mock()
-        mock_result.t = int(datetime.now().timestamp() * 1000)
-        mock_result.c = 150.0
-        mock_result.v = 1000000
+        mock_result.timestamp = int(datetime.now().timestamp() * 1000)
+        mock_result.open = 149.0
+        mock_result.high = 151.0
+        mock_result.low = 148.0
+        mock_result.close = 150.0
+        mock_result.volume = 1000000
 
-        mock_response = Mock()
-        mock_response.results = [mock_result]
-        mock_polygon.get_aggs.return_value = mock_response
+        mock_polygon.get_aggs.return_value = [mock_result]
 
         end_date = datetime.now().strftime('%Y-%m-%d')
         start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
