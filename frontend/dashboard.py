@@ -1044,12 +1044,15 @@ def register_callbacks(dash_app):
         return stock_info, chart_container, stock_input_update, df.to_dict('records'), intraday_data, clicked_stock
 
     # --- Period-button callback: filter data and update chart + badge ---
+    # `stock-intraday-store` is also written by `update_stock_data`; declaring
+    # this Output as a duplicate lets both callbacks target the same store
+    # without Dash raising DuplicateCallback at registration time.
     @dash_app.callback(
         [Output('stock-chart', 'figure'),
          Output({'type': 'period-btn', 'index': ALL}, 'style'),
          Output({'type': 'period-badge', 'index': ALL}, 'children'),
          Output({'type': 'period-badge', 'index': ALL}, 'style'),
-         Output('stock-intraday-store', 'data')],
+         Output('stock-intraday-store', 'data', allow_duplicate=True)],
         Input({'type': 'period-btn', 'index': ALL}, 'n_clicks'),
         [State('stock-ohlcv-store', 'data'),
          State('stock-intraday-store', 'data'),

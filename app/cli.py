@@ -42,21 +42,30 @@ def test_cache(symbol):
 @click.command("seed-demo-user")
 @with_appcontext
 def seed_demo_user():
-    """Create the public demo account with a pre-populated watchlist."""
+    """Create or repair the public demo account with a pre-populated watchlist.
+
+    Idempotent: safe to run on every deploy. If the user already exists from a
+    previous deploy (possibly without the seeded watchlist), this still ensures
+    the Demo Portfolio watchlist and its stocks are present.
+    """
     user = User.query.filter_by(email=DEMO_EMAIL).first()
-    if user:
-        click.echo(f"Demo user already exists ({DEMO_EMAIL})")
-        return
+    created_user = False
+    if not user:
+        user = User(username=DEMO_USERNAME, email=DEMO_EMAIL)
+        user.set_password(DEMO_PASSWORD)
+        db.session.add(user)
+        db.session.flush()
+        created_user = True
 
-    user = User(username=DEMO_USERNAME, email=DEMO_EMAIL)
-    user.set_password(DEMO_PASSWORD)
-    db.session.add(user)
-    db.session.flush()
+    watchlist = Watchlist.query.filter_by(user_id=user.id, name=DEMO_WATCHLIST).first()
+    created_watchlist = False
+    if not watchlist:
+        watchlist = Watchlist(name=DEMO_WATCHLIST, user_id=user.id)
+        db.session.add(watchlist)
+        db.session.flush()
+        created_watchlist = True
 
-    watchlist = Watchlist(name=DEMO_WATCHLIST, user_id=user.id)
-    db.session.add(watchlist)
-    db.session.flush()
-
+    added_symbols = []
     for symbol, name in DEMO_STOCKS.items():
         stock = Stock.query.filter_by(symbol=symbol).first()
         if not stock:
@@ -65,6 +74,15 @@ def seed_demo_user():
             db.session.flush()
         if stock not in watchlist.stocks:
             watchlist.stocks.append(stock)
+            added_symbols.append(symbol)
 
     db.session.commit()
-    click.echo(f"Demo user created: {DEMO_EMAIL} / {DEMO_PASSWORD}")
+
+    if created_user:
+        click.echo(f"Demo user created: {DEMO_EMAIL} / {DEMO_PASSWORD}")
+    else:
+        click.echo(f"Demo user already exists ({DEMO_EMAIL})")
+    if created_watchlist:
+        click.echo(f"Demo watchlist created: {DEMO_WATCHLIST}")
+    if added_symbols:
+        click.echo(f"Added stocks to demo watchlist: {', '.join(added_symbols)}")
