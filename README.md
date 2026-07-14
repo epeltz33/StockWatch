@@ -24,9 +24,9 @@ A full-stack web app taken end to end — designed, built, deployed, and running
 
 ## 🖼️ Screenshots
 
-| Dashboard search | 
+| Stock dashboard |
 |---|
-| ![Dashboard search](docs/screenshots/dashboard-search.png) |
+| ![Stock dashboard](docs/screenshots/dashboard-search.png) |
 
 | Watchlist management |
 |---|
