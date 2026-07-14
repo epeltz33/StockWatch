@@ -18,117 +18,30 @@ from sqlalchemy.exc import SQLAlchemyError
 import logging
 import json
 
-# Define color scheme (modern dark glassmorphism palette)
+# Figure palette only — UI chrome is styled by assets/custom.css classes.
+# Gain/loss color is reserved for market data; accent is UI-interactive only.
 COLORS = {
-    'primary': '#38bdf8',
-    'primary_dark': '#0ea5e9',
-    'primary_light': '#7dd3fc',
-    'secondary': 'rgba(30, 41, 59, 0.8)',
-    'text': '#f1f5f9',
-    'text_secondary': '#cbd5e1',
-    'text_muted': '#94a3b8',
-    'positive': '#4ade80',
-    'positive_light': 'rgba(34, 197, 94, 0.15)',
-    'negative': '#f87171',
-    'negative_light': 'rgba(248, 113, 113, 0.15)',
-    'background': 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-    'background_solid': '#0f172a',
-    'card': 'rgba(30, 41, 59, 0.8)',
-    'card_solid': '#1e293b',
-    'border': 'rgba(148, 163, 184, 0.2)',
-    'border_hover': 'rgba(56, 189, 248, 0.4)',
-    'accent': '#06b6d4'
+    'text': '#E8ECF4',
+    'text_secondary': '#A9B2C3',
+    'text_muted': '#77839B',
+    'gain': '#2FBF71',
+    'loss': '#F0544F',
+    'flat': '#77839B',
+    'accent': '#5B8DEF',
+    'grid': 'rgba(49, 64, 92, 0.35)',
+    'spike': 'rgba(121, 139, 169, 0.55)',
+    'hover_bg': 'rgba(18, 24, 38, 0.96)',
+    'hover_border': '#31405C',
+    'volume_flat': 'rgba(119, 131, 155, 0.30)',
+    'volume_up': 'rgba(47, 191, 113, 0.35)',
+    'volume_down': 'rgba(240, 84, 79, 0.35)',
 }
 
-# Define custom styles (modern dark glassmorphism design system)
-CUSTOM_STYLES = {
-    'card': {
-        'borderRadius': '12px',
-        'marginBottom': '20px',
-        'boxShadow': '0 4px 30px rgba(0, 0, 0, 0.3)',
-        'border': f'1px solid {COLORS["border"]}',
-        'transition': 'all 0.3s ease',
-        'overflow': 'hidden',
-        'backgroundColor': COLORS['card'],
-        'backdropFilter': 'blur(10px)',
-        'WebkitBackdropFilter': 'blur(10px)'
-    },
-    'button': {
-        'borderRadius': '8px',
-        'fontWeight': '500',
-        'transition': 'all 0.3s ease',
-        'border': f'1px solid {COLORS["border"]}',
-        'backgroundColor': 'rgba(56, 189, 248, 0.1)',
-        'color': COLORS['primary']
-    },
-    'button_primary': {
-        'borderRadius': '8px',
-        'fontWeight': '500',
-        'transition': 'all 0.3s ease',
-        'border': f'1px solid rgba(56, 189, 248, 0.3)',
-        'backgroundColor': 'rgba(56, 189, 248, 0.1)',
-        'color': COLORS['primary'],
-        'padding': '10px 20px'
-    },
-    'stock_logo': {
-        'height': '56px',
-        'width': '56px',
-        'objectFit': 'contain',
-        'marginRight': '16px',
-        'borderRadius': '12px',
-        'backgroundColor': 'rgba(30, 41, 59, 0.6)',
-        'padding': '8px',
-        'border': f'1px solid {COLORS["border"]}',
-        'boxShadow': '0 4px 15px rgba(0, 0, 0, 0.2)'
-    },
-    'stock_header': {
-        'display': 'flex',
-        'alignItems': 'center',
-        'marginBottom': '20px'
-    },
-    'card_title': {
-        'fontSize': '0.85rem',
-        'fontWeight': '600',
-        'color': COLORS['text_muted'],
-        'marginBottom': '8px',
-        'textTransform': 'uppercase',
-        'letterSpacing': '0.5px'
-    },
-    'card_value': {
-        'fontSize': '1.8rem',
-        'fontWeight': '700',
-        'marginBottom': '6px',
-        'letterSpacing': '-0.5px',
-        'color': COLORS['text']
-    },
-    'card_change_positive': {
-        'color': COLORS['positive'],
-        'fontWeight': '600',
-        'fontSize': '0.9rem',
-        'display': 'inline-block'
-    },
-    'card_change_negative': {
-        'color': COLORS['negative'],
-        'fontWeight': '600',
-        'fontSize': '0.9rem',
-        'display': 'inline-block'
-    },
-    'metric_card': {
-        'backgroundColor': COLORS['card'],
-        'border': f'1px solid {COLORS["border"]}',
-        'borderRadius': '12px',
-        'padding': '20px',
-        'backdropFilter': 'blur(10px)',
-        'WebkitBackdropFilter': 'blur(10px)',
-        'transition': 'all 0.3s ease'
-    },
-    'section_title': {
-        'fontSize': '1.3rem',
-        'fontWeight': '600',
-        'color': COLORS['text'],
-        'marginBottom': '20px'
-    }
-}
+FONT_UI = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+FONT_DATA = "'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace"
+
+ACCENT = '#5B8DEF'
+ADD_TO_WATCHLIST_LABEL = '＋ Watchlist'
 
 PERIODS = ['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y', '10Y', 'MAX']
 PERIOD_DISPLAY_LABELS = {
@@ -245,6 +158,26 @@ def calculate_intraday_period_change(df):
     return ((latest_close - session_open) / session_open) * 100
 
 
+def period_price_change(df, is_intraday=False):
+    """Return (absolute $ change, % change) over the filtered range.
+
+    Daily ranges compare first close to last close; intraday compares the
+    session open to the latest close (same base as calculate_intraday_period_change).
+    """
+    if df.empty or 'close' not in df.columns:
+        return 0.0, 0.0
+    if is_intraday:
+        if 'open' not in df.columns:
+            return 0.0, 0.0
+        base = df['open'].iloc[0]
+    else:
+        base = df['close'].iloc[0]
+    last = df['close'].iloc[-1]
+    if base == 0:
+        return 0.0, 0.0
+    return last - base, ((last - base) / base) * 100
+
+
 def _price_axis_range(df):
     """Return a padded price range so chart movement is readable."""
     price_columns = [col for col in ['low', 'high', 'close'] if col in df.columns]
@@ -295,11 +228,29 @@ def _date_axis_tick_spacing(period):
     return 'M1'
 
 
-def create_stock_chart_figure(df, symbol, period=None):
-    """Price line + area (top) and volume bars (bottom) with shared x-axis.
+def _hex_to_rgba(hex_color, alpha):
+    """'#RRGGBB' -> 'rgba(r, g, b, a)'."""
+    hex_color = hex_color.lstrip('#')
+    r, g, b = (int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+    return f'rgba({r}, {g}, {b}, {alpha})'
 
-    Y-axes are placed on the right. Plotly's built-in rangeselector is omitted
-    so that the custom Dash period buttons are the sole period control.
+
+def _direction_color(df, is_intraday):
+    """Gain green when the period is up, loss red when down, muted when flat."""
+    abs_change, _ = period_price_change(df, is_intraday=is_intraday)
+    if abs_change > 0:
+        return COLORS['gain']
+    if abs_change < 0:
+        return COLORS['loss']
+    return COLORS['flat']
+
+
+def create_stock_chart_figure(df, symbol, period=None):
+    """Price line + gradient band (top) and volume bars (bottom), shared x-axis.
+
+    The line, gradient, and volume tints take the period's gain/loss color so
+    the chart itself reads direction. Y-axes sit on the right; the custom Dash
+    period buttons are the sole period control (no Plotly rangeselector).
     """
     is_intraday = period == '1D'
 
@@ -327,10 +278,7 @@ def create_stock_chart_figure(df, symbol, period=None):
             margin=dict(l=10, r=55, t=10, b=25),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
-            font=dict(
-                color=COLORS['text'],
-                family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            ),
+            font=dict(color=COLORS['text'], family=FONT_UI),
             height=440,
             autosize=True,
             showlegend=False,
@@ -346,23 +294,55 @@ def create_stock_chart_figure(df, symbol, period=None):
         else '<b>%{x|%b %d, %Y}</b><br>$%{y:.2f}<extra></extra>'
     )
 
-    # --- price line with area fill ---
+    line_color = _direction_color(df, is_intraday)
+    price_range = _price_axis_range(df)
+
+    # --- price line (kept as fig.data[0]) ---
     fig.add_trace(go.Scatter(
         x=df[x_col],
         y=df['close'],
         mode='lines',
-        line=dict(color='#38bdf8', width=2, shape='spline'),
-        fill='tozeroy',
-        fillcolor='rgba(56, 189, 248, 0.08)',
+        line=dict(color=line_color, width=2, shape='spline'),
         name='Price',
         hovertemplate=price_hovertemplate,
     ), row=1, col=1)
 
+    # --- gradient band between the visible lower bound and the price line ---
+    # Plotly's fill gradient spans the fill's bounding box, so an invisible
+    # baseline at the clamped axis floor keeps the fade inside the visible band
+    # instead of stretching down to zero.
+    if len(df) >= 2:
+        baseline_y = price_range[0] if price_range else float(df['close'].min())
+        fig.add_trace(go.Scatter(
+            x=df[x_col],
+            y=[baseline_y] * len(df),
+            mode='lines',
+            line=dict(width=0),
+            hoverinfo='skip',
+            showlegend=False,
+        ), row=1, col=1)
+        fig.add_trace(go.Scatter(
+            x=df[x_col],
+            y=df['close'],
+            mode='lines',
+            line=dict(width=0, shape='spline'),
+            fill='tonexty',
+            fillgradient=dict(
+                type='vertical',
+                colorscale=[
+                    [0.0, _hex_to_rgba(line_color, 0.0)],
+                    [1.0, _hex_to_rgba(line_color, 0.22)],
+                ],
+            ),
+            hoverinfo='skip',
+            showlegend=False,
+        ), row=1, col=1)
+
     # --- volume bars (subtle, no axis labels) ---
     if 'volume' in df.columns and df['volume'].notna().any():
-        colors = ['rgba(148, 163, 184, 0.20)' if i == 0
-                  else 'rgba(74, 222, 128, 0.20)' if df['close'].iloc[i] >= df['close'].iloc[i - 1]
-                  else 'rgba(248, 113, 113, 0.20)'
+        colors = [COLORS['volume_flat'] if i == 0
+                  else COLORS['volume_up'] if df['close'].iloc[i] >= df['close'].iloc[i - 1]
+                  else COLORS['volume_down']
                   for i in range(len(df))]
 
         fig.add_trace(go.Bar(
@@ -384,30 +364,26 @@ def create_stock_chart_figure(df, symbol, period=None):
         hovermode='x unified',
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(
-            color=COLORS['text'],
-            family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        ),
+        font=dict(color=COLORS['text'], family=FONT_UI),
         height=440,
         autosize=True,
         showlegend=False,
         hoverlabel=dict(
-            bgcolor='rgba(30, 41, 59, 0.95)',
+            bgcolor=COLORS['hover_bg'],
             font_size=13,
-            font_family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            bordercolor='rgba(56, 189, 248, 0.3)',
+            font_family=FONT_DATA,
+            bordercolor=COLORS['hover_border'],
             font_color=COLORS['text'],
         ),
         bargap=0.3,
     )
 
     price_yaxis_options = dict(
-        showgrid=True, gridwidth=1, gridcolor='rgba(148, 163, 184, 0.08)',
-        showline=False, tickfont=dict(size=11, color=COLORS['text_muted']),
+        showgrid=True, gridwidth=1, gridcolor=COLORS['grid'],
+        showline=False, tickfont=dict(size=11, color=COLORS['text_muted'], family=FONT_DATA),
         tickprefix='$', tickformat=',.0f', side='right',
         row=1, col=1,
     )
-    price_range = _price_axis_range(df)
     if price_range:
         price_yaxis_options.update(range=price_range, tickformat=_price_tick_format(price_range))
     # price y-axis (right)
@@ -417,17 +393,24 @@ def create_stock_chart_figure(df, symbol, period=None):
         showgrid=False, showline=False, showticklabels=False,
         row=2, col=1,
     )
-    # price x-axis — hide ticks (shared with volume below)
+
+    spike_options = dict(
+        showspikes=True, spikemode='across', spikesnap='cursor',
+        spikethickness=1, spikedash='dot', spikecolor=COLORS['spike'],
+    )
+    # price x-axis — hide ticks (shared with volume below), crosshair spike on
     fig.update_xaxes(
-        showgrid=True, gridwidth=1, gridcolor='rgba(148, 163, 184, 0.08)',
+        showgrid=True, gridwidth=1, gridcolor=COLORS['grid'],
         showline=False, showticklabels=False,
         row=1, col=1,
+        **spike_options,
     )
     # volume x-axis — show date ticks here only
     xaxis_options = dict(
         showgrid=False, showline=False,
-        tickfont=dict(size=10, color=COLORS['text_muted']),
+        tickfont=dict(size=10, color=COLORS['text_muted'], family=FONT_DATA),
         row=2, col=1,
+        **spike_options,
     )
     if is_intraday:
         xaxis_options.update(type='date', tickformat='%I:%M %p')
@@ -442,94 +425,45 @@ def create_stock_chart_figure(df, symbol, period=None):
     return fig
 
 
-def _period_btn_style(is_active):
-    """Return inline style dict for a period pill button."""
-    return {
-        'borderRadius': '20px',
-        'padding': '5px 12px',
-        'fontSize': '0.78rem',
-        'fontWeight': '600' if is_active else '500',
-        'backgroundColor': 'rgba(56, 189, 248, 0.15)' if is_active else 'transparent',
-        'border': f'1px solid {COLORS["primary"]}' if is_active else f'1px solid {COLORS["border"]}',
-        'color': COLORS['primary'] if is_active else COLORS['text_muted'],
-        'cursor': 'pointer',
-        'lineHeight': '1.4',
-        'outline': 'none',
-    }
+def _period_btn_class(is_active):
+    """Return the CSS class string for a period button."""
+    return 'period-btn period-btn--active' if is_active else 'period-btn'
 
 
-def _period_badge(pct_change):
-    """Return (children_list, style_dict) for the active period badge."""
-    if pct_change > 0:
-        bg = COLORS['positive_light']
-        color = COLORS['positive']
-        text = f"+{pct_change:,.2f}%"
-    elif pct_change < 0:
-        bg = COLORS['negative_light']
-        color = COLORS['negative']
-        text = f"{pct_change:,.2f}%"
-    else:
-        bg = 'rgba(148, 163, 184, 0.1)'
-        color = COLORS['text_muted']
-        text = "0.00%"
-
-    children = [
-        # small caret pointing up toward the button
-        html.Div(style={
-            'width': '0', 'height': '0',
-            'borderLeft': '5px solid transparent',
-            'borderRight': '5px solid transparent',
-            'borderBottom': f'5px solid {bg}',
-            'margin': '3px auto 0 auto',
-        }),
-        html.Div(text, style={
-            'backgroundColor': bg,
-            'color': color,
-            'borderRadius': '10px',
-            'padding': '1px 8px',
-            'fontSize': '0.7rem',
-            'fontWeight': '600',
-            'whiteSpace': 'nowrap',
-        }),
-    ]
-    style = {'display': 'flex', 'flexDirection': 'column', 'alignItems': 'center'}
-    return children, style
-
-
-def build_period_toolbar(active_period, pct_change):
-    """Build the period-selector toolbar (buttons row + badge under active)."""
-    cols = []
-    for period in PERIODS:
-        is_active = period == active_period
-
-        badge_children, badge_style = (
-            _period_badge(pct_change) if is_active else ([], {'display': 'none'})
-        )
-
-        cols.append(html.Div([
+def build_period_toolbar(active_period):
+    """Build the segmented period-selector control."""
+    return html.Div(
+        [
             html.Button(
                 period_display_label(period),
                 id={'type': 'period-btn', 'index': period},
                 n_clicks=0,
                 title=period_button_title(period),
-                style=_period_btn_style(is_active),
-            ),
-            html.Div(
-                badge_children,
-                id={'type': 'period-badge', 'index': period},
-                style=badge_style,
-            ),
-        ], style={
-            'display': 'flex', 'flexDirection': 'column', 'alignItems': 'center',
-        }))
+                className=_period_btn_class(period == active_period),
+            )
+            for period in PERIODS
+        ],
+        className='period-seg',
+        role='group',
+    )
 
-    return html.Div(cols, style={
-        'display': 'flex',
-        'gap': '4px',
-        'justifyContent': 'flex-end',
-        'flexWrap': 'wrap',
-        'alignItems': 'flex-start',
-    })
+
+def build_change_readout(abs_change, pct_change, period):
+    """Chip + period tag shown next to the price, colored by direction."""
+    if abs_change > 0:
+        chip_class, arrow, sign = 'change-chip change-chip--up', '▲', '+'
+    elif abs_change < 0:
+        chip_class, arrow, sign = 'change-chip change-chip--down', '▼', '-'
+    else:
+        chip_class, arrow, sign = 'change-chip change-chip--flat', '', ''
+
+    label = f"{sign}${abs(abs_change):,.2f} ({pct_change:+.2f}%)"
+    chip_children = ([html.Span(arrow, className='chip-arrow')] if arrow else []) + [label]
+
+    return [
+        html.Span(chip_children, className=chip_class),
+        html.Span(period_display_label(period), className='readout-period'),
+    ]
 
 
 # Set up logging
@@ -541,8 +475,7 @@ def create_dash_app(flask_app):
     dash_app = dash.Dash(__name__, server=flask_app, url_base_pathname='/dash/',
                         external_stylesheets=[
                             dbc.themes.BOOTSTRAP,
-                            'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
-                            '/assets/custom.css'],
+                            'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap'],
                         assets_folder='assets',
                         suppress_callback_exceptions=True)
 
@@ -556,180 +489,85 @@ def create_dash_app(flask_app):
 def empty_state(icon, message, sub=None):
     """Muted placeholder shown before a container has been populated by a callback."""
     children = [
-        html.Div(icon, style={
-            'fontSize': '2.2rem', 'marginBottom': '12px', 'opacity': '0.6',
-        }),
-        html.Div(message, style={
-            'fontSize': '0.95rem', 'fontWeight': '500', 'color': COLORS['text_secondary'],
-        }),
+        html.Div(icon, className='empty-state-icon'),
+        html.Div(message, className='empty-state-title'),
     ]
     if sub:
-        children.append(html.Div(sub, style={
-            'fontSize': '0.85rem', 'color': COLORS['text_muted'], 'marginTop': '6px',
-        }))
-    return html.Div(children, style={
-        'display': 'flex', 'flexDirection': 'column', 'alignItems': 'center',
-        'justifyContent': 'center', 'textAlign': 'center',
-        'padding': '40px 20px', 'minHeight': '160px',
-    })
+        children.append(html.Div(sub, className='empty-state-sub'))
+    return html.Div(children, className='empty-state')
 
 
 def create_layout():
     return dbc.Container([
-        # Header Section
+        # Search toolbar
         html.Div([
-            html.H1("StockWatch", style={
-                'fontSize': '2.5rem',
-                'fontWeight': '700',
-                'background': 'linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%)',
-                'WebkitBackgroundClip': 'text',
-                'WebkitTextFillColor': 'transparent',
-                'backgroundClip': 'text',
-                'margin': '0'
-            }),
-        ], style={
-            'marginBottom': '30px',
-            'paddingBottom': '20px',
-            'borderBottom': f'1px solid {COLORS["border"]}'
-        }),
+            dbc.InputGroup([
+                dbc.Input(id='stock-input',
+                        type='text',
+                        placeholder='Search ticker — e.g. AAPL',
+                        autoComplete='off'),
+                dbc.Button('Search', id='search-button', className='sw-btn--primary'),
+            ], className='search-group'),
+        ], className='toolbar'),
 
-        # Main Content Section
-        dbc.Row([
-            # Left Sidebar
-            dbc.Col([
-                # Search Section
-                html.Div([
-                    html.H5("Search Stocks", style={
-                        'fontSize': '1.2rem',
-                        'fontWeight': '600',
-                        'color': COLORS['text'],
-                        'marginBottom': '16px'
-                    }),
-                    dbc.InputGroup([
-                        dbc.Input(id='stock-input',
-                                type='text',
-                                placeholder='Enter ticker (e.g., AAPL)...',
-                                style={
-                                    'backgroundColor': 'rgba(15, 23, 42, 0.5)',
-                                    'border': f'1px solid {COLORS["border"]}',
-                                    'borderRadius': '8px 0 0 8px',
-                                    'color': COLORS['text'],
-                                    'padding': '12px 16px',
-                                    'fontSize': '0.95rem'
-                                }),
-                        dbc.Button('Search',
-                                id='search-button',
-                                style={
-                                    'backgroundColor': COLORS['primary'],
-                                    'border': 'none',
-                                    'borderRadius': '0 8px 8px 0',
-                                    'color': '#0f172a',
-                                    'fontWeight': '600',
-                                    'padding': '12px 20px'
-                                })
-                    ], className='mb-4'),
-                    dcc.Loading(
-                        id='loading-stock-data',
-                        type='circle',
-                        color=COLORS['primary'],
-                        children=html.Div(id='stock-data'),
+        # Chart hero
+        html.Div([
+            dcc.Loading(
+                id='loading-chart',
+                type='circle',
+                color=ACCENT,
+                children=html.Div(
+                    id='stock-chart-container',
+                    className='chart-container',
+                    children=empty_state(
+                        '\U0001F4C8',
+                        'Search a ticker to begin',
+                        'Try AAPL, MSFT, or SNDK — press Enter to search.',
                     ),
-                ], style={
-                    'backgroundColor': COLORS['card'],
-                    'borderRadius': '12px',
-                    'padding': '24px',
-                    'border': f'1px solid {COLORS["border"]}',
-                    'backdropFilter': 'blur(10px)',
-                    'WebkitBackdropFilter': 'blur(10px)',
-                    'marginBottom': '20px'
-                }),
+                ),
+            ),
+        ], className='sw-card chart-card'),
 
-                # Watchlist Section
+        # Details (left) + watchlists (right)
+        dbc.Row([
+            dbc.Col(
+                dcc.Loading(
+                    id='loading-stock-data',
+                    type='circle',
+                    color=ACCENT,
+                    children=html.Div(id='stock-data'),
+                ),
+                lg=8, md=12, className='mb-4',
+            ),
+            dbc.Col(
                 html.Div([
-                    html.H5("Watchlists", style={
-                        'fontSize': '1.2rem',
-                        'fontWeight': '600',
-                        'color': COLORS['text'],
-                        'marginBottom': '16px'
-                    }),
+                    html.H2('Watchlists', className='panel-title'),
                     dcc.Dropdown(id='watchlist-dropdown',
                             options=[],
                             placeholder='Select a watchlist',
-                            className='mb-3 dark-dropdown',
-                            style={'minHeight': '44px'}),
+                            className='mb-3 dark-dropdown'),
                     dbc.InputGroup([
                         dbc.Input(id='new-watchlist-input',
                                 type='text',
-                                placeholder='New watchlist name...',
-                                style={
-                                    'backgroundColor': 'rgba(15, 23, 42, 0.5)',
-                                    'border': f'1px solid {COLORS["border"]}',
-                                    'borderRadius': '8px 0 0 8px',
-                                    'color': COLORS['text'],
-                                    'padding': '12px 16px',
-                                    'fontSize': '0.95rem'
-                                }),
-                        dbc.Button('Create',
-                                id='create-watchlist-button',
-                                style={
-                                    'backgroundColor': 'rgba(56, 189, 248, 0.1)',
-                                    'border': f'1px solid rgba(56, 189, 248, 0.3)',
-                                    'borderRadius': '0 8px 8px 0',
-                                    'color': COLORS['primary'],
-                                    'fontWeight': '500',
-                                    'padding': '12px 20px'
-                                })
-                    ], className='mb-4'),
+                                placeholder='New watchlist name'),
+                        dbc.Button('Create', id='create-watchlist-button', className='sw-btn--ghost'),
+                    ], className='mb-3'),
                     dcc.Loading(
                         id='loading-watchlist',
                         type='circle',
-                        color=COLORS['primary'],
+                        color=ACCENT,
                         children=html.Div(
                             id='watchlist-section',
                             children=empty_state(
-                                '\u2605',
+                                '★',
                                 'No watchlist selected',
                                 'Create one above or pick an existing watchlist.',
                             ),
                         ),
                     ),
-                ], style={
-                    'backgroundColor': COLORS['card'],
-                    'borderRadius': '12px',
-                    'padding': '24px',
-                    'border': f'1px solid {COLORS["border"]}',
-                    'backdropFilter': 'blur(10px)',
-                    'WebkitBackdropFilter': 'blur(10px)'
-                })
-            ], lg=4, md=12, className='mb-4'),
-
-            dbc.Col([
-                # Chart Section
-                html.Div([
-                    dcc.Loading(
-                        id='loading-chart',
-                        type='circle',
-                        color=COLORS['primary'],
-                        children=html.Div(
-                            id='stock-chart-container',
-                            className='chart-container',
-                            style={'minHeight': '480px'},
-                            children=empty_state(
-                                '\U0001F4C8',
-                                'Search a ticker to begin',
-                                'Try AAPL, MSFT, or SNDK — press Enter to search.',
-                            ),
-                        ),
-                    ),
-                ], style={
-                    'backgroundColor': COLORS['card'],
-                    'borderRadius': '12px',
-                    'padding': '24px',
-                    'border': f'1px solid {COLORS["border"]}',
-                    'backdropFilter': 'blur(10px)',
-                    'WebkitBackdropFilter': 'blur(10px)',
-                }),
-            ], lg=8, md=12)
+                ], className='sw-card watchlist-card'),
+                lg=4, md=12, className='mb-4',
+            ),
         ], className='g-4'),
 
         # Data stores for chart period selection
@@ -749,10 +587,7 @@ def create_layout():
 
         # Update Interval
         dcc.Interval(id='watchlist-interval', interval=30*1000, n_intervals=0)
-    ], fluid=True, className='py-4 dark-theme-container', style={
-        'maxWidth': '1600px',
-        'minHeight': '100vh'
-    })
+    ], fluid=True, className='py-2 sw-page')
 
 
 def register_callbacks(dash_app):
@@ -856,7 +691,7 @@ def register_callbacks(dash_app):
                 # Reset every "Add" button text to its default — the watchlist
                 # list is fully re-rendered below, and this keeps the search-
                 # results "Add" button honest on repeat adds.
-                reset_texts = ['Add'] * num_add_buttons
+                reset_texts = [ADD_TO_WATCHLIST_LABEL] * num_add_buttons
                 return (update_watchlist_section(selected_watchlist_id), selected_watchlist_id,
                         reset_texts, toast(f'Added {stock_symbol} to "{watchlist.name}".', 'success'))
 
@@ -964,7 +799,7 @@ def register_callbacks(dash_app):
 
         # --- Check for valid click triggers ---
 
-        # Scenario 1: A watchlist stock span was clicked
+        # Scenario 1: A watchlist stock button was clicked
         if triggered_prop.endswith('.n_clicks') and '"type":"load-watchlist-stock"' in triggered_prop:
             if triggered_value is not None and triggered_value > 0:
                 json_part = triggered_prop.split('.')[0]
@@ -991,39 +826,39 @@ def register_callbacks(dash_app):
         stock_info, df = fetch_and_display_stock_data(clicked_stock)
 
         if df.empty:
-            chart_container = html.Div(
-                f"No chart data available for {clicked_stock}",
-                style={'color': COLORS['text_muted'], 'padding': '40px', 'textAlign': 'center'},
+            chart_container = empty_state(
+                '⚠',
+                f'No chart data available for {clicked_stock}',
+                'Check the ticker symbol, or wait a moment if data is rate-limited.',
             )
             stock_input_update = clicked_stock if trigger_source == 'search' else no_update
-            return stock_info, chart_container, stock_input_update, no_update, no_update, no_update
+            details = stock_info if not isinstance(stock_info, dict) else no_update
+            return details, chart_container, stock_input_update, no_update, no_update, no_update
 
         intraday_data = []
 
-        # Default period is 1Y; build initial chart and toolbar
+        # Default period is 1Y; build initial chart, price readout, and toolbar
         default_period = '1Y'
         filtered_df = filter_data_for_period(df, default_period)
-        pct_change = calculate_period_change(filtered_df)
+        abs_change, pct_change = period_price_change(filtered_df)
         chart_fig = create_stock_chart_figure(filtered_df, clicked_stock, period=default_period)
-        toolbar = build_period_toolbar(default_period, pct_change)
 
         chart_container = html.Div([
-            # Top row: title (left) + period buttons (right)
+            stock_info['header'],
             html.Div([
-                html.Div(f"{clicked_stock} Stock Price", style={
-                    'fontSize': '1.3rem',
-                    'fontWeight': '600',
-                    'color': COLORS['text'],
-                }),
-                toolbar,
-            ], style={
-                'display': 'flex',
-                'justifyContent': 'space-between',
-                'alignItems': 'flex-start',
-                'flexWrap': 'wrap',
-                'gap': '10px',
-                'marginBottom': '8px',
-            }),
+                html.Div([
+                    html.Div([
+                        html.Span(f"${stock_info['price']:,.2f}", className='price-lg'),
+                        html.Div(
+                            build_change_readout(abs_change, pct_change, default_period),
+                            id='chart-change-readout',
+                            className='readout',
+                        ),
+                    ], className='price-row'),
+                    html.Span('At close', className='price-caption'),
+                ]),
+                build_period_toolbar(default_period),
+            ], className='chart-controls'),
             dcc.Graph(
                 id='stock-chart',
                 figure=chart_fig,
@@ -1038,20 +873,20 @@ def register_callbacks(dash_app):
                     ],
                 },
             ),
-        ], style={'backgroundColor': 'transparent', 'borderRadius': '12px'})
+        ])
 
         stock_input_update = clicked_stock if trigger_source == 'search' else no_update
-        return stock_info, chart_container, stock_input_update, df.to_dict('records'), intraday_data, clicked_stock
+        return (stock_info['details'], chart_container, stock_input_update,
+                df.to_dict('records'), intraday_data, clicked_stock)
 
-    # --- Period-button callback: filter data and update chart + badge ---
+    # --- Period-button callback: filter data and update chart + readout ---
     # `stock-intraday-store` is also written by `update_stock_data`; declaring
     # this Output as a duplicate lets both callbacks target the same store
     # without Dash raising DuplicateCallback at registration time.
     @dash_app.callback(
         [Output('stock-chart', 'figure'),
-         Output({'type': 'period-btn', 'index': ALL}, 'style'),
-         Output({'type': 'period-badge', 'index': ALL}, 'children'),
-         Output({'type': 'period-badge', 'index': ALL}, 'style'),
+         Output({'type': 'period-btn', 'index': ALL}, 'className'),
+         Output('chart-change-readout', 'children'),
          Output('stock-intraday-store', 'data', allow_duplicate=True)],
         Input({'type': 'period-btn', 'index': ALL}, 'n_clicks'),
         [State('stock-ohlcv-store', 'data'),
@@ -1069,6 +904,11 @@ def register_callbacks(dash_app):
         if not triggered_id or not isinstance(triggered_id, dict):
             raise dash.exceptions.PreventUpdate
 
+        # Re-rendering the chart container recreates the period buttons, which
+        # fires this callback with n_clicks=0. Only act on a real click.
+        if not ctx.triggered[0].get('value'):
+            raise dash.exceptions.PreventUpdate
+
         active_period = triggered_id['index']
         intraday_update = no_update
         if active_period == '1D':
@@ -1076,29 +916,19 @@ def register_callbacks(dash_app):
                 intraday_data = get_intraday_stock_data(symbol)
                 intraday_update = intraday_data
             filtered_df = pd.DataFrame(intraday_data or [])
-            pct_change = calculate_intraday_period_change(filtered_df)
+            abs_change, pct_change = period_price_change(filtered_df, is_intraday=True)
         else:
             df = pd.DataFrame(stored_data)
             filtered_df = filter_data_for_period(df, active_period)
-            pct_change = calculate_period_change(filtered_df)
+            abs_change, pct_change = period_price_change(filtered_df)
         fig = create_stock_chart_figure(filtered_df, symbol, period=active_period)
 
-        btn_styles = []
-        badge_children_list = []
-        badge_styles = []
-        for btn_id in btn_ids:
-            period = btn_id['index']
-            is_active = period == active_period
-            btn_styles.append(_period_btn_style(is_active))
+        btn_classes = [
+            _period_btn_class(btn_id['index'] == active_period) for btn_id in btn_ids
+        ]
+        readout = build_change_readout(abs_change, pct_change, active_period)
 
-            if is_active:
-                children, style = _period_badge(pct_change)
-            else:
-                children, style = [], {'display': 'none'}
-            badge_children_list.append(children)
-            badge_styles.append(style)
-
-        return fig, btn_styles, badge_children_list, badge_styles, intraday_update
+        return fig, btn_classes, readout, intraday_update
 
 
 def create_new_stock(stock_symbol):
@@ -1118,7 +948,7 @@ def create_new_stock(stock_symbol):
 
 def update_watchlist_section(watchlist_id):
     if not current_user.is_authenticated:
-        return html.P("Please log in to view your watchlists.")
+        return empty_state('\U0001F512', 'Please log in to view your watchlists.')
 
     watchlists = current_user.watchlists.all()
     if not watchlists:
@@ -1128,171 +958,95 @@ def update_watchlist_section(watchlist_id):
         watchlist = Watchlist.query.get(watchlist_id)
         if watchlist:
             return create_watchlist_content(watchlist)
-        else:
-            return html.P(
-                "Select a watchlist to view stocks or create a new watchlist.")
-    else:
-        return html.P(
-            "Select a watchlist to view stocks or create a new watchlist.")
+
+    return empty_state(
+        '★',
+        'No watchlist selected',
+        'Pick a watchlist above to view its stocks.',
+    )
 
 
 def create_empty_watchlist_section():
-    return html.Div([
-        html.Span("📋", style={'fontSize': '32px', 'marginBottom': '12px', 'display': 'block'}),
-        html.P("Create your first watchlist above to start tracking stocks.", style={
-            'color': COLORS['text_muted'],
-            'fontSize': '0.9rem'
-        })
-    ], style={
-        'backgroundColor': 'rgba(30, 41, 59, 0.5)',
-        'borderRadius': '12px',
-        'padding': '24px 20px',
-        'border': f'1px solid {COLORS["border"]}',
-        'textAlign': 'center'
-    })
+    return empty_state(
+        '\U0001F4CB',
+        'No watchlists yet',
+        'Create your first watchlist above to start tracking stocks.',
+    )
 
 
 def create_watchlist_content(watchlist):
-    return html.Div([
-        # Header
+    stocks = list(watchlist.stocks)
+
+    rows = [
         html.Div([
             html.Div([
-                html.Div(style={
-                    'width': '3px',
-                    'height': '18px',
-                    'background': f'linear-gradient(180deg, {COLORS["primary"]} 0%, {COLORS["primary_dark"]} 100%)',
-                    'borderRadius': '2px',
-                    'marginRight': '10px'
-                }),
-                html.H5(watchlist.name, className="mb-0",
-                    style={
-                        'fontWeight': '600',
-                        'color': COLORS['text'],
-                        'fontSize': '1rem'
-                    })
-            ], style={'display': 'flex', 'alignItems': 'center'}),
+                html.Span(stock.symbol, className='watchlist-ticker'),
+                html.Span(stock.name or '', className='watchlist-company'),
+            ], className='watchlist-row-info'),
+            html.Div([
+                dbc.Button(
+                    'View',
+                    id={'type': 'load-watchlist-stock', 'index': stock.symbol},
+                    size='sm',
+                    className='sw-btn--ghost sw-btn--sm',
+                ),
+                dbc.Button(
+                    'Remove',
+                    id={'type': 'remove-from-watchlist', 'index': stock.id},
+                    size='sm',
+                    className='sw-btn--danger sw-btn--sm',
+                ),
+            ], className='row-actions'),
+        ], className='watchlist-row')
+        for stock in stocks
+    ]
+
+    return html.Div([
+        html.Div([
+            html.H5(watchlist.name, className='watchlist-name'),
             dbc.Button(
                 'Delete',
                 id={'type': 'delete-watchlist', 'index': watchlist.id},
                 size='sm',
-                style={
-                    'borderRadius': '6px',
-                    'padding': '6px 12px',
-                    'fontWeight': '500',
-                    'fontSize': '0.8rem',
-                    'backgroundColor': 'rgba(248, 113, 113, 0.1)',
-                    'border': f'1px solid rgba(248, 113, 113, 0.3)',
-                    'color': COLORS['negative']
-                }
-            )
-        ], style={
-            'padding': '16px 20px',
-            'background': 'rgba(15, 23, 42, 0.5)',
-            'borderBottom': f'1px solid {COLORS["border"]}',
-            'display': 'flex',
-            'justifyContent': 'space-between',
-            'alignItems': 'center'
-        }),
+                className='sw-btn--danger sw-btn--sm',
+            ),
+        ], className='watchlist-panel-header'),
+        html.Div(rows) if rows else empty_state(
+            '\U0001F4CA',
+            'No stocks added yet',
+            'Search for stocks and add them here.',
+        ),
+    ], className='watchlist-panel')
 
-        # Content
-        html.Div([
-            html.Div([
-                html.Div([
-                    # Left side: Stock info
-                    html.Div([
-                        html.Span(stock.symbol,
-                                style={
-                                    'fontWeight': '700',
-                                    'fontSize': '1rem',
-                                    'color': COLORS['primary'],
-                                    'marginRight': '10px',
-                                    'cursor': 'pointer'
-                                }),
-                        html.Span(f"{stock.name}",
-                                style={
-                                    'fontSize': '0.85rem',
-                                    'color': COLORS['text_muted']
-                                })
-                    ], style={
-                        'flex': '1',
-                        'minWidth': '0',
-                        'overflow': 'hidden',
-                        'textOverflow': 'ellipsis',
-                        'whiteSpace': 'nowrap'
-                    }),
 
-                    # Right side: Buttons
-                    html.Div([
-                        dbc.Button(
-                            'View',
-                            id={'type': 'load-watchlist-stock', 'index': stock.symbol},
-                            size='sm',
-                            style={
-                                'borderRadius': '6px',
-                                'padding': '6px 12px',
-                                'fontWeight': '500',
-                                'fontSize': '0.8rem',
-                                'backgroundColor': 'rgba(56, 189, 248, 0.1)',
-                                'border': f'1px solid rgba(56, 189, 248, 0.3)',
-                                'color': COLORS['primary']
-                            }
-                        ),
-                        dbc.Button(
-                            'Remove',
-                            id={'type': 'remove-from-watchlist', 'index': stock.id},
-                            size='sm',
-                            style={
-                                'borderRadius': '6px',
-                                'padding': '6px 12px',
-                                'fontWeight': '500',
-                                'fontSize': '0.8rem',
-                                'backgroundColor': 'rgba(248, 113, 113, 0.1)',
-                                'border': f'1px solid rgba(248, 113, 113, 0.3)',
-                                'color': COLORS['negative']
-                            }
-                        )
-                    ], style={
-                        'display': 'flex',
-                        'gap': '8px',
-                        'alignItems': 'center'
-                    })
-                ], style={
-                    'display': 'flex',
-                    'justifyContent': 'space-between',
-                    'alignItems': 'center',
-                    'width': '100%',
-                    'padding': '12px 16px',
-                    'borderBottom': f'1px solid {COLORS["border"]}',
-                    'transition': 'background-color 0.2s ease'
-                }) for stock in watchlist.stocks
-            ]) if watchlist.stocks else
-            html.Div([
-                html.Div([
-                    html.Span("📊", style={'fontSize': '28px', 'marginBottom': '10px', 'display': 'block'}),
-                    html.P("No stocks added yet",
-                        style={
-                            'fontSize': '0.95rem',
-                            'fontWeight': '500',
-                            'color': COLORS['text'],
-                            'marginBottom': '4px'
-                        }),
-                    html.P("Search for stocks and add them here.",
-                        style={
-                            'fontSize': '0.85rem',
-                            'color': COLORS['text_muted'],
-                            'margin': '0'
-                        })
-                ], style={'textAlign': 'center'})
-            ], style={'padding': '30px 16px'})
-        ])
-    ], style={
-        'border': f'1px solid {COLORS["border"]}',
-        'borderRadius': '12px',
-        'backgroundColor': 'rgba(30, 41, 59, 0.5)',
-        'overflow': 'hidden'
-    })
+def _format_market_cap(market_cap):
+    """Compact terminal-style market cap: $3.45T / $12.30B / $450.00M."""
+    if not isinstance(market_cap, (int, float)) or market_cap <= 0:
+        return "N/A"
+    if market_cap >= 1e12:
+        return f"${market_cap / 1e12:,.2f}T"
+    if market_cap >= 1e9:
+        return f"${market_cap / 1e9:,.2f}B"
+    if market_cap >= 1e6:
+        return f"${market_cap / 1e6:,.2f}M"
+    return f"${market_cap:,.2f}"
+
+
+def _stat_cell(label, value_children, large=False):
+    value_class = 'stat-value stat-value--lg' if large else 'stat-value'
+    return html.Div([
+        html.Div(label, className='stat-label'),
+        html.Div(value_children, className=value_class),
+    ], className='stat-cell')
+
 
 def fetch_and_display_stock_data(stock_symbol):
+    """Fetch history + details for a symbol.
+
+    Returns (info, df): on success `info` is a dict with 'header' (chart-card
+    header row), 'details' (stat grid + about card), and 'price'; on failure
+    `info` is a renderable error/warning component and `df` is empty.
+    """
     try:
         # Fetch up to 10 years of daily OHLCV data so all period buttons
         # (1D through MAX) can slice from the same dataset.
@@ -1301,425 +1055,135 @@ def fetch_and_display_stock_data(stock_symbol):
         historical_data = get_stock_data(stock_symbol, start_date, end_date)
 
         if not historical_data:
-            return html.Div(
-                [
-                    html.P(
-                        f"No historical data available for {stock_symbol}",
-                        style={'marginBottom': '8px', 'fontWeight': '500'},
-                    ),
-                    html.P(
-                        "Market data may be temporarily rate-limited. "
-                        "Please wait a moment and try again.",
-                        style={'fontSize': '0.85rem', 'color': COLORS['text_muted'], 'margin': '0'},
-                    ),
-                ],
-                className="alert alert-warning m-3 p-3",
-            ), pd.DataFrame()
+            return html.Div([
+                html.P(f"No historical data available for {stock_symbol}"),
+                html.P(
+                    "Market data may be temporarily rate-limited. "
+                    "Please wait a moment and try again."
+                ),
+            ], className='warn-panel'), pd.DataFrame()
 
         # Convert to DataFrame
         df = pd.DataFrame(historical_data)
 
-        if 'close' in df.columns:
-            # Get current price from service function
-            current_price = get_stock_price(stock_symbol)
+        if 'close' not in df.columns:
+            return html.Div([
+                html.P(f"Insufficient data for {stock_symbol}"),
+                html.P("The market data response was missing price history."),
+            ], className='warn-panel'), pd.DataFrame()
 
-            # Ensure we have a valid current price
-            if current_price is None and not df.empty:
-                current_price = df['close'].iloc[-1]
-            elif current_price is None:
-                current_price = 0
+        # Get current price from service function
+        current_price = get_stock_price(stock_symbol)
 
-            # Calculate change
-            previous_close = current_price  # Default fallback
-            change_str = "0.00%"
-            change_value = 0
-            dollar_change = 0
+        # Ensure we have a valid current price
+        if current_price is None and not df.empty:
+            current_price = df['close'].iloc[-1]
+        elif current_price is None:
+            current_price = 0
 
-            # Calculate previous close and percent change
-            if len(df) > 1 and current_price is not None:
-                previous_close = df['close'].iloc[-2]
-                # Avoid division by zero
-                if previous_close != 0:
-                    change_value = ((current_price - previous_close) / previous_close) * 100
-                    dollar_change = current_price - previous_close
-                    change_str = f"{change_value:+.2f}%"
-                else:
-                    change_str = "0.00%"
+        # Calculate day-over-day change against the previous close
+        previous_close = current_price  # Default fallback
+        change_str = "0.00%"
+        change_value = 0
+        dollar_change = 0
 
-            # Get company details
-            company_details = get_company_details(stock_symbol)
-            company_name = company_details.get('name', stock_symbol) if company_details else stock_symbol
+        if len(df) > 1 and current_price is not None:
+            previous_close = df['close'].iloc[-2]
+            # Avoid division by zero
+            if previous_close != 0:
+                change_value = ((current_price - previous_close) / previous_close) * 100
+                dollar_change = current_price - previous_close
+                change_str = f"{change_value:+.2f}%"
 
-            # Get company logo
-            icon_url = company_details.get('icon_url', "") if company_details else ""
-            logo_url = company_details.get('logo_url', "") if company_details else ""
+        # Get company details
+        company_details = get_company_details(stock_symbol)
+        company_name = company_details.get('name', stock_symbol) if company_details else stock_symbol
 
-            # Choose the best logo - prefer icon_url if available
-            display_logo = None
-            if icon_url:
-                display_logo = icon_url
-            elif logo_url:
-                display_logo = logo_url
+        # Choose the best logo - prefer icon_url if available
+        icon_url = company_details.get('icon_url', "") if company_details else ""
+        logo_url = company_details.get('logo_url', "") if company_details else ""
+        display_logo = icon_url or logo_url
 
-            # Additional fallback
-            if not display_logo:
-                display_logo = f"https://eodhistoricaldata.com/img/logos/US/{stock_symbol}.png"
+        # Calculate 52-week range from the last year of data, not the full history.
+        fifty_two_week_range = calculate_fifty_two_week_range(df)
 
-            # Use a default image if no logo is available
-            if not display_logo:
-                display_logo = "/assets/default_stock_icon.svg"
+        market_cap_str = _format_market_cap(
+            company_details.get('market_cap') if company_details else None
+        )
+        website = company_details.get('website', None) if company_details else None
+        exchange = company_details.get('exchange', None) if company_details else None
+        description = company_details.get('description', '') if company_details else ''
 
-            # Calculate 52-week range from the last year of data, not the full history.
-            fifty_two_week_range = calculate_fifty_two_week_range(df)
-
-            # Format market cap
-            market_cap = company_details.get('market_cap', "N/A") if company_details else "N/A"
-            market_cap_str = "N/A"
-            if isinstance(market_cap, (int, float)) and market_cap > 0:
-                if market_cap >= 1e12:
-                    market_cap_str = f"${market_cap/1e12:.2f} Trillion"
-                elif market_cap >= 1e9:
-                    market_cap_str = f"${market_cap/1e9:.2f} Billion"
-                elif market_cap >= 1e6:
-                    market_cap_str = f"${market_cap/1e6:.2f} Million"
-                else:
-                    market_cap_str = f"${market_cap:,.2f}"
-
-            # Format website URL
-            website = company_details.get('website', None) if company_details else None
-            website_display = website if website else "N/A"
-
-            # Format listing date
-            list_date = company_details.get('list_date', None) if company_details else None
-            list_date_display = list_date if list_date else "N/A"
-
-            # Determine price change styling for dark theme
-            price_change_style = {
-                'display': 'inline-flex',
-                'alignItems': 'center',
-                'gap': '3px',
-                'padding': '4px 10px',
-                'borderRadius': '6px',
-                'fontWeight': '600',
-                'fontSize': '0.9rem',
-                'verticalAlign': 'middle'
-            }
-            if change_value > 0:
-                price_change_style['backgroundColor'] = 'rgba(74, 222, 128, 0.15)'
-                price_change_style['color'] = COLORS['positive']
-                arrow = "↑"
-            elif change_value < 0:
-                price_change_style['backgroundColor'] = 'rgba(248, 113, 113, 0.15)'
-                price_change_style['color'] = COLORS['negative']
-                arrow = "↓"
-            else:
-                price_change_style['backgroundColor'] = 'rgba(148, 163, 184, 0.1)'
-                price_change_style['color'] = COLORS['text_muted']
-                arrow = ""
-
-            # Create dark glassmorphism layout
-            stock_info = html.Div([
-                # Company Header Card with dark styling
-                html.Div([
-                    html.Div([
-                        # Left side: Logo and Company Info
-                        html.Div([
-                            # Logo with dark theme styling
-                            html.Img(
-                                src=display_logo,
-                                alt=stock_symbol,
-                                style=CUSTOM_STYLES['stock_logo'],
-                                className='company-logo'
-                            ) if display_logo else html.Div(
-                                html.Span(stock_symbol[0].upper(),
-                                        style={
-                                            'fontSize': '24px',
-                                            'fontWeight': '700',
-                                            'color': '#0f172a'
-                                        }),
-                                style={
-                                    'background': f'linear-gradient(135deg, {COLORS["primary"]} 0%, {COLORS["primary_dark"]} 100%)',
-                                    'borderRadius': '12px',
-                                    'display': 'flex',
-                                    'alignItems': 'center',
-                                    'justifyContent': 'center',
-                                    'width': '56px',
-                                    'height': '56px',
-                                    'marginRight': '16px',
-                                    'boxShadow': '0 4px 15px rgba(56, 189, 248, 0.3)'
-                                }
-                            ),
-                            # Company Info
-                            html.Div([
-                                html.H2(stock_symbol, style={
-                                    'margin': '0 0 4px 0',
-                                    'fontWeight': '700',
-                                    'fontSize': '1.8rem',
-                                    'letterSpacing': '-0.5px',
-                                    'background': 'linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%)',
-                                    'WebkitBackgroundClip': 'text',
-                                    'WebkitTextFillColor': 'transparent',
-                                    'backgroundClip': 'text'
-                                }),
-                                html.P(company_name, style={
-                                    'margin': '0',
-                                    'fontSize': '0.95rem',
-                                    'color': COLORS['text_muted'],
-                                    'fontWeight': '400'
-                                })
-                            ])
-                        ], style={
-                            'display': 'flex',
-                            'alignItems': 'center',
-                            'flex': '1'
-                        }),
-                        # Right side: Add to Watchlist Button
-                        html.Div([
-                            dbc.Button([
-                                html.Span("+ ", style={'fontWeight': '400', 'marginRight': '4px'}),
-                                "Add to Watchlist"
-                            ],
-                                id={'type': 'add-to-watchlist', 'index': stock_symbol},
-                                style={
-                                    'borderRadius': '8px',
-                                    'padding': '10px 20px',
-                                    'fontWeight': '500',
-                                    'fontSize': '0.9rem',
-                                    'backgroundColor': 'rgba(74, 222, 128, 0.1)',
-                                    'border': '1px solid rgba(74, 222, 128, 0.3)',
-                                    'color': COLORS['positive'],
-                                    'whiteSpace': 'nowrap',
-                                    'transition': 'all 0.3s ease'
-                                }
-                            )
-                        ])
-                    ], style={
-                        'display': 'flex',
-                        'alignItems': 'center',
-                        'justifyContent': 'space-between',
-                        'gap': '16px',
-                        'flexWrap': 'wrap'
-                    })
-                ], style={
-                    'backgroundColor': COLORS['card'],
-                    'borderRadius': '12px',
-                    'padding': '20px',
-                    'marginBottom': '16px',
-                    'border': f'1px solid {COLORS["border"]}',
-                    'backdropFilter': 'blur(10px)',
-                    'WebkitBackdropFilter': 'blur(10px)'
-                }),
-
-                # Company Details Card with dark theme styling
-                html.Div([
-                    # Section title
-                    html.Div("Stock Details", style={
-                        'fontSize': '0.9rem',
-                        'color': COLORS['primary'],
-                        'textTransform': 'uppercase',
-                        'letterSpacing': '1px',
-                        'marginBottom': '16px',
-                        'fontWeight': '600'
-                    }),
-                    
-                    # Info grid
-                    html.Div([
-                        # Current Price
-                        html.Div([
-                            html.Div("Current Price", style={
-                                'fontSize': '0.75rem',
-                                'color': COLORS['text_muted'],
-                                'textTransform': 'uppercase',
-                                'letterSpacing': '0.5px',
-                                'marginBottom': '6px'
-                            }),
-                            html.Div([
-                                html.Span(f"${current_price:.2f}", style={
-                                    'fontSize': '1.4rem',
-                                    'fontWeight': '700',
-                                    'color': COLORS['text'],
-                                    'marginRight': '10px',
-                                    'fontFamily': "'Monaco', 'Courier New', monospace"
-                                }),
-                                html.Span([
-                                    html.Span(f"{arrow} ", style={'fontSize': '0.75rem'}),
-                                    html.Span(f"{dollar_change:+.2f} ({change_str})")
-                                ], style=price_change_style)
-                            ])
-                        ], style={
-                            'backgroundColor': 'rgba(30, 41, 59, 0.5)',
-                            'padding': '12px 16px',
-                            'borderRadius': '8px',
-                        }),
-                        
-                        # Previous Close
-                        html.Div([
-                            html.Div("Previous Close", style={
-                                'fontSize': '0.75rem',
-                                'color': COLORS['text_muted'],
-                                'textTransform': 'uppercase',
-                                'letterSpacing': '0.5px',
-                                'marginBottom': '6px'
-                            }),
-                            html.Div(f"${previous_close:.2f}", style={
-                                'fontSize': '1.1rem',
-                                'fontWeight': '600',
-                                'color': COLORS['text'],
-                                'fontFamily': "'Monaco', 'Courier New', monospace"
-                            })
-                        ], style={
-                            'backgroundColor': 'rgba(30, 41, 59, 0.5)',
-                            'padding': '12px 16px',
-                            'borderRadius': '8px',
-                        }),
-                        
-                        # 52-Week Range
-                        html.Div([
-                            html.Div("52-Week Range", style={
-                                'fontSize': '0.75rem',
-                                'color': COLORS['text_muted'],
-                                'textTransform': 'uppercase',
-                                'letterSpacing': '0.5px',
-                                'marginBottom': '6px'
-                            }),
-                            html.Div(fifty_two_week_range, style={
-                                'fontSize': '1.1rem',
-                                'fontWeight': '600',
-                                'color': COLORS['text'],
-                                'fontFamily': "'Monaco', 'Courier New', monospace"
-                            })
-                        ], style={
-                            'backgroundColor': 'rgba(30, 41, 59, 0.5)',
-                            'padding': '12px 16px',
-                            'borderRadius': '8px',
-                        }),
-                        
-                        # Market Cap
-                        html.Div([
-                            html.Div("Market Cap", style={
-                                'fontSize': '0.75rem',
-                                'color': COLORS['text_muted'],
-                                'textTransform': 'uppercase',
-                                'letterSpacing': '0.5px',
-                                'marginBottom': '6px'
-                            }),
-                            html.Div(market_cap_str, style={
-                                'fontSize': '1.1rem',
-                                'fontWeight': '600',
-                                'color': COLORS['text'],
-                                'fontFamily': "'Monaco', 'Courier New', monospace"
-                            })
-                        ], style={
-                            'backgroundColor': 'rgba(30, 41, 59, 0.5)',
-                            'padding': '12px 16px',
-                            'borderRadius': '8px',
-                        }),
-                        
-                        # Exchange
-                        html.Div([
-                            html.Div("Exchange", style={
-                                'fontSize': '0.75rem',
-                                'color': COLORS['text_muted'],
-                                'textTransform': 'uppercase',
-                                'letterSpacing': '0.5px',
-                                'marginBottom': '6px'
-                            }),
-                            html.Div(company_details.get('exchange', "N/A") if company_details else "N/A", style={
-                                'fontSize': '1.1rem',
-                                'fontWeight': '600',
-                                'color': COLORS['text'],
-                                'fontFamily': "'Monaco', 'Courier New', monospace"
-                            })
-                        ], style={
-                            'backgroundColor': 'rgba(30, 41, 59, 0.5)',
-                            'padding': '12px 16px',
-                            'borderRadius': '8px',
-                        }),
-                        
-                        # Website
-                        html.Div([
-                            html.Div("Website", style={
-                                'fontSize': '0.75rem',
-                                'color': COLORS['text_muted'],
-                                'textTransform': 'uppercase',
-                                'letterSpacing': '0.5px',
-                                'marginBottom': '6px'
-                            }),
-                            html.A(website_display.replace('https://', '').replace('http://', ''),
-                                href=website,
-                                target="_blank",
-                                style={
-                                    'color': COLORS['primary'],
-                                    'textDecoration': 'none',
-                                    'fontSize': '1rem',
-                                    'fontWeight': '500'
-                                }) if website else html.Span("N/A", style={'color': COLORS['text_muted'], 'fontSize': '1rem'})
-                        ], style={
-                            'backgroundColor': 'rgba(30, 41, 59, 0.5)',
-                            'padding': '12px 16px',
-                            'borderRadius': '8px',
-                        })
-                    ], style={
-                        'display': 'grid',
-                        'gridTemplateColumns': 'repeat(auto-fit, minmax(150px, 1fr))',
-                        'gap': '12px',
-                        'marginBottom': '20px'
-                    }),
-                    
-                    # Description section
-                    html.Div([
-                        html.Div("About", style={
-                            'fontSize': '0.9rem',
-                            'color': COLORS['primary'],
-                            'textTransform': 'uppercase',
-                            'letterSpacing': '1px',
-                            'marginBottom': '12px',
-                            'fontWeight': '600'
-                        }),
-                        html.P(company_details.get('description', "No description available.") if company_details else "No description available.", style={
-                            'color': COLORS['text_secondary'],
-                            'lineHeight': '1.6',
-                            'fontSize': '0.9rem',
-                            'margin': '0'
-                        })
-                    ]) if company_details and company_details.get('description') else html.Div()
-                ], style={
-                    'backgroundColor': COLORS['card'],
-                    'borderRadius': '12px',
-                    'padding': '24px',
-                    'border': f'1px solid {COLORS["border"]}',
-                    'backdropFilter': 'blur(10px)',
-                    'WebkitBackdropFilter': 'blur(10px)'
-                })
-            ])
-
-            return stock_info, df
+        # Day-change chip for the details grid
+        if change_value > 0:
+            day_chip_class, day_arrow = 'change-chip change-chip--sm change-chip--up', '▲'
+        elif change_value < 0:
+            day_chip_class, day_arrow = 'change-chip change-chip--sm change-chip--down', '▼'
         else:
-            return html.Div(f"Insufficient data for {stock_symbol}", className="alert alert-warning m-3 p-3"), pd.DataFrame()
+            day_chip_class, day_arrow = 'change-chip change-chip--sm change-chip--flat', ''
+
+        day_chip = html.Span(
+            ([html.Span(day_arrow, className='chip-arrow')] if day_arrow else [])
+            + [f"{dollar_change:+.2f} ({change_str})"],
+            className=day_chip_class,
+        )
+
+        # --- Chart-card header: identity + add-to-watchlist ---
+        logo_content = (
+            html.Img(src=display_logo, alt=f"{stock_symbol} logo")
+            if display_logo
+            else html.Span(stock_symbol[0].upper(), className='logo-monogram')
+        )
+        header = html.Div([
+            html.Div([
+                html.Div(logo_content, className='logo-frame'),
+                html.Div([
+                    html.H2(stock_symbol, className='chart-symbol'),
+                    html.P(company_name, className='chart-company-name'),
+                ], style={'minWidth': '0'}),
+            ], className='chart-title-group'),
+            dbc.Button(
+                ADD_TO_WATCHLIST_LABEL,
+                id={'type': 'add-to-watchlist', 'index': stock_symbol},
+                className='sw-btn--ghost',
+            ),
+        ], className='chart-header')
+
+        # --- Details card: stat grid + about ---
+        website_value = (
+            html.A(
+                website.replace('https://', '').replace('http://', ''),
+                href=website,
+                target='_blank',
+                rel='noopener noreferrer',
+            )
+            if website else 'N/A'
+        )
+
+        details = html.Div([
+            html.H2('Stock Details', className='panel-title'),
+            html.Div([
+                _stat_cell('Current Price', [
+                    html.Span(f"${current_price:,.2f}", style={'marginRight': '8px'}),
+                    day_chip,
+                ], large=True),
+                _stat_cell('Previous Close', f"${previous_close:,.2f}"),
+                _stat_cell('52-Week Range', fifty_two_week_range),
+                _stat_cell('Market Cap', market_cap_str),
+                _stat_cell('Exchange', exchange or 'N/A'),
+                _stat_cell('Website', website_value),
+            ], className='stat-grid'),
+            html.Div([
+                html.H2('About', className='panel-title'),
+                html.P(description, className='about-text'),
+            ]) if description else html.Div(),
+        ], className='sw-card')
+
+        return {'header': header, 'details': details, 'price': current_price}, df
 
     except Exception as e:
         logger.error(f"Error fetching stock data: {str(e)}")
         return html.Div([
-            html.Div([
-                html.Span("⚠️", style={'fontSize': '28px', 'marginBottom': '12px', 'display': 'block'}),
-                html.H4(f"Unable to load data for {stock_symbol}",
-                    style={
-                        'color': COLORS['negative'],
-                        'fontWeight': '600',
-                        'marginBottom': '8px'
-                    }),
-                html.P(f"Please check the ticker symbol and try again.",
-                    style={
-                        'color': COLORS['text_secondary'],
-                        'fontSize': '0.9rem',
-                        'margin': '0'
-                    })
-            ], style={'textAlign': 'center'})
-        ], style={
-            'borderRadius': '12px',
-            'padding': '30px 24px',
-            'border': f'1px solid rgba(248, 113, 113, 0.3)',
-            'backgroundColor': 'rgba(248, 113, 113, 0.1)',
-            'borderLeft': f'4px solid {COLORS["negative"]}'
-        }), pd.DataFrame()
-
+            html.H4(f"Unable to load data for {stock_symbol}"),
+            html.P("Please check the ticker symbol and try again."),
+        ], className='error-panel'), pd.DataFrame()
