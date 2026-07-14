@@ -1,5 +1,5 @@
 import dash
-from dash import html, dcc, Input, Output, State, callback_context, no_update, ALL
+from dash import html, dcc, Input, Output, State, callback_context, no_update, ALL, MATCH
 import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
@@ -42,6 +42,8 @@ FONT_DATA = "'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace"
 
 ACCENT = '#5B8DEF'
 ADD_TO_WATCHLIST_LABEL = '＋ Watchlist'
+ABOUT_TEXT_COLLAPSED_CLASS = 'about-text about-text--collapsed'
+ABOUT_TEXT_EXPANDED_CLASS = 'about-text about-text--expanded'
 
 PERIODS = ['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y', '10Y', 'MAX']
 PERIOD_DISPLAY_LABELS = {
@@ -930,6 +932,21 @@ def register_callbacks(dash_app):
 
         return fig, btn_classes, readout, intraday_update
 
+    @dash_app.callback(
+        [Output({'type': 'about-text', 'index': MATCH}, 'className'),
+         Output({'type': 'about-toggle', 'index': MATCH}, 'children'),
+         Output({'type': 'about-toggle', 'index': MATCH}, 'aria-expanded')],
+        Input({'type': 'about-toggle', 'index': MATCH}, 'n_clicks'),
+        State({'type': 'about-text', 'index': MATCH}, 'className'),
+        prevent_initial_call=True,
+    )
+    def toggle_company_description(n_clicks, current_class_name):
+        """Toggle a selected stock's About section between preview and full text."""
+        if not n_clicks:
+            raise dash.exceptions.PreventUpdate
+        is_expanded = ABOUT_TEXT_EXPANDED_CLASS in (current_class_name or '')
+        return about_display_state(expanded=not is_expanded)
+
 
 def create_new_stock(stock_symbol):
     try:
@@ -1038,6 +1055,34 @@ def _stat_cell(label, value_children, large=False):
         html.Div(label, className='stat-label'),
         html.Div(value_children, className=value_class),
     ], className='stat-cell')
+
+
+def about_display_state(expanded=False):
+    """Return render properties for the About description's current visibility."""
+    if expanded:
+        return ABOUT_TEXT_EXPANDED_CLASS, 'Show less', 'true'
+    return ABOUT_TEXT_COLLAPSED_CLASS, 'Show full description', 'false'
+
+
+def create_about_section(stock_symbol, description):
+    """Render a two-line About preview with an accessible expand/collapse control."""
+    text_class, toggle_label, aria_expanded = about_display_state()
+    return html.Div([
+        html.H2('About', className='panel-title'),
+        html.P(
+            description,
+            id={'type': 'about-text', 'index': stock_symbol},
+            className=text_class,
+        ),
+        html.Button(
+            toggle_label,
+            id={'type': 'about-toggle', 'index': stock_symbol},
+            className='about-toggle',
+            n_clicks=0,
+            type='button',
+            **{'aria-expanded': aria_expanded},
+        ),
+    ], className='about-section')
 
 
 def fetch_and_display_stock_data(stock_symbol):
@@ -1173,10 +1218,7 @@ def fetch_and_display_stock_data(stock_symbol):
                 _stat_cell('Exchange', exchange or 'N/A'),
                 _stat_cell('Website', website_value),
             ], className='stat-grid'),
-            html.Div([
-                html.H2('About', className='panel-title'),
-                html.P(description, className='about-text'),
-            ]) if description else html.Div(),
+            create_about_section(stock_symbol, description) if description else html.Div(),
         ], className='sw-card')
 
         return {'header': header, 'details': details, 'price': current_price}, df

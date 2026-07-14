@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 EASTERN_TZ = ZoneInfo("America/New_York")
 MARKET_OPEN_ET = time(9, 30)
 MARKET_CLOSE_ET = time(16, 0)
+DETAILS_CACHE_VERSION = "full-description-v1"
 
 api_key = os.getenv('POLYGON_API_KEY')
 polygon_client = RESTClient(api_key) if api_key else None
@@ -195,7 +196,11 @@ def _append_api_key(url: Optional[str]) -> Optional[str]:
 def get_company_details(symbol: str) -> Optional[Dict[str, Any]]:
     """Get company details from Polygon API (cached for 24 hours)."""
     stock_cache = StockCache(cache)
-    cached_details = stock_cache.get_cached_data(symbol, "details")
+    # Use a versioned key so cached 150-character descriptions from earlier
+    # releases do not keep the expandable About section from showing all text.
+    cached_details = stock_cache.get_cached_data(
+        symbol, "details", version=DETAILS_CACHE_VERSION
+    )
     if cached_details is not None:
         return cached_details
 
@@ -265,10 +270,8 @@ def get_company_details(symbol: str) -> Optional[Dict[str, Any]]:
         raw_description = getattr(ticker_details, 'description', None)
         if not isinstance(raw_description, str) and hasattr(ticker_details, 'results'):
             raw_description = getattr(ticker_details.results, 'description', None)
-        if isinstance(raw_description, str) and raw_description:
-            description = raw_description[:150]
-            if len(raw_description) > 150:
-                description += "..."
+        if isinstance(raw_description, str):
+            description = raw_description.strip()
 
         name = _as_text(name, symbol)
         market_cap = _as_number(market_cap)
@@ -289,7 +292,9 @@ def get_company_details(symbol: str) -> Optional[Dict[str, Any]]:
             'sector': _as_text(getattr(ticker_details, 'sector', 'N/A')),
             'industry': _as_text(getattr(ticker_details, 'industry', 'N/A')),
         }
-        stock_cache.set_cached_data(symbol, "details", details)
+        stock_cache.set_cached_data(
+            symbol, "details", details, version=DETAILS_CACHE_VERSION
+        )
         return details
     except Exception as e:
         logger.error(f"Error fetching company details for {symbol}: {str(e)}")
