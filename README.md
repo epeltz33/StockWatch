@@ -66,7 +66,7 @@ A full-stack web app taken end to end — designed, built, deployed, and running
 | **Frontend** | Plotly Dash, Dash Bootstrap Components |
 | **Database** | PostgreSQL (production) · SQLite (development) |
 | **API** | [Massive.com](https://massive.com/) |
-| **Deployment** | Render, DigitalOcean App Platform, Docker Compose |
+| **Deployment** | Render, Docker Compose |
 
 ---
 
