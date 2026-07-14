@@ -2,11 +2,12 @@
 
 {% block content %}
 <div class="landing-container">
-  <h1>Welcome to StockWatch</h1>
-  <p>Your personal stock tracking assistant</p>
+  <div class="landing-eyebrow"><span class="tick">▲</span> Live market data · Charts · Watchlists</div>
+  <h1>StockWatch</h1>
+  <p>Track prices, interactive charts, and personal watchlists for the tickers you care about — in one place.</p>
   <div class="cta-buttons">
-    <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Login</a>
-    <a href="{{ url_for('auth.register') }}" class="btn btn-secondary">Register</a>
+    <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Log in</a>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-secondary">Create account</a>
   </div>
 </div>
 {% endblock %}

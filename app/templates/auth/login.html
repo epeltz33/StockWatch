@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Login - StockWatch{% endblock %}
+{% block title %}Log in - StockWatch{% endblock %}
 
 {% block content %}
 <div class="auth-container">
+  <a href="{{ url_for('main.landing') }}" class="auth-brand"><span class="tick">▲</span> StockWatch</a>
   <div class="auth-card">
-    <h2>Login to StockWatch</h2>
+    <h2>Log in</h2>
 
     {% with messages = get_flashed_messages() %}
     {% if messages %}
@@ -20,19 +21,19 @@
     <form method="POST">
       <div class="form-group">
         <label for="email">Email</label>
-        <input type="email" name="email" class="form-control" placeholder="Enter your email" required>
+        <input type="email" id="email" name="email" class="form-control" placeholder="you@example.com" required>
       </div>
 
       <div class="form-group">
         <label for="password">Password</label>
-        <input type="password" name="password" class="form-control" placeholder="Enter your password" required>
+        <input type="password" id="password" name="password" class="form-control" placeholder="Your password" required>
       </div>
 
-      <button type="submit" class="btn btn-primary btn-block" style="margin-top: 10px;">Login</button>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top: 10px;">Log in</button>
     </form>
 
-    <div style="text-align: center; margin-top: 24px; color: #94a3b8;">
-      <p>Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a></p>
+    <div class="auth-footer">
+      <p>Don't have an account? <a href="{{ url_for('auth.register') }}">Create one</a></p>
     </div>
   </div>
 </div>
