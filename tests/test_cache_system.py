@@ -1,10 +1,13 @@
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 from app.utils.cache_manager import StockCache
+from app.services import stock_services
 from app.services.stock_services import get_stock_price, get_company_details, get_stock_data
 from app.cli import test_cache
 from flask_caching import Cache
+from frontend import dashboard
 
 @pytest.fixture
 def mock_cache():
@@ -60,6 +63,57 @@ def test_cache_timeouts(stock_cache, mock_cache):
     # Test details cache timeout
     stock_cache.set_cached_data("AAPL", "details", test_data)
     assert mock_cache.set.call_args[1]['timeout'] == 86400  # 24 hours
+
+
+def test_company_details_keeps_full_trimmed_description_and_versions_cache():
+    description = "  " + ("A complete company description. " * 12) + "  "
+    ticker_details = SimpleNamespace(
+        name="Example Corp.",
+        description=description,
+        market_cap=1_000_000,
+        primary_exchange="XNAS",
+    )
+
+    with patch.object(stock_services.StockCache, "get_cached_data", return_value=None) as get_cached:
+        with patch.object(stock_services.StockCache, "set_cached_data") as set_cached:
+            with patch.object(stock_services, "_get_client") as get_client:
+                get_client.return_value.get_ticker_details.return_value = ticker_details
+
+                details = stock_services.get_company_details("EXMP")
+
+    assert details["description"] == description.strip()
+    assert len(details["description"]) > 150
+    get_cached.assert_called_once_with(
+        "EXMP", "details", version=stock_services.DETAILS_CACHE_VERSION
+    )
+    set_cached.assert_called_once_with(
+        "EXMP", "details", details, version=stock_services.DETAILS_CACHE_VERSION
+    )
+
+
+def test_about_section_starts_as_a_two_line_preview_with_accessible_toggle():
+    section = dashboard.create_about_section("EXMP", "A complete company description.")
+    _, description, toggle = section.children
+
+    assert description.id == {"type": "about-text", "index": "EXMP"}
+    assert description.className == dashboard.ABOUT_TEXT_COLLAPSED_CLASS
+    assert description.children == "A complete company description."
+    assert toggle.id == {"type": "about-toggle", "index": "EXMP"}
+    assert toggle.children == "Show full description"
+    assert toggle.to_plotly_json()["props"]["aria-expanded"] == "false"
+
+
+def test_about_display_state_expands_and_collapses_again():
+    assert dashboard.about_display_state(expanded=True) == (
+        dashboard.ABOUT_TEXT_EXPANDED_CLASS,
+        "Show less",
+        "true",
+    )
+    assert dashboard.about_display_state(expanded=False) == (
+        dashboard.ABOUT_TEXT_COLLAPSED_CLASS,
+        "Show full description",
+        "false",
+    )
 
 @patch('app.services.stock_services.polygon_client')
 def test_historical_data_handling(mock_polygon, app, test_cache):
