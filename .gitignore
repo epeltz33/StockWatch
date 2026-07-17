@@ -102,3 +102,4 @@ Thumbs.db
 .coverage
 coverage.xml
 htmlcov/
+CLAUDE.md
