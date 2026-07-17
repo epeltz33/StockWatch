@@ -28,17 +28,6 @@ def delete_user(email):
         click.echo(f"No user found with email {email}")
 
 
-@click.command('test-cache')
-@click.argument('symbol')
-@with_appcontext
-def test_cache(symbol):
-    """CLI command to test cache functionality."""
-    from app.utils.cache_monitor import test_cache_functionality
-
-    test_cache_functionality(symbol)
-    click.echo(f"Cache test completed for {symbol}")
-
-
 @click.command("seed-demo-user")
 @with_appcontext
 def seed_demo_user():

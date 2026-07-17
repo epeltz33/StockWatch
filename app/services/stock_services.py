@@ -34,12 +34,6 @@ def _get_client() -> RESTClient:
     return polygon_client
 
 
-def is_rate_limit_error(exc: Exception) -> bool:
-    """Return True when an exception indicates Polygon rate limiting."""
-    message = str(exc).lower()
-    return '429' in message or 'too many' in message
-
-
 def get_stock_price(symbol: str) -> Optional[float]:
     """Get current stock price from Polygon API (cached for 5 minutes)."""
     stock_cache = StockCache(cache)
@@ -322,11 +316,6 @@ def get_most_recent_trading_day() -> str:
         most_recent_trading_day -= timedelta(days=2)
 
     return most_recent_trading_day.strftime('%Y-%m-%d')
-
-
-def get_all_stocks() -> List[Stock]:
-    """Get all stocks from the database."""
-    return Stock.query.all()
 
 
 def get_stock_by_symbol(symbol: str) -> Optional[Stock]:
