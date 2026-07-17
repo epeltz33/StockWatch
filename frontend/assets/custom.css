@@ -442,9 +442,17 @@ body {
     transition: color 120ms ease, background-color 120ms ease;
 }
 
-.period-btn:hover {
+.period-btn:hover:not(:disabled) {
     color: var(--text);
     background: var(--surface-2);
+}
+
+/* Periods reaching beyond the available price history (API plan limit or
+   recent listing) render disabled, with the tooltip explaining why. */
+.period-btn:disabled {
+    color: var(--text-3);
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
 .period-btn:focus-visible {

@@ -49,6 +49,20 @@ PERIODS = ['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y', '10Y', 'MAX']
 PERIOD_DISPLAY_LABELS = {
     '1D': 'Today',
 }
+PERIOD_LOOKBACK_DAYS = {
+    '5D': 7,
+    '1M': 30,
+    '6M': 182,
+    '1Y': 365,
+    '5Y': 365 * 5,
+    '10Y': 365 * 10,
+}
+# "MAX" asks the API for everything it has; plans with limited history simply
+# return less, and period availability below adapts to what actually came back.
+MAX_HISTORY_START_DATE = '1970-01-01'
+# A period's first bar can land after the exact calendar cutoff (weekends,
+# holidays) without making the period dishonest to display.
+COVERAGE_TOLERANCE_DAYS = 10
 PERIOD_BUTTON_TITLES = {
     '1D': 'Intraday prices for the latest regular session (9:30 AM–4:00 PM ET)',
     '5D': 'Daily bars for the last ~5 trading days',
@@ -97,21 +111,12 @@ def filter_data_for_period(df, period):
     if period == '1D':
         return df
 
-    period_days = {
-        '5D': 7,
-        '1M': 30,
-        '6M': 182,
-        '1Y': 365,
-        '5Y': 365 * 5,
-        '10Y': 365 * 10,
-    }
-
     if period == 'MAX':
         return df
     elif period == 'YTD':
         cutoff = datetime(now.year, 1, 1).strftime('%Y-%m-%d')
-    elif period in period_days:
-        cutoff = (now - timedelta(days=period_days[period])).strftime('%Y-%m-%d')
+    elif period in PERIOD_LOOKBACK_DAYS:
+        cutoff = (now - timedelta(days=PERIOD_LOOKBACK_DAYS[period])).strftime('%Y-%m-%d')
     else:
         return df
 
@@ -120,6 +125,50 @@ def filter_data_for_period(df, period):
     if len(filtered) < 2:
         return df.tail(2)
     return filtered
+
+
+def data_start_date(df):
+    """Earliest bar date ('YYYY-MM-DD') in the loaded history, or None."""
+    if df is None or df.empty or 'date' not in df.columns:
+        return None
+    return df['date'].min()
+
+
+def format_bar_date(date_str):
+    """'2024-07-17' -> 'Jul 17, 2024'."""
+    try:
+        return datetime.strptime(date_str, '%Y-%m-%d').strftime('%b %-d, %Y')
+    except (TypeError, ValueError):
+        return date_str or ''
+
+
+def is_period_available(df, period):
+    """True when the loaded history reaches back far enough to honestly show `period`.
+
+    1D always applies (it uses separate intraday data) and MAX always applies
+    (it means "all available history" by definition). Window periods require
+    bars at/before their calendar cutoff; without that, the chart would silently
+    render the same truncated range as a shorter period.
+    """
+    start = data_start_date(df)
+    if start is None or period in ('1D', 'MAX'):
+        return True
+
+    now = datetime.now()
+    if period == 'YTD':
+        cutoff = datetime(now.year, 1, 1)
+    elif period in PERIOD_LOOKBACK_DAYS:
+        cutoff = now - timedelta(days=PERIOD_LOOKBACK_DAYS[period])
+    else:
+        return True
+
+    tolerant_cutoff = (cutoff + timedelta(days=COVERAGE_TOLERANCE_DAYS)).strftime('%Y-%m-%d')
+    return start <= tolerant_cutoff
+
+
+def initial_chart_period(df):
+    """Default chart period: 1Y, or MAX when history is shorter than a year."""
+    return '1Y' if is_period_available(df, '1Y') else 'MAX'
 
 
 def calculate_period_change(df):
@@ -432,26 +481,40 @@ def _period_btn_class(is_active):
     return 'period-btn period-btn--active' if is_active else 'period-btn'
 
 
-def build_period_toolbar(active_period):
-    """Build the segmented period-selector control."""
-    return html.Div(
-        [
-            html.Button(
-                period_display_label(period),
-                id={'type': 'period-btn', 'index': period},
-                n_clicks=0,
-                title=period_button_title(period),
-                className=_period_btn_class(period == active_period),
-            )
-            for period in PERIODS
-        ],
-        className='period-seg',
-        role='group',
-    )
+def build_period_toolbar(active_period, df=None):
+    """Build the segmented period-selector control.
+
+    Periods reaching further back than the loaded history are disabled with a
+    tooltip naming the first available bar, instead of silently rendering the
+    same truncated chart as shorter periods.
+    """
+    start = data_start_date(df)
+    buttons = []
+    for period in PERIODS:
+        available = is_period_available(df, period)
+        title = (
+            period_button_title(period)
+            if available
+            else f'Unavailable — price history begins {format_bar_date(start)}'
+        )
+        buttons.append(html.Button(
+            period_display_label(period),
+            id={'type': 'period-btn', 'index': period},
+            n_clicks=0,
+            title=title,
+            disabled=not available,
+            className=_period_btn_class(period == active_period),
+        ))
+    return html.Div(buttons, className='period-seg', role='group')
 
 
-def build_change_readout(abs_change, pct_change, period):
-    """Chip + period tag shown next to the price, colored by direction."""
+def build_change_readout(abs_change, pct_change, period, since_date=None):
+    """Chip + period tag shown next to the price, colored by direction.
+
+    For MAX, the tag shows the actual start of the available history
+    ("Since Jul 17, 2024") so a plan-limited or recently listed dataset
+    doesn't masquerade as all-time performance.
+    """
     if abs_change > 0:
         chip_class, arrow, sign = 'change-chip change-chip--up', '▲', '+'
     elif abs_change < 0:
@@ -462,9 +525,14 @@ def build_change_readout(abs_change, pct_change, period):
     label = f"{sign}${abs(abs_change):,.2f} ({pct_change:+.2f}%)"
     chip_children = ([html.Span(arrow, className='chip-arrow')] if arrow else []) + [label]
 
+    if period == 'MAX' and since_date:
+        period_label = f'Since {format_bar_date(since_date)}'
+    else:
+        period_label = period_display_label(period)
+
     return [
         html.Span(chip_children, className=chip_class),
-        html.Span(period_display_label(period), className='readout-period'),
+        html.Span(period_label, className='readout-period'),
     ]
 
 
@@ -839,8 +907,9 @@ def register_callbacks(dash_app):
 
         intraday_data = []
 
-        # Default period is 1Y; build initial chart, price readout, and toolbar
-        default_period = '1Y'
+        # Default period is 1Y (MAX when history is shorter than a year);
+        # build initial chart, price readout, and toolbar
+        default_period = initial_chart_period(df)
         filtered_df = filter_data_for_period(df, default_period)
         abs_change, pct_change = period_price_change(filtered_df)
         chart_fig = create_stock_chart_figure(filtered_df, clicked_stock, period=default_period)
@@ -852,14 +921,15 @@ def register_callbacks(dash_app):
                     html.Div([
                         html.Span(f"${stock_info['price']:,.2f}", className='price-lg'),
                         html.Div(
-                            build_change_readout(abs_change, pct_change, default_period),
+                            build_change_readout(abs_change, pct_change, default_period,
+                                                 since_date=data_start_date(df)),
                             id='chart-change-readout',
                             className='readout',
                         ),
                     ], className='price-row'),
                     html.Span('At close', className='price-caption'),
                 ]),
-                build_period_toolbar(default_period),
+                build_period_toolbar(default_period, df=df),
             ], className='chart-controls'),
             dcc.Graph(
                 id='stock-chart',
@@ -913,6 +983,7 @@ def register_callbacks(dash_app):
 
         active_period = triggered_id['index']
         intraday_update = no_update
+        since_date = None
         if active_period == '1D':
             if not intraday_data and symbol:
                 intraday_data = get_intraday_stock_data(symbol)
@@ -923,12 +994,14 @@ def register_callbacks(dash_app):
             df = pd.DataFrame(stored_data)
             filtered_df = filter_data_for_period(df, active_period)
             abs_change, pct_change = period_price_change(filtered_df)
+            since_date = data_start_date(df)
         fig = create_stock_chart_figure(filtered_df, symbol, period=active_period)
 
         btn_classes = [
             _period_btn_class(btn_id['index'] == active_period) for btn_id in btn_ids
         ]
-        readout = build_change_readout(abs_change, pct_change, active_period)
+        readout = build_change_readout(abs_change, pct_change, active_period,
+                                       since_date=since_date)
 
         return fig, btn_classes, readout, intraday_update
 
@@ -1093,11 +1166,12 @@ def fetch_and_display_stock_data(stock_symbol):
     `info` is a renderable error/warning component and `df` is empty.
     """
     try:
-        # Fetch up to 10 years of daily OHLCV data so all period buttons
-        # (1D through MAX) can slice from the same dataset.
+        # Fetch all available daily OHLCV history so every period button
+        # (1D through MAX) can slice from the same dataset. The API returns
+        # only what the plan/listing allows; period buttons beyond that
+        # coverage are disabled in build_period_toolbar.
         end_date = datetime.now().strftime('%Y-%m-%d')
-        start_date = (datetime.now() - timedelta(days=365 * 10)).strftime('%Y-%m-%d')
-        historical_data = get_stock_data(stock_symbol, start_date, end_date)
+        historical_data = get_stock_data(stock_symbol, MAX_HISTORY_START_DATE, end_date)
 
         if not historical_data:
             return html.Div([
