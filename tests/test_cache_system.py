@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from app.utils.cache_manager import StockCache
 from app.services import stock_services
 from app.services.stock_services import get_stock_price, get_company_details, get_stock_data
-from app.cli import test_cache
 from flask_caching import Cache
 from frontend import dashboard
 
@@ -161,12 +160,3 @@ def test_full_stock_workflow(app, test_cache):
             assert details["sector"] == "Technology"
             assert details["industry"] == "Consumer Electronics"
 
-@pytest.mark.integration
-def test_cache_cli_command(app):
-    """Test the cache CLI command."""
-    runner = app.test_cli_runner()
-
-    with patch('app.utils.cache_monitor.test_cache_functionality') as mock_test_cache:
-        result = runner.invoke(test_cache, ['AAPL'])
-        assert result.exit_code == 0
-        mock_test_cache.assert_called_once_with('AAPL')

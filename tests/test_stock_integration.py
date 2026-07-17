@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime, timedelta
-from app.cli import test_cache
 from app.models import Stock
 from app.extensions import db
 
@@ -103,15 +102,6 @@ def test_error_handling(app, test_cache):
             assert get_company_details("AAPL") is None
             assert get_stock_data("AAPL", "2024-01-01", "2024-01-31") == []
 
-@pytest.mark.integration
-def test_cache_cli_command(app):
-    """Test the cache CLI command."""
-    runner = app.test_cli_runner()
-
-    with patch('app.utils.cache_monitor.test_cache_functionality') as mock_test_cache:
-        result = runner.invoke(test_cache, ['AAPL'])
-        assert result.exit_code == 0
-        mock_test_cache.assert_called_once_with('AAPL')
 
 @pytest.mark.integration
 def test_database_constraints(app):

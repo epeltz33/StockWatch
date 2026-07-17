@@ -7,7 +7,7 @@ repomix-output.txt
 .cursor/
 # C extensions
 *.so
-
+.github/
 # Distribution / packaging
 .Python
 env/
@@ -72,12 +72,10 @@ plan.md
 
 # OS generated files
 .DS_Store
-Thumbs.db.env
-app/__pycache__.env
+Thumbs.db
 .claude/
 .cursor/
 .cursorrules
-tests/
 # impeccable-ignore-start
 # Ephemeral output, runtime state, and per-dev overrides.
 # Unanchored: .impeccable may sit at the repo root or under a nested
@@ -100,5 +98,3 @@ tests/
 .impeccable/live/deferred-svelte-component-accepts.json
 .impeccable/live/*.png
 # impeccable-ignore-end
-.github/
-CLAUDE.md
