@@ -13,6 +13,9 @@ class User(UserMixin, db.Model):
     watchlists = db.relationship(
         "Watchlist", backref="user", lazy="dynamic", cascade="all, delete-orphan"
     )
+    transactions = db.relationship(
+        "Transaction", backref="user", lazy="dynamic", cascade="all, delete-orphan"
+    )
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -42,6 +45,41 @@ class Stock(db.Model):
     def __init__(self, symbol, name):
         self.symbol = symbol
         self.name = name
+
+
+class Transaction(db.Model):
+    """A buy or sell in the user's portfolio, stored as an immutable ledger row.
+
+    Positions, cost basis, and P/L are always derived by replaying a user's
+    transactions in order (see app/services/portfolio_services.py) rather than
+    stored, so the ledger stays the single source of truth. Each user has one
+    implicit portfolio; a portfolio_id column can be added later if multiple
+    portfolios per user are ever needed.
+
+    Money columns use Numeric, never Float: binary floats can't represent
+    amounts like 0.10 exactly and drift under accumulation.
+    """
+
+    # 'transaction' is a reserved word in PostgreSQL
+    __tablename__ = "portfolio_transaction"
+    __table_args__ = (
+        db.CheckConstraint("side IN ('BUY', 'SELL')", name="ck_transaction_side"),
+        db.CheckConstraint("quantity > 0", name="ck_transaction_quantity_positive"),
+        db.CheckConstraint("price >= 0", name="ck_transaction_price_non_negative"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    stock_id = db.Column(db.Integer, db.ForeignKey("stock.id"), nullable=False, index=True)
+    side = db.Column(db.String(4), nullable=False)  # 'BUY' | 'SELL'
+    quantity = db.Column(db.Numeric(18, 6), nullable=False)
+    price = db.Column(db.Numeric(18, 4), nullable=False)  # per share
+    executed_at = db.Column(db.Date, nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    stock = db.relationship("Stock")
 
 
 watchlist_stocks = db.Table(

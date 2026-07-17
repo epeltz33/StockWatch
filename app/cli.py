@@ -1,3 +1,5 @@
+from datetime import date
+
 import click
 from flask.cli import with_appcontext
 
@@ -13,6 +15,18 @@ DEMO_STOCKS = {
     "MSFT": "Microsoft Corporation",
     "GOOGL": "Alphabet Inc.",
 }
+
+# (symbol, side, quantity, price, executed date). Chosen to demo non-trivial
+# average-cost math: AAPL has two buys at different prices plus a partial
+# sell; NVDA has a profitable partial sell; MSFT is a simple hold.
+DEMO_TRANSACTIONS = [
+    ("AAPL", "BUY", "10", "150.00", date(2024, 1, 5)),
+    ("MSFT", "BUY", "8", "310.00", date(2024, 2, 12)),
+    ("NVDA", "BUY", "30", "45.50", date(2024, 3, 1)),
+    ("AAPL", "BUY", "5", "185.00", date(2024, 9, 3)),
+    ("NVDA", "SELL", "10", "120.00", date(2025, 5, 15)),
+    ("AAPL", "SELL", "5", "225.00", date(2025, 6, 20)),
+]
 
 
 @click.command("delete-user")
@@ -68,6 +82,16 @@ def seed_demo_user():
 
     db.session.commit()
 
+    # Seed portfolio transactions only when the ledger is empty, so a demo
+    # visitor's own experiments never get mixed with or duplicated by reseeds
+    seeded_transactions = 0
+    if user.transactions.count() == 0:
+        from app.services.portfolio_services import record_transaction
+
+        for symbol, side, quantity, price, executed_at in DEMO_TRANSACTIONS:
+            record_transaction(user.id, symbol, side, quantity, price, executed_at)
+            seeded_transactions += 1
+
     if created_user:
         click.echo(f"Demo user created: {DEMO_EMAIL} / {DEMO_PASSWORD}")
     else:
@@ -76,3 +100,5 @@ def seed_demo_user():
         click.echo(f"Demo watchlist created: {DEMO_WATCHLIST}")
     if added_symbols:
         click.echo(f"Added stocks to demo watchlist: {', '.join(added_symbols)}")
+    if seeded_transactions:
+        click.echo(f"Seeded {seeded_transactions} demo portfolio transactions")
