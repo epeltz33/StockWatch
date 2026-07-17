@@ -8,30 +8,48 @@
   <div class="auth-card">
     <h2>Create account</h2>
 
-    {% with messages = get_flashed_messages() %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     <div style="margin-bottom: 20px;">
-      {% for message in messages %}
-      <div class="alert alert-danger">{{ message }}</div>
+      {% for category, message in messages %}
+      <div class="alert alert-{{ 'danger' if category in ('danger', 'error', 'message') else category }}">{{ message }}</div>
       {% endfor %}
     </div>
     {% endif %}
     {% endwith %}
 
-    <form method="POST">
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
       <div class="form-group">
-        <label for="username">Username</label>
-        <input type="text" id="username" name="username" class="form-control" placeholder="Choose a username" required>
+        {{ form.username.label(for="username") }}
+        {{ form.username(class="form-control", id="username", placeholder="Choose a username") }}
+        {% for error in form.username.errors %}
+        <div class="alert alert-danger" style="margin-top: 6px; padding: 6px 10px;">{{ error }}</div>
+        {% endfor %}
       </div>
 
       <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" class="form-control" placeholder="you@example.com" required>
+        {{ form.email.label(for="email") }}
+        {{ form.email(class="form-control", id="email", placeholder="you@example.com") }}
+        {% for error in form.email.errors %}
+        <div class="alert alert-danger" style="margin-top: 6px; padding: 6px 10px;">{{ error }}</div>
+        {% endfor %}
       </div>
 
       <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" class="form-control" placeholder="Create a password" required>
+        {{ form.password.label(for="password") }}
+        {{ form.password(class="form-control", id="password", placeholder="At least 8 characters") }}
+        {% for error in form.password.errors %}
+        <div class="alert alert-danger" style="margin-top: 6px; padding: 6px 10px;">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="form-group">
+        {{ form.confirm_password.label(for="confirm_password") }}
+        {{ form.confirm_password(class="form-control", id="confirm_password", placeholder="Repeat your password") }}
+        {% for error in form.confirm_password.errors %}
+        <div class="alert alert-danger" style="margin-top: 6px; padding: 6px 10px;">{{ error }}</div>
+        {% endfor %}
       </div>
 
       <button type="submit" class="btn btn-primary btn-block" style="margin-top: 10px;">Create account</button>

@@ -7,6 +7,7 @@ DEFAULT_TIMEOUTS: dict[str, int] = {
     "details": 86400,  # 24 hours
     "historical": 3600,  # 1 hour
     "intraday": 300,  # 5 minutes
+    "branding": 86400,  # 24 hours (proxied logo/icon image bytes)
     "fallback": 600,  # default/fallback timeout
 }
 

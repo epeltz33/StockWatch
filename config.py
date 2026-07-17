@@ -25,3 +25,10 @@ class Config:
     # RedisCache (with CACHE_REDIS_URL) for multi-worker deployments.
     CACHE_TYPE = os.environ.get("CACHE_TYPE", "SimpleCache")
     CACHE_DEFAULT_TIMEOUT = 300
+
+    # Session cookie hardening. Secure only in production — localhost is http.
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = bool(
+        os.environ.get("RENDER") or os.environ.get("FLASK_ENV") == "production"
+    )

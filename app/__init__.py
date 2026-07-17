@@ -1,7 +1,8 @@
 from dotenv import load_dotenv
-from flask import Flask, redirect, url_for
+from flask import Flask, redirect, request, url_for
+from flask_login import current_user
 
-from app.extensions import cache, db, login, migrate
+from app.extensions import cache, csrf, db, limiter, login, migrate
 from app.models import User
 from config import Config
 
@@ -22,6 +23,8 @@ def create_app(test_config=None):
     login.init_app(app)
     login.login_view = "auth.login"
     cache.init_app(app)
+    csrf.init_app(app)
+    limiter.init_app(app)
 
     @login.user_loader
     def load_user(user_id):
@@ -52,9 +55,30 @@ def create_app(test_config=None):
 
         with app.app_context():
             create_dash_app(app)
+        # Dash posts to /dash/_dash-update-component without a CSRF token, so
+        # global CSRFProtect would break every callback. Access to /dash/ is
+        # gated by the login check below instead.
+        for rule in app.url_map.iter_rules():
+            if rule.rule.startswith("/dash"):
+                csrf.exempt(app.view_functions[rule.endpoint])
         app.logger.info("Dash app mounted at /dash/")
     except Exception:
         app.logger.exception("Failed to create Dash app; continuing without it")
+
+    @app.before_request
+    def protect_dash():
+        # The Dash app registers its own routes that bypass @login_required on
+        # /dashboard; gate them all here.
+        if request.path.startswith("/dash") and not current_user.is_authenticated:
+            return login.unauthorized()
+
+    @app.after_request
+    def set_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        # SAMEORIGIN (not DENY): /dashboard iframes /dash/ on the same origin
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        return response
 
     from app.cli import delete_user, seed_demo_user
 

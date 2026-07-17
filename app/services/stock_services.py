@@ -19,7 +19,9 @@ logger = logging.getLogger(__name__)
 EASTERN_TZ = ZoneInfo("America/New_York")
 MARKET_OPEN_ET = time(9, 30)
 MARKET_CLOSE_ET = time(16, 0)
-DETAILS_CACHE_VERSION = "full-description-v1"
+# v2: branding URLs are stored raw (no apiKey query param); bumping the
+# version abandons older cached entries that embedded the key.
+DETAILS_CACHE_VERSION = "raw-branding-v2"
 
 api_key = os.getenv("POLYGON_API_KEY")
 polygon_client = RESTClient(api_key) if api_key else None
@@ -189,13 +191,6 @@ def _as_number(value: Any) -> float | None:
     return value if isinstance(value, (int, float)) else None
 
 
-def _append_api_key(url: str | None) -> str | None:
-    if not url or not isinstance(url, str):
-        return None
-    separator = "?" if "?" not in url else "&"
-    return f"{url}{separator}apiKey={api_key}"
-
-
 def get_company_details(symbol: str) -> dict[str, Any] | None:
     """Get company details from Polygon API (cached for 24 hours)."""
     stock_cache = StockCache(cache)
@@ -242,9 +237,9 @@ def get_company_details(symbol: str) -> dict[str, Any] | None:
                     if logo_url is not None and not isinstance(logo_url, str):
                         logo_url = None
 
-        icon_url = _append_api_key(icon_url)
-        logo_url = _append_api_key(logo_url)
-
+        # icon_url/logo_url are stored WITHOUT the API key; the /branding/
+        # proxy route fetches them server-side so the key never reaches the
+        # client.
         name = symbol
         if hasattr(ticker_details, "name"):
             name = ticker_details.name
