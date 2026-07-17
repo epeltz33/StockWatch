@@ -2,7 +2,6 @@ import os
 import sys
 from pathlib import Path
 
-
 sys.path.insert(0, str(Path(__file__).parent))
 
 try:
@@ -15,20 +14,25 @@ try:
 except Exception as e:
     print(f"ERROR: Failed to create Flask app: {str(e)}")
     import traceback
+
     traceback.print_exc()
+    # `e` is unbound once the except block exits; capture it for the routes below
+    startup_error = str(e)
     # Create a minimal app for debugging
     from flask import Flask
+
     app = Flask(__name__)
 
-    @app.route('/')
+    @app.route("/")
     def error():
-        return f"App failed to initialize properly: {str(e)}", 500
+        return f"App failed to initialize properly: {startup_error}", 500
 
-    @app.route('/health')
+    @app.route("/health")
     def health():
-        return {"status": "unhealthy", "error": str(e)}, 503
+        return {"status": "unhealthy", "error": startup_error}, 503
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8080))
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
     print(f"Starting app on port {port}")
-    app.run(host='0.0.0.0', port=port)
+    app.run(host="0.0.0.0", port=port)

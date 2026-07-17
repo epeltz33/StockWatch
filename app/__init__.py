@@ -1,14 +1,15 @@
-from flask import Flask, redirect, url_for
-from config import Config
-from app.extensions import db, migrate, login, cache
-from app.models import User
 from dotenv import load_dotenv
+from flask import Flask, redirect, url_for
+
+from app.extensions import cache, db, login, migrate
+from app.models import User
+from config import Config
 
 load_dotenv()
 
 
 def create_app(test_config=None):
-    app = Flask(__name__, template_folder='templates', static_folder='static')
+    app = Flask(__name__, template_folder="templates", static_folder="static")
 
     if test_config is None:
         app.config.from_object(Config)
@@ -19,7 +20,7 @@ def create_app(test_config=None):
     db.init_app(app)
     migrate.init_app(app, db)
     login.init_app(app)
-    login.login_view = 'auth.login'
+    login.login_view = "auth.login"
     cache.init_app(app)
 
     @login.user_loader
@@ -34,20 +35,21 @@ def create_app(test_config=None):
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
 
-    @app.route('/')
+    @app.route("/")
     def index():
-        return redirect(url_for('main.landing'))
+        return redirect(url_for("main.landing"))
 
     # Health check endpoint for Render/DigitalOcean
-    @app.route('/health')
+    @app.route("/health")
     def health_check():
-        return {'status': 'healthy'}, 200
+        return {"status": "healthy"}, 200
 
     # The Dash app has a large import surface (plotly, dash, pandas); keep it
     # isolated so a Dash-side failure degrades the dashboard instead of taking
     # down auth and the rest of the site.
     try:
         from frontend.dashboard import create_dash_app
+
         with app.app_context():
             create_dash_app(app)
         app.logger.info("Dash app mounted at /dash/")

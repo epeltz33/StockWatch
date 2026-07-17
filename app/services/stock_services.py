@@ -1,14 +1,16 @@
-from typing import Optional, Dict, List, Any
-from datetime import datetime, timedelta, time
-from zoneinfo import ZoneInfo
 import logging
 import os
+from datetime import datetime, time, timedelta
+from typing import Any
+from zoneinfo import ZoneInfo
+
 from dotenv import load_dotenv
 from polygon import RESTClient
-from app.extensions import db, cache
+from sqlalchemy.exc import IntegrityError
+
+from app.extensions import cache, db
 from app.models import Stock
 from app.utils.cache_manager import StockCache
-from sqlalchemy.exc import IntegrityError
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +21,7 @@ MARKET_OPEN_ET = time(9, 30)
 MARKET_CLOSE_ET = time(16, 0)
 DETAILS_CACHE_VERSION = "full-description-v1"
 
-api_key = os.getenv('POLYGON_API_KEY')
+api_key = os.getenv("POLYGON_API_KEY")
 polygon_client = RESTClient(api_key) if api_key else None
 
 
@@ -27,14 +29,14 @@ def _get_client() -> RESTClient:
     """Return a Polygon RESTClient, creating it if necessary."""
     global polygon_client
     if polygon_client is None:
-        key = os.getenv('POLYGON_API_KEY')
+        key = os.getenv("POLYGON_API_KEY")
         if not key:
-            raise RuntimeError('Polygon API key not configured')
+            raise RuntimeError("Polygon API key not configured")
         polygon_client = RESTClient(key)
     return polygon_client
 
 
-def get_stock_price(symbol: str) -> Optional[float]:
+def get_stock_price(symbol: str) -> float | None:
     """Get current stock price from Polygon API (cached for 5 minutes)."""
     stock_cache = StockCache(cache)
     cached_price = stock_cache.get_cached_data(symbol, "price")
@@ -54,7 +56,7 @@ def get_stock_price(symbol: str) -> Optional[float]:
         return None
 
 
-def get_stock_data(symbol: str, from_date: str, to_date: str) -> List[Dict[str, Any]]:
+def get_stock_data(symbol: str, from_date: str, to_date: str) -> list[dict[str, Any]]:
     """Get historical OHLCV data from Polygon API (cached for 1 hour)."""
     stock_cache = StockCache(cache)
     cached_data = stock_cache.get_cached_data(
@@ -78,19 +80,24 @@ def get_stock_data(symbol: str, from_date: str, to_date: str) -> List[Dict[str, 
 
         historical_data = []
         for agg in aggs or []:
-            historical_data.append({
-                'date': datetime.fromtimestamp(agg.timestamp / 1000).strftime('%Y-%m-%d'),
-                'open': agg.open,
-                'high': agg.high,
-                'low': agg.low,
-                'close': agg.close,
-                'volume': agg.volume,
-            })
+            historical_data.append(
+                {
+                    "date": datetime.fromtimestamp(agg.timestamp / 1000).strftime("%Y-%m-%d"),
+                    "open": agg.open,
+                    "high": agg.high,
+                    "low": agg.low,
+                    "close": agg.close,
+                    "volume": agg.volume,
+                }
+            )
 
         if historical_data:
             stock_cache.set_cached_data(
-                symbol, "historical", historical_data,
-                start_date=from_date, end_date=to_date,
+                symbol,
+                "historical",
+                historical_data,
+                start_date=from_date,
+                end_date=to_date,
             )
         return historical_data
     except Exception as e:
@@ -102,7 +109,7 @@ def get_intraday_stock_data(
     symbol: str,
     max_lookback_days: int = 7,
     aggregate_configs=None,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Fetch regular-session intraday bars for the latest available session (cached 5 min)."""
     stock_cache = StockCache(cache)
     cached_data = stock_cache.get_cached_data(symbol, "intraday")
@@ -120,7 +127,7 @@ def get_intraday_stock_data(
                 continue
 
             attempted_weekdays += 1
-            date_str = candidate_date.strftime('%Y-%m-%d')
+            date_str = candidate_date.strftime("%Y-%m-%d")
             for multiplier, timespan in aggregate_configs:
                 try:
                     client = _get_client()
@@ -147,18 +154,20 @@ def get_intraday_stock_data(
                         agg.timestamp / 1000, tz=ZoneInfo("UTC")
                     ).astimezone(EASTERN_TZ)
                     if MARKET_OPEN_ET <= bar_dt.time() <= MARKET_CLOSE_ET:
-                        intraday_data.append({
-                            'datetime': bar_dt.isoformat(),
-                            'date': bar_dt.strftime('%Y-%m-%d'),
-                            'time': bar_dt.strftime('%H:%M'),
-                            'open': agg.open,
-                            'high': agg.high,
-                            'low': agg.low,
-                            'close': agg.close,
-                            'volume': agg.volume,
-                            'resolution': 'intraday',
-                            'interval': f"{multiplier}-{timespan}",
-                        })
+                        intraday_data.append(
+                            {
+                                "datetime": bar_dt.isoformat(),
+                                "date": bar_dt.strftime("%Y-%m-%d"),
+                                "time": bar_dt.strftime("%H:%M"),
+                                "open": agg.open,
+                                "high": agg.high,
+                                "low": agg.low,
+                                "close": agg.close,
+                                "volume": agg.volume,
+                                "resolution": "intraday",
+                                "interval": f"{multiplier}-{timespan}",
+                            }
+                        )
 
                 if intraday_data:
                     stock_cache.set_cached_data(symbol, "intraday", intraday_data)
@@ -172,29 +181,27 @@ def get_intraday_stock_data(
         return []
 
 
-def _as_text(value: Any, default: str = 'N/A') -> str:
+def _as_text(value: Any, default: str = "N/A") -> str:
     return value if isinstance(value, str) else default
 
 
-def _as_number(value: Any) -> Optional[float]:
+def _as_number(value: Any) -> float | None:
     return value if isinstance(value, (int, float)) else None
 
 
-def _append_api_key(url: Optional[str]) -> Optional[str]:
+def _append_api_key(url: str | None) -> str | None:
     if not url or not isinstance(url, str):
         return None
-    separator = '?' if '?' not in url else '&'
+    separator = "?" if "?" not in url else "&"
     return f"{url}{separator}apiKey={api_key}"
 
 
-def get_company_details(symbol: str) -> Optional[Dict[str, Any]]:
+def get_company_details(symbol: str) -> dict[str, Any] | None:
     """Get company details from Polygon API (cached for 24 hours)."""
     stock_cache = StockCache(cache)
     # Use a versioned key so cached 150-character descriptions from earlier
     # releases do not keep the expandable About section from showing all text.
-    cached_details = stock_cache.get_cached_data(
-        symbol, "details", version=DETAILS_CACHE_VERSION
-    )
+    cached_details = stock_cache.get_cached_data(symbol, "details", version=DETAILS_CACHE_VERSION)
     if cached_details is not None:
         return cached_details
 
@@ -207,29 +214,29 @@ def get_company_details(symbol: str) -> Optional[Dict[str, Any]]:
         icon_url = None
         logo_url = None
 
-        if hasattr(ticker_details, 'branding'):
+        if hasattr(ticker_details, "branding"):
             branding = ticker_details.branding
             if isinstance(branding, dict):
-                icon_url = branding.get('icon_url')
-                logo_url = branding.get('logo_url')
+                icon_url = branding.get("icon_url")
+                logo_url = branding.get("logo_url")
             elif branding is not None:
-                icon_url = getattr(branding, 'icon_url', None)
-                logo_url = getattr(branding, 'logo_url', None)
+                icon_url = getattr(branding, "icon_url", None)
+                logo_url = getattr(branding, "logo_url", None)
                 if icon_url is not None and not isinstance(icon_url, str):
                     icon_url = None
                 if logo_url is not None and not isinstance(logo_url, str):
                     logo_url = None
 
-        if not icon_url and hasattr(ticker_details, 'results'):
+        if not icon_url and hasattr(ticker_details, "results"):
             results = ticker_details.results
-            if hasattr(results, 'branding'):
+            if hasattr(results, "branding"):
                 branding = results.branding
                 if isinstance(branding, dict):
-                    icon_url = branding.get('icon_url')
-                    logo_url = branding.get('logo_url')
+                    icon_url = branding.get("icon_url")
+                    logo_url = branding.get("logo_url")
                 elif branding is not None:
-                    icon_url = getattr(branding, 'icon_url', None)
-                    logo_url = getattr(branding, 'logo_url', None)
+                    icon_url = getattr(branding, "icon_url", None)
+                    logo_url = getattr(branding, "logo_url", None)
                     if icon_url is not None and not isinstance(icon_url, str):
                         icon_url = None
                     if logo_url is not None and not isinstance(logo_url, str):
@@ -239,56 +246,54 @@ def get_company_details(symbol: str) -> Optional[Dict[str, Any]]:
         logo_url = _append_api_key(logo_url)
 
         name = symbol
-        if hasattr(ticker_details, 'name'):
+        if hasattr(ticker_details, "name"):
             name = ticker_details.name
-        elif hasattr(ticker_details, 'results') and hasattr(ticker_details.results, 'name'):
+        elif hasattr(ticker_details, "results") and hasattr(ticker_details.results, "name"):
             name = ticker_details.results.name
 
-        market_cap = getattr(ticker_details, 'market_cap', None)
-        if market_cap is None and hasattr(ticker_details, 'results'):
-            market_cap = getattr(ticker_details.results, 'market_cap', None)
+        market_cap = getattr(ticker_details, "market_cap", None)
+        if market_cap is None and hasattr(ticker_details, "results"):
+            market_cap = getattr(ticker_details.results, "market_cap", None)
 
-        website = getattr(ticker_details, 'homepage_url', None)
-        if website is None and hasattr(ticker_details, 'results'):
-            website = getattr(ticker_details.results, 'homepage_url', None)
+        website = getattr(ticker_details, "homepage_url", None)
+        if website is None and hasattr(ticker_details, "results"):
+            website = getattr(ticker_details.results, "homepage_url", None)
 
-        list_date = getattr(ticker_details, 'list_date', None)
-        if list_date is None and hasattr(ticker_details, 'results'):
-            list_date = getattr(ticker_details.results, 'list_date', None)
+        list_date = getattr(ticker_details, "list_date", None)
+        if list_date is None and hasattr(ticker_details, "results"):
+            list_date = getattr(ticker_details.results, "list_date", None)
 
-        exchange = getattr(ticker_details, 'primary_exchange', None)
-        if exchange is None and hasattr(ticker_details, 'results'):
-            exchange = getattr(ticker_details.results, 'primary_exchange', None)
+        exchange = getattr(ticker_details, "primary_exchange", None)
+        if exchange is None and hasattr(ticker_details, "results"):
+            exchange = getattr(ticker_details.results, "primary_exchange", None)
 
         description = ""
-        raw_description = getattr(ticker_details, 'description', None)
-        if not isinstance(raw_description, str) and hasattr(ticker_details, 'results'):
-            raw_description = getattr(ticker_details.results, 'description', None)
+        raw_description = getattr(ticker_details, "description", None)
+        if not isinstance(raw_description, str) and hasattr(ticker_details, "results"):
+            raw_description = getattr(ticker_details.results, "description", None)
         if isinstance(raw_description, str):
             description = raw_description.strip()
 
         name = _as_text(name, symbol)
         market_cap = _as_number(market_cap)
-        website = _as_text(website, '') or None
-        list_date = _as_text(list_date, '') or None
-        exchange = _as_text(exchange, '') or None
+        website = _as_text(website, "") or None
+        list_date = _as_text(list_date, "") or None
+        exchange = _as_text(exchange, "") or None
 
         details = {
-            'name': name,
-            'description': description,
-            'market_cap': market_cap,
-            'icon_url': icon_url,
-            'logo_url': logo_url,
-            'website': website,
-            'list_date': list_date,
-            'exchange': exchange,
-            'primary_exchange': exchange,
-            'sector': _as_text(getattr(ticker_details, 'sector', 'N/A')),
-            'industry': _as_text(getattr(ticker_details, 'industry', 'N/A')),
+            "name": name,
+            "description": description,
+            "market_cap": market_cap,
+            "icon_url": icon_url,
+            "logo_url": logo_url,
+            "website": website,
+            "list_date": list_date,
+            "exchange": exchange,
+            "primary_exchange": exchange,
+            "sector": _as_text(getattr(ticker_details, "sector", "N/A")),
+            "industry": _as_text(getattr(ticker_details, "industry", "N/A")),
         }
-        stock_cache.set_cached_data(
-            symbol, "details", details, version=DETAILS_CACHE_VERSION
-        )
+        stock_cache.set_cached_data(symbol, "details", details, version=DETAILS_CACHE_VERSION)
         return details
     except Exception as e:
         logger.error(f"Error fetching company details for {symbol}: {str(e)}")
@@ -315,15 +320,15 @@ def get_most_recent_trading_day() -> str:
     elif most_recent_trading_day.weekday() == 6:
         most_recent_trading_day -= timedelta(days=2)
 
-    return most_recent_trading_day.strftime('%Y-%m-%d')
+    return most_recent_trading_day.strftime("%Y-%m-%d")
 
 
-def get_stock_by_symbol(symbol: str) -> Optional[Stock]:
+def get_stock_by_symbol(symbol: str) -> Stock | None:
     """Get a stock by its symbol from the database."""
     return Stock.query.filter_by(symbol=symbol).first()
 
 
-def create_stock(symbol: str, name: str) -> Optional[Stock]:
+def create_stock(symbol: str, name: str) -> Stock | None:
     """Create a new stock entry in the database."""
     stock = Stock(symbol=symbol, name=name)
     db.session.add(stock)
