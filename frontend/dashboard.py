@@ -1492,10 +1492,11 @@ def fetch_and_display_stock_data(stock_symbol):
             company_details.get("name", stock_symbol) if company_details else stock_symbol
         )
 
-        # Choose the best logo - prefer icon_url if available
+        # Branding images go through the server-side /branding/ proxy so the
+        # market-data API key never appears in client-visible URLs
         icon_url = company_details.get("icon_url", "") if company_details else ""
         logo_url = company_details.get("logo_url", "") if company_details else ""
-        display_logo = icon_url or logo_url
+        display_logo = f"/branding/{stock_symbol}/icon" if (icon_url or logo_url) else ""
 
         # Calculate 52-week range from the last year of data, not the full history.
         fifty_two_week_range = calculate_fifty_two_week_range(df)

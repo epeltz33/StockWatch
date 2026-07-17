@@ -8,25 +8,37 @@
   <div class="auth-card">
     <h2>Log in</h2>
 
-    {% with messages = get_flashed_messages() %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     <div style="margin-bottom: 20px;">
-      {% for message in messages %}
-      <div class="alert alert-danger">{{ message }}</div>
+      {% for category, message in messages %}
+      <div class="alert alert-{{ 'danger' if category in ('danger', 'error', 'message') else category }}">{{ message }}</div>
       {% endfor %}
     </div>
     {% endif %}
     {% endwith %}
 
-    <form method="POST">
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
       <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" class="form-control" placeholder="you@example.com" required>
+        {{ form.email.label(for="email") }}
+        {{ form.email(class="form-control", id="email", placeholder="you@example.com") }}
+        {% for error in form.email.errors %}
+        <div class="alert alert-danger" style="margin-top: 6px; padding: 6px 10px;">{{ error }}</div>
+        {% endfor %}
       </div>
 
       <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" class="form-control" placeholder="Your password" required>
+        {{ form.password.label(for="password") }}
+        {{ form.password(class="form-control", id="password", placeholder="Your password") }}
+        {% for error in form.password.errors %}
+        <div class="alert alert-danger" style="margin-top: 6px; padding: 6px 10px;">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+        {{ form.remember_me(id="remember_me") }}
+        {{ form.remember_me.label(for="remember_me", style="margin: 0;") }}
       </div>
 
       <button type="submit" class="btn btn-primary btn-block" style="margin-top: 10px;">Log in</button>
