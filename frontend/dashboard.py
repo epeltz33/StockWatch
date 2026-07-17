@@ -19,6 +19,7 @@ from app.services.stock_services import (
     get_stock_data,
     get_stock_price,
 )
+from frontend.portfolio_tab import build_portfolio_tab, register_portfolio_callbacks
 
 # Figure palette only — UI chrome is styled by assets/custom.css classes.
 # Gain/loss color is reserved for market data; accent is UI-interactive only.
@@ -605,6 +606,7 @@ def create_dash_app(flask_app):
     dash_app.layout = create_layout()
 
     register_callbacks(dash_app)
+    register_portfolio_callbacks(dash_app)
 
     return dash_app
 
@@ -621,8 +623,57 @@ def empty_state(icon, message, sub=None):
 
 
 def create_layout():
+    market_tab_children = _market_tab_children()
     return dbc.Container(
         [
+            dcc.Tabs(
+                id="main-tabs",
+                value="market",
+                className="sw-tabs",
+                parent_className="sw-tabs-wrap",
+                children=[
+                    dcc.Tab(
+                        label="Market",
+                        value="market",
+                        className="sw-tab",
+                        selected_className="sw-tab--selected",
+                        children=market_tab_children,
+                    ),
+                    dcc.Tab(
+                        label="Portfolio",
+                        value="portfolio",
+                        className="sw-tab",
+                        selected_className="sw-tab--selected",
+                        children=[build_portfolio_tab()],
+                    ),
+                ],
+            ),
+            # Data stores for chart period selection
+            dcc.Store(id="stock-ohlcv-store", data=None),
+            dcc.Store(id="stock-intraday-store", data=None),
+            dcc.Store(id="stock-symbol-store", data=None),
+            # Toast feedback infrastructure
+            dcc.Store(id="toast-trigger", data=None),
+            html.Div(
+                id="toast-container",
+                style={
+                    "position": "fixed",
+                    "top": "20px",
+                    "right": "20px",
+                    "zIndex": 1050,
+                    "pointerEvents": "none",
+                },
+            ),
+            # Update Interval
+            dcc.Interval(id="watchlist-interval", interval=30 * 1000, n_intervals=0),
+        ],
+        fluid=True,
+        className="py-2 sw-page",
+    )
+
+
+def _market_tab_children():
+    return [
             # Search toolbar
             html.Div(
                 [
@@ -723,28 +774,7 @@ def create_layout():
                 ],
                 className="g-4",
             ),
-            # Data stores for chart period selection
-            dcc.Store(id="stock-ohlcv-store", data=None),
-            dcc.Store(id="stock-intraday-store", data=None),
-            dcc.Store(id="stock-symbol-store", data=None),
-            # Toast feedback infrastructure
-            dcc.Store(id="toast-trigger", data=None),
-            html.Div(
-                id="toast-container",
-                style={
-                    "position": "fixed",
-                    "top": "20px",
-                    "right": "20px",
-                    "zIndex": 1050,
-                    "pointerEvents": "none",
-                },
-            ),
-            # Update Interval
-            dcc.Interval(id="watchlist-interval", interval=30 * 1000, n_intervals=0),
-        ],
-        fluid=True,
-        className="py-2 sw-page",
-    )
+    ]
 
 
 def register_callbacks(dash_app):

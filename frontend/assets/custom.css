@@ -968,3 +968,159 @@ body {
         scroll-behavior: auto !important;
     }
 }
+
+/* ============================================================
+   Tabs (Market / Portfolio)
+   ============================================================ */
+.sw-tabs-wrap {
+    margin-bottom: 20px;
+}
+
+.sw-tabs .tab-parent,
+.sw-tabs {
+    border-bottom: 1px solid var(--hairline) !important;
+}
+
+.sw-tab {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    color: var(--text-3) !important;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 12px 20px !important;
+    transition: color 120ms ease, border-color 120ms ease;
+}
+
+.sw-tab:hover {
+    color: var(--text-2) !important;
+}
+
+.sw-tab--selected {
+    background: transparent !important;
+    color: var(--text) !important;
+    border-bottom: 2px solid var(--accent) !important;
+}
+
+/* ============================================================
+   Portfolio tab
+   ============================================================ */
+.portfolio-summary-card {
+    margin-bottom: 24px;
+    padding: 20px;
+}
+
+.portfolio-stat-grid {
+    margin-top: 0;
+}
+
+.pl-gain {
+    color: var(--gain) !important;
+}
+
+.pl-loss {
+    color: var(--loss) !important;
+}
+
+.portfolio-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.portfolio-table th {
+    color: var(--text-3);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 500;
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--hairline);
+}
+
+.portfolio-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--hairline);
+    color: var(--text);
+    vertical-align: middle;
+}
+
+.portfolio-table tr:last-child td {
+    border-bottom: none;
+}
+
+.portfolio-table .num {
+    text-align: right;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.85rem;
+}
+
+.portfolio-table td .watchlist-company {
+    display: block;
+}
+
+.txn-side {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    margin-right: 10px;
+}
+
+.txn-side--buy {
+    color: var(--gain);
+    background: var(--gain-bg);
+    border: 1px solid var(--gain-border);
+}
+
+.txn-side--sell {
+    color: var(--loss);
+    background: var(--loss-bg);
+    border: 1px solid var(--loss-border);
+}
+
+.txn-detail {
+    color: var(--text-2);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.85rem;
+    margin-right: 10px;
+}
+
+.txn-date {
+    color: var(--text-3);
+    font-size: 0.8rem;
+}
+
+.txn-row-info {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+/* Date picker matches the dark inputs */
+.txn-datepicker .DateInput,
+.txn-datepicker .DateInput_input {
+    background: var(--well) !important;
+    color: var(--text) !important;
+    font-size: 0.9rem;
+    border-radius: var(--radius-md);
+}
+
+.txn-datepicker .SingleDatePickerInput {
+    background: var(--well) !important;
+    border: 1px solid var(--hairline) !important;
+    border-radius: var(--radius-md);
+}
+
+@media (max-width: 768px) {
+    .portfolio-table {
+        display: block;
+        overflow-x: auto;
+    }
+}
