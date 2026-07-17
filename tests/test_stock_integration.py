@@ -1,18 +1,22 @@
-import pytest
-from unittest.mock import Mock, patch
 from datetime import datetime, timedelta
-from app.models import Stock
+from unittest.mock import Mock, patch
+
+import pytest
+from sqlalchemy.exc import IntegrityError
+
 from app.extensions import db
+from app.models import Stock
+
 
 @pytest.mark.integration
 def test_full_stock_workflow(app, test_cache):
     """Test the entire stock data workflow with caching."""
     with app.app_context():
-        with patch('app.services.stock_services.polygon_client') as mock_polygon:
+        with patch("app.services.stock_services.polygon_client") as mock_polygon:
             # Set up price response
             mock_price_response = Mock()
             mock_price_response.close = 150.0
-            mock_price_response.date = datetime.now().strftime('%Y-%m-%d')
+            mock_price_response.date = datetime.now().strftime("%Y-%m-%d")
             mock_polygon.get_daily_open_close_agg.return_value = mock_price_response
 
             # Set up company details response
@@ -38,12 +42,12 @@ def test_full_stock_workflow(app, test_cache):
 
             # Import services inside context
             from app.services.stock_services import (
-                get_stock_price,
-                get_company_details,
-                get_stock_data,
                 create_stock,
+                delete_stock,
+                get_company_details,
                 get_stock_by_symbol,
-                delete_stock
+                get_stock_data,
+                get_stock_price,
             )
 
             # Test price retrieval
@@ -58,8 +62,8 @@ def test_full_stock_workflow(app, test_cache):
             assert details["industry"] == "Consumer Electronics"
 
             # Test historical data
-            from_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
-            to_date = datetime.now().strftime('%Y-%m-%d')
+            from_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+            to_date = datetime.now().strftime("%Y-%m-%d")
             historical = get_stock_data("AAPL", from_date, to_date)
             assert len(historical) == 1
             assert historical[0]["close"] == 150.0
@@ -81,20 +85,21 @@ def test_full_stock_workflow(app, test_cache):
             assert delete_stock("AAPL") is True
             assert get_stock_by_symbol("AAPL") is None
 
+
 @pytest.mark.integration
 def test_error_handling(app, test_cache):
     """Test error handling in stock services."""
     with app.app_context():
-        with patch('app.services.stock_services.polygon_client') as mock_polygon:
+        with patch("app.services.stock_services.polygon_client") as mock_polygon:
             # Simulate API errors
             mock_polygon.get_daily_open_close_agg.side_effect = Exception("API Error")
             mock_polygon.get_ticker_details.side_effect = Exception("API Error")
             mock_polygon.get_aggs.side_effect = Exception("API Error")
 
             from app.services.stock_services import (
-                get_stock_price,
                 get_company_details,
-                get_stock_data
+                get_stock_data,
+                get_stock_price,
             )
 
             # Test error handling for each service
@@ -115,7 +120,7 @@ def test_database_constraints(app):
         db.session.commit()
 
         db.session.add(stock2)
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             db.session.commit()
 
         db.session.rollback()

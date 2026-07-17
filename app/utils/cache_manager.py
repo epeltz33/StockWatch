@@ -1,18 +1,20 @@
-from typing import Any, Dict
+from typing import Any
+
 from flask_caching import Cache
 
-DEFAULT_TIMEOUTS: Dict[str, int] = {
-    'price': 300,       # 5 minutes
-    'details': 86400,   # 24 hours
-    'historical': 3600, # 1 hour
-    'intraday': 300,    # 5 minutes
-    'fallback': 600     # default/fallback timeout
+DEFAULT_TIMEOUTS: dict[str, int] = {
+    "price": 300,  # 5 minutes
+    "details": 86400,  # 24 hours
+    "historical": 3600,  # 1 hour
+    "intraday": 300,  # 5 minutes
+    "fallback": 600,  # default/fallback timeout
 }
+
 
 class StockCache:
     """Simple wrapper around Flask-Caching for stock data."""
 
-    def __init__(self, cache: Cache, timeouts: Dict[str, int] | None = None):
+    def __init__(self, cache: Cache, timeouts: dict[str, int] | None = None):
         self.cache = cache
         self.timeouts = timeouts or DEFAULT_TIMEOUTS
 
@@ -29,5 +31,5 @@ class StockCache:
 
     def set_cached_data(self, symbol: str, data_type: str, data: Any, **kwargs: Any) -> None:
         key = self._get_cache_key(symbol, data_type, **kwargs)
-        timeout = self.timeouts.get(data_type, self.timeouts.get('fallback', 300))
+        timeout = self.timeouts.get(data_type, self.timeouts.get("fallback", 300))
         self.cache.set(key, data, timeout=timeout)

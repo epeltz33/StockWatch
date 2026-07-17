@@ -1,6 +1,7 @@
-from app.extensions import db
 from flask_login import UserMixin
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from app.extensions import db
 
 
 class User(UserMixin, db.Model):
@@ -10,7 +11,8 @@ class User(UserMixin, db.Model):
     # Increase the length of the password hash
     password_hash = db.Column(db.String(256))
     watchlists = db.relationship(
-        'Watchlist', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+        "Watchlist", backref="user", lazy="dynamic", cascade="all, delete-orphan"
+    )
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -22,9 +24,10 @@ class User(UserMixin, db.Model):
 class Watchlist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    stocks = db.relationship('Stock', secondary='watchlist_stocks',
-                            cascade='all, delete-orphan', single_parent=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    stocks = db.relationship(
+        "Stock", secondary="watchlist_stocks", cascade="all, delete-orphan", single_parent=True
+    )
 
     def __init__(self, name, user_id):
         self.name = name
@@ -41,9 +44,15 @@ class Stock(db.Model):
         self.name = name
 
 
-watchlist_stocks = db.Table('watchlist_stocks',
-                            db.Column('watchlist_id', db.Integer, db.ForeignKey(
-                                'watchlist.id', ondelete='CASCADE'), primary_key=True),
-                            db.Column('stock_id', db.Integer, db.ForeignKey(
-                                'stock.id', ondelete='CASCADE'), primary_key=True)
-                            )
+watchlist_stocks = db.Table(
+    "watchlist_stocks",
+    db.Column(
+        "watchlist_id",
+        db.Integer,
+        db.ForeignKey("watchlist.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    db.Column(
+        "stock_id", db.Integer, db.ForeignKey("stock.id", ondelete="CASCADE"), primary_key=True
+    ),
+)

@@ -1,12 +1,15 @@
-import pytest
-from unittest.mock import Mock, patch
 from datetime import datetime, timedelta
 from types import SimpleNamespace
-from app.utils.cache_manager import StockCache
-from app.services import stock_services
-from app.services.stock_services import get_stock_price, get_company_details, get_stock_data
+from unittest.mock import Mock, patch
+
+import pytest
 from flask_caching import Cache
+
+from app.services import stock_services
+from app.services.stock_services import get_company_details, get_stock_data
+from app.utils.cache_manager import StockCache
 from frontend import dashboard
+
 
 @pytest.fixture
 def mock_cache():
@@ -15,10 +18,12 @@ def mock_cache():
     cache.get.return_value = None
     return cache
 
+
 @pytest.fixture
 def stock_cache(mock_cache):
     """Create a StockCache instance with mock cache."""
     return StockCache(mock_cache)
+
 
 def test_cache_key_generation(stock_cache):
     """Test cache key generation with different inputs."""
@@ -28,12 +33,10 @@ def test_cache_key_generation(stock_cache):
 
     # Test key generation with additional parameters
     key_with_params = stock_cache._get_cache_key(
-        "AAPL",
-        "historical",
-        start_date="2024-01-01",
-        end_date="2024-01-31"
+        "AAPL", "historical", start_date="2024-01-01", end_date="2024-01-31"
     )
     assert key_with_params == "stock:AAPL:historical:end_date=2024-01-31:start_date=2024-01-01"
+
 
 def test_cache_get_set(stock_cache, mock_cache):
     """Test cache get and set operations."""
@@ -51,17 +54,18 @@ def test_cache_get_set(stock_cache, mock_cache):
     cached_data = stock_cache.get_cached_data("AAPL", "price")
     assert cached_data == test_data
 
+
 def test_cache_timeouts(stock_cache, mock_cache):
     """Test different cache timeouts for different data types."""
     test_data = {"price": 150.0}
 
     # Test price cache timeout
     stock_cache.set_cached_data("AAPL", "price", test_data)
-    assert mock_cache.set.call_args[1]['timeout'] == 300  # 5 minutes
+    assert mock_cache.set.call_args[1]["timeout"] == 300  # 5 minutes
 
     # Test details cache timeout
     stock_cache.set_cached_data("AAPL", "details", test_data)
-    assert mock_cache.set.call_args[1]['timeout'] == 86400  # 24 hours
+    assert mock_cache.set.call_args[1]["timeout"] == 86400  # 24 hours
 
 
 def test_company_details_keeps_full_trimmed_description_and_versions_cache():
@@ -73,7 +77,9 @@ def test_company_details_keeps_full_trimmed_description_and_versions_cache():
         primary_exchange="XNAS",
     )
 
-    with patch.object(stock_services.StockCache, "get_cached_data", return_value=None) as get_cached:
+    with patch.object(
+        stock_services.StockCache, "get_cached_data", return_value=None
+    ) as get_cached:
         with patch.object(stock_services.StockCache, "set_cached_data") as set_cached:
             with patch.object(stock_services, "_get_client") as get_client:
                 get_client.return_value.get_ticker_details.return_value = ticker_details
@@ -114,7 +120,8 @@ def test_about_display_state_expands_and_collapses_again():
         "false",
     )
 
-@patch('app.services.stock_services.polygon_client')
+
+@patch("app.services.stock_services.polygon_client")
 def test_historical_data_handling(mock_polygon, app, test_cache):
     """Test historical data retrieval and caching."""
     with app.app_context():
@@ -128,19 +135,20 @@ def test_historical_data_handling(mock_polygon, app, test_cache):
 
         mock_polygon.get_aggs.return_value = [mock_result]
 
-        end_date = datetime.now().strftime('%Y-%m-%d')
-        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        end_date = datetime.now().strftime("%Y-%m-%d")
+        start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
 
         data = get_stock_data("AAPL", start_date, end_date)
         assert len(data) == 1
-        assert data[0]['close'] == 150.0
-        assert data[0]['volume'] == 1000000
+        assert data[0]["close"] == 150.0
+        assert data[0]["volume"] == 1000000
+
 
 @pytest.mark.integration
 def test_full_stock_workflow(app, test_cache):
     """Test the entire stock data workflow with caching."""
     with app.app_context():
-        with patch('app.services.stock_services.polygon_client') as mock_polygon:
+        with patch("app.services.stock_services.polygon_client") as mock_polygon:
             # Mock company details response
             mock_details_response = Mock()
             mock_details_response.name = "Apple Inc."
@@ -159,4 +167,3 @@ def test_full_stock_workflow(app, test_cache):
             assert details["name"] == "Apple Inc."
             assert details["sector"] == "Technology"
             assert details["industry"] == "Consumer Electronics"
-

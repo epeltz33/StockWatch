@@ -2,6 +2,7 @@
 WSGI entry point for the StockWatch application.
 This file is specifically designed to work with Gunicorn.
 """
+
 import os
 import sys
 from pathlib import Path
@@ -27,8 +28,7 @@ def _configure_environment() -> None:
         ]
         if missing:
             raise RuntimeError(
-                "Missing required production environment variables: "
-                + ", ".join(missing)
+                "Missing required production environment variables: " + ", ".join(missing)
             )
         return
 
@@ -50,9 +50,7 @@ try:
 
     print("✓ Flask application created successfully")
     print(f"✓ Database URL: {os.environ.get('DATABASE_URL', 'Not set')[:50]}...")
-    print(
-        f"✓ Polygon API Key: {'Set' if os.environ.get('POLYGON_API_KEY') else 'Not set'}"
-    )
+    print(f"✓ Polygon API Key: {'Set' if os.environ.get('POLYGON_API_KEY') else 'Not set'}")
 
 except Exception as e:
     error_text = str(e)
