@@ -333,9 +333,7 @@ def build_transactions_list(transactions):
                                 + f" @ {_money(txn.price)}",
                                 className="txn-detail",
                             ),
-                            html.Span(
-                                txn.executed_at.strftime("%Y-%m-%d"), className="txn-date"
-                            ),
+                            html.Span(txn.executed_at.strftime("%Y-%m-%d"), className="txn-date"),
                         ],
                         className="watchlist-row-info txn-row-info",
                     ),
