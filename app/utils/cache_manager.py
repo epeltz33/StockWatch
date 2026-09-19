@@ -4,6 +4,7 @@ from flask_caching import Cache
 
 DEFAULT_TIMEOUTS: dict[str, int] = {
     "price": 300,  # 5 minutes
+    "quote": 300,  # 5 minutes (price + day change, fetched in batches)
     "details": 86400,  # 24 hours
     "historical": 3600,  # 1 hour
     "intraday": 300,  # 5 minutes

@@ -16,8 +16,8 @@ from app.extensions import db
 from app.models import Stock, Transaction
 from app.services.stock_services import (
     get_company_details,
+    get_quotes,
     get_stock_by_symbol,
-    get_stock_price,
 )
 
 logger = logging.getLogger(__name__)
@@ -192,38 +192,53 @@ def delete_transaction(user_id: int, transaction_id: int) -> bool:
     return True
 
 
-def get_positions(user_id: int) -> list[Position]:
-    """Open positions (quantity > 0) with live pricing where available."""
-    transactions = Transaction.query.filter_by(user_id=user_id).all()
-    states = _replay(transactions)
+def _load_states(user_id: int) -> dict[str, _SymbolState]:
+    """One query, one replay — the entry point for both reads below."""
+    return _replay(Transaction.query.filter_by(user_id=user_id).all())
 
-    positions = []
-    for symbol in sorted(states):
-        state = states[symbol]
-        if state.quantity <= 0:
-            continue
 
-        position = Position(
+def _positions_from_states(states: dict[str, _SymbolState]) -> list[Position]:
+    """Open positions (quantity > 0) with live pricing where available.
+
+    Prices for every holding are fetched in a single batched call. Fetching
+    them one symbol at a time trips the market-data provider's rate limit on
+    portfolios past a handful of names, and a rate-limited fetch reports an
+    unavailable price, which silently drops the position out of market value
+    and allocations.
+    """
+    positions = [
+        Position(
             symbol=symbol,
-            name=state.name,
-            quantity=state.quantity,
-            avg_cost=state.avg_cost,
-            cost_basis=state.quantity * state.avg_cost,
-            realized_pl=state.realized_pl,
+            name=states[symbol].name,
+            quantity=states[symbol].quantity,
+            avg_cost=states[symbol].avg_cost,
+            cost_basis=states[symbol].quantity * states[symbol].avg_cost,
+            realized_pl=states[symbol].realized_pl,
         )
+        for symbol in sorted(states)
+        if states[symbol].quantity > 0
+    ]
+    if not positions:
+        return []
 
-        raw_price = get_stock_price(symbol)
-        if raw_price is not None:
-            price = Decimal(str(raw_price))
-            position.current_price = price
-            position.market_value = state.quantity * price
-            position.unrealized_pl = position.market_value - position.cost_basis
-            if position.cost_basis != 0:
-                position.unrealized_pl_pct = position.unrealized_pl / position.cost_basis * 100
-
-        positions.append(position)
+    quotes = get_quotes([p.symbol for p in positions])
+    for position in positions:
+        quote = quotes.get(position.symbol)
+        if quote is None:
+            continue
+        price = Decimal(str(quote.price))
+        position.current_price = price
+        position.market_value = position.quantity * price
+        position.unrealized_pl = position.market_value - position.cost_basis
+        if position.cost_basis != 0:
+            position.unrealized_pl_pct = position.unrealized_pl / position.cost_basis * 100
 
     return positions
+
+
+def get_positions(user_id: int) -> list[Position]:
+    """Open positions (quantity > 0) with live pricing where available."""
+    return _positions_from_states(_load_states(user_id))
 
 
 def get_portfolio_summary(user_id: int) -> dict:
@@ -233,9 +248,8 @@ def get_portfolio_summary(user_id: int) -> dict:
     and allocations but still counted in cost basis. Realized P/L includes
     fully closed positions.
     """
-    transactions = Transaction.query.filter_by(user_id=user_id).all()
-    states = _replay(transactions)
-    positions = get_positions(user_id)
+    states = _load_states(user_id)
+    positions = _positions_from_states(states)
 
     total_realized = sum((s.realized_pl for s in states.values()), Decimal(0))
     total_cost_basis = sum((p.cost_basis for p in positions), Decimal(0))
