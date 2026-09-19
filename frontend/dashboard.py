@@ -675,106 +675,106 @@ def create_layout():
 
 def _market_tab_children():
     return [
-            # Search toolbar
-            html.Div(
-                [
-                    dbc.InputGroup(
-                        [
-                            dbc.Input(
-                                id="stock-input",
-                                type="text",
-                                placeholder="Search ticker — e.g. AAPL",
-                                autoComplete="off",
-                            ),
-                            dbc.Button("Search", id="search-button", className="sw-btn--primary"),
-                        ],
-                        className="search-group",
+        # Search toolbar
+        html.Div(
+            [
+                dbc.InputGroup(
+                    [
+                        dbc.Input(
+                            id="stock-input",
+                            type="text",
+                            placeholder="Search ticker — e.g. AAPL",
+                            autoComplete="off",
+                        ),
+                        dbc.Button("Search", id="search-button", className="sw-btn--primary"),
+                    ],
+                    className="search-group",
+                ),
+            ],
+            className="toolbar",
+        ),
+        # Chart hero
+        html.Div(
+            [
+                dcc.Loading(
+                    id="loading-chart",
+                    type="circle",
+                    color=ACCENT,
+                    children=html.Div(
+                        id="stock-chart-container",
+                        className="chart-container",
+                        children=empty_state(
+                            "\U0001f4c8",
+                            "Search a ticker to begin",
+                            "Try AAPL, MSFT, or SNDK — press Enter to search.",
+                        ),
                     ),
-                ],
-                className="toolbar",
-            ),
-            # Chart hero
-            html.Div(
-                [
+                ),
+            ],
+            className="sw-card chart-card",
+        ),
+        # Details (left) + watchlists (right)
+        dbc.Row(
+            [
+                dbc.Col(
                     dcc.Loading(
-                        id="loading-chart",
+                        id="loading-stock-data",
                         type="circle",
                         color=ACCENT,
-                        children=html.Div(
-                            id="stock-chart-container",
-                            className="chart-container",
-                            children=empty_state(
-                                "\U0001f4c8",
-                                "Search a ticker to begin",
-                                "Try AAPL, MSFT, or SNDK — press Enter to search.",
+                        children=html.Div(id="stock-data"),
+                    ),
+                    lg=8,
+                    md=12,
+                    className="mb-4",
+                ),
+                dbc.Col(
+                    html.Div(
+                        [
+                            html.H2("Watchlists", className="panel-title"),
+                            dcc.Dropdown(
+                                id="watchlist-dropdown",
+                                options=[],
+                                placeholder="Select a watchlist",
+                                className="mb-3 dark-dropdown",
                             ),
-                        ),
-                    ),
-                ],
-                className="sw-card chart-card",
-            ),
-            # Details (left) + watchlists (right)
-            dbc.Row(
-                [
-                    dbc.Col(
-                        dcc.Loading(
-                            id="loading-stock-data",
-                            type="circle",
-                            color=ACCENT,
-                            children=html.Div(id="stock-data"),
-                        ),
-                        lg=8,
-                        md=12,
-                        className="mb-4",
-                    ),
-                    dbc.Col(
-                        html.Div(
-                            [
-                                html.H2("Watchlists", className="panel-title"),
-                                dcc.Dropdown(
-                                    id="watchlist-dropdown",
-                                    options=[],
-                                    placeholder="Select a watchlist",
-                                    className="mb-3 dark-dropdown",
-                                ),
-                                dbc.InputGroup(
-                                    [
-                                        dbc.Input(
-                                            id="new-watchlist-input",
-                                            type="text",
-                                            placeholder="New watchlist name",
-                                        ),
-                                        dbc.Button(
-                                            "Create",
-                                            id="create-watchlist-button",
-                                            className="sw-btn--ghost",
-                                        ),
-                                    ],
-                                    className="mb-3",
-                                ),
-                                dcc.Loading(
-                                    id="loading-watchlist",
-                                    type="circle",
-                                    color=ACCENT,
-                                    children=html.Div(
-                                        id="watchlist-section",
-                                        children=empty_state(
-                                            "★",
-                                            "No watchlist selected",
-                                            "Create one above or pick an existing watchlist.",
-                                        ),
+                            dbc.InputGroup(
+                                [
+                                    dbc.Input(
+                                        id="new-watchlist-input",
+                                        type="text",
+                                        placeholder="New watchlist name",
+                                    ),
+                                    dbc.Button(
+                                        "Create",
+                                        id="create-watchlist-button",
+                                        className="sw-btn--ghost",
+                                    ),
+                                ],
+                                className="mb-3",
+                            ),
+                            dcc.Loading(
+                                id="loading-watchlist",
+                                type="circle",
+                                color=ACCENT,
+                                children=html.Div(
+                                    id="watchlist-section",
+                                    children=empty_state(
+                                        "★",
+                                        "No watchlist selected",
+                                        "Create one above or pick an existing watchlist.",
                                     ),
                                 ),
-                            ],
-                            className="sw-card watchlist-card",
-                        ),
-                        lg=4,
-                        md=12,
-                        className="mb-4",
+                            ),
+                        ],
+                        className="sw-card watchlist-card",
                     ),
-                ],
-                className="g-4",
-            ),
+                    lg=4,
+                    md=12,
+                    className="mb-4",
+                ),
+            ],
+            className="g-4",
+        ),
     ]
 
 
