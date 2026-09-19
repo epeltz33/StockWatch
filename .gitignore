@@ -101,7 +101,6 @@ Thumbs.db
 # Coverage artifacts
 .coverage
 coverage.xml
-htmlcov/
 CLAUDE.md
 .claude/
 .gitignore

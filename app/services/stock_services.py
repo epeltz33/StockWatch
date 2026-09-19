@@ -1,5 +1,7 @@
 import logging
 import os
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass
 from datetime import datetime, time, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -38,24 +40,163 @@ def _get_client() -> RESTClient:
     return polygon_client
 
 
-def get_stock_price(symbol: str) -> float | None:
-    """Get current stock price from Polygon API (cached for 5 minutes)."""
-    stock_cache = StockCache(cache)
-    cached_price = stock_cache.get_cached_data(symbol, "price")
-    if cached_price is not None:
-        return cached_price
+@dataclass
+class Quote:
+    """Latest close for a symbol plus its change against the prior session.
 
+    ``prev_close``/``change``/``change_pct`` are None when the prior session
+    could not be fetched — the price is still usable, so callers must render
+    the change as unavailable rather than as zero.
+    """
+
+    symbol: str
+    price: float
+    prev_close: float | None = None
+    change: float | None = None
+    change_pct: float | None = None
+
+
+def _normalize_symbols(symbols: Iterable[str]) -> list[str]:
+    """Upper-case, strip, and de-duplicate while preserving caller order."""
+    normalized: list[str] = []
+    for raw in symbols:
+        if not isinstance(raw, str):
+            continue
+        symbol = raw.strip().upper()
+        if symbol and symbol not in normalized:
+            normalized.append(symbol)
+    return normalized
+
+
+def _previous_trading_day(date_str: str) -> str:
+    """The weekday before date_str. Holidays are not modelled; a holiday just
+    yields an empty grouped response, which degrades to change=None."""
+    day = datetime.strptime(date_str, "%Y-%m-%d").date() - timedelta(days=1)
+    while day.weekday() >= 5:
+        day -= timedelta(days=1)
+    return day.strftime("%Y-%m-%d")
+
+
+def _grouped_closes(date_str: str, wanted: set[str]) -> dict[str, float]:
+    """Closes for `wanted` from one whole-market grouped daily call.
+
+    Returns {} on any failure; the grouped endpoint is not available on every
+    API plan, and callers fall back to per-symbol fetches.
+    """
+    closes: dict[str, float] = {}
     try:
-        date = get_most_recent_trading_day()
         client = _get_client()
-        resp = client.get_daily_open_close_agg(symbol, date)
-        price = resp.close if resp else None
-        if price is not None:
-            stock_cache.set_cached_data(symbol, "price", price)
-        return price
+        aggs = client.get_grouped_daily_aggs(date_str, adjusted=True)
+        for agg in aggs or []:
+            ticker = getattr(agg, "ticker", None)
+            close = getattr(agg, "close", None)
+            if ticker in wanted and isinstance(close, (int, float)):
+                closes[ticker] = float(close)
+    except Exception as e:
+        logger.warning(f"Grouped daily aggregates unavailable for {date_str}: {str(e)}")
+        return {}
+    return closes
+
+
+def _fetch_grouped_quotes(symbols: list[str]) -> dict[str, Quote]:
+    """Quotes for as many of `symbols` as the grouped endpoint knows about.
+
+    Costs two API calls total — latest session and prior session — regardless
+    of how many symbols are requested.
+    """
+    wanted = set(symbols)
+    date_str = get_most_recent_trading_day()
+    latest = _grouped_closes(date_str, wanted)
+    if not latest:
+        return {}
+
+    previous = _grouped_closes(_previous_trading_day(date_str), wanted)
+
+    quotes: dict[str, Quote] = {}
+    for symbol, price in latest.items():
+        prev_close = previous.get(symbol)
+        change = change_pct = None
+        if prev_close:
+            change = price - prev_close
+            change_pct = change / prev_close * 100
+        quotes[symbol] = Quote(
+            symbol=symbol,
+            price=price,
+            prev_close=prev_close,
+            change=change,
+            change_pct=change_pct,
+        )
+    return quotes
+
+
+def _fetch_single_quote(symbol: str) -> Quote | None:
+    """One-symbol fallback. Price only: the day change would cost a second
+    call per symbol, which is exactly what the batched path exists to avoid.
+    """
+    try:
+        client = _get_client()
+        resp = client.get_daily_open_close_agg(symbol, get_most_recent_trading_day())
+        price = getattr(resp, "close", None) if resp else None
+        if not isinstance(price, (int, float)):
+            return None
+        return Quote(symbol=symbol, price=float(price))
     except Exception as e:
         logger.error(f"Error fetching stock price for {symbol}: {str(e)}")
         return None
+
+
+def get_quotes(symbols: Iterable[str]) -> dict[str, Quote]:
+    """Price and day change for many symbols in one batch (cached 5 minutes).
+
+    Symbols the provider has no data for are omitted from the result, so
+    callers should use .get(symbol) rather than assuming every input is keyed.
+    """
+    wanted = _normalize_symbols(symbols)
+    if not wanted:
+        return {}
+
+    stock_cache = StockCache(cache)
+    quotes: dict[str, Quote] = {}
+    missing: list[str] = []
+    for symbol in wanted:
+        cached = stock_cache.get_cached_data(symbol, "quote")
+        if isinstance(cached, dict):
+            quotes[symbol] = Quote(**cached)
+        else:
+            missing.append(symbol)
+
+    if not missing:
+        return quotes
+
+    # Only cache what was asked for: a grouped response covers the whole US
+    # market, and writing all of it would evict every other cache entry.
+    grouped = _fetch_grouped_quotes(missing)
+    still_missing = []
+    for symbol in missing:
+        quote = grouped.get(symbol)
+        if quote is None:
+            still_missing.append(symbol)
+            continue
+        quotes[symbol] = quote
+        stock_cache.set_cached_data(symbol, "quote", asdict(quote))
+
+    for symbol in still_missing:
+        quote = _fetch_single_quote(symbol)
+        if quote is not None:
+            quotes[symbol] = quote
+            stock_cache.set_cached_data(symbol, "quote", asdict(quote))
+
+    return quotes
+
+
+def get_stock_price(symbol: str) -> float | None:
+    """Get current stock price (cached for 5 minutes).
+
+    Thin wrapper over get_quotes; prefer get_quotes directly when pricing more
+    than one symbol so the fetch stays a single batched call.
+    """
+    quote = get_quotes([symbol]).get(symbol.strip().upper() if isinstance(symbol, str) else symbol)
+    return quote.price if quote else None
 
 
 def get_stock_data(symbol: str, from_date: str, to_date: str) -> list[dict[str, Any]]:

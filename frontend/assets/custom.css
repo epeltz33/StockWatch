@@ -682,6 +682,28 @@ body {
     color: var(--text-3);
 }
 
+/* Price + day change, right-aligned between the row info and its actions */
+.watchlist-row-quote {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex: none;
+}
+
+.watchlist-price {
+    font-family: var(--font-data);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.watchlist-price--empty {
+    color: var(--text-3);
+    font-weight: 500;
+}
+
 .row-actions {
     display: flex;
     gap: 6px;
@@ -955,6 +977,18 @@ body {
     /* Two columns clip mono values (52-wk range, day chip) — stack instead */
     .stat-grid {
         grid-template-columns: 1fr;
+    }
+
+    /* Watchlist rows carry price and day change alongside the actions; at
+       phone width the ticker and the numbers earn the space, the company
+       name does not. */
+    .watchlist-company {
+        display: none;
+    }
+
+    .watchlist-row {
+        padding: 10px 12px;
+        gap: 8px;
     }
 }
 

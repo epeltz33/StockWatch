@@ -16,6 +16,7 @@ from app.models import Stock, Watchlist
 from app.services.stock_services import (
     get_company_details,
     get_intraday_stock_data,
+    get_quotes,
     get_stock_data,
     get_stock_price,
 )
@@ -800,6 +801,7 @@ def register_callbacks(dash_app):
             Input({"type": "remove-from-watchlist", "index": ALL}, "n_clicks"),
             Input({"type": "delete-watchlist", "index": ALL}, "n_clicks"),
             Input("watchlist-dropdown", "value"),
+            Input("watchlist-interval", "n_intervals"),
         ],
         [
             State("new-watchlist-input", "value"),
@@ -812,6 +814,7 @@ def register_callbacks(dash_app):
         remove_clicks,
         delete_clicks,
         selected_watchlist_id,
+        interval_ticks,
         new_watchlist_name,
         add_ids,
     ):
@@ -904,7 +907,7 @@ def register_callbacks(dash_app):
 
             logger.info(f"Adding stock {stock_symbol} to watchlist {selected_watchlist_id}")
             try:
-                watchlist = Watchlist.query.get(selected_watchlist_id)
+                watchlist = _owned_watchlist(selected_watchlist_id)
                 if not watchlist:
                     return (
                         no_update,
@@ -969,7 +972,7 @@ def register_callbacks(dash_app):
             logger.info(f"Removing stock id {stock_id} from watchlist {selected_watchlist_id}")
             try:
                 stock = Stock.query.get(stock_id)
-                watchlist = Watchlist.query.get(selected_watchlist_id)
+                watchlist = _owned_watchlist(selected_watchlist_id)
                 if watchlist and stock and stock in watchlist.stocks:
                     watchlist.stocks.remove(stock)
                     db.session.commit()
@@ -1002,8 +1005,8 @@ def register_callbacks(dash_app):
             watchlist_id = triggered_id["index"]
             logger.info(f"Deleting watchlist {watchlist_id}")
             try:
-                watchlist = Watchlist.query.get(watchlist_id)
-                if watchlist and watchlist.user_id == current_user.id:
+                watchlist = _owned_watchlist(watchlist_id)
+                if watchlist:
                     name = watchlist.name
                     db.session.delete(watchlist)
                     db.session.commit()
@@ -1034,6 +1037,19 @@ def register_callbacks(dash_app):
             return (
                 update_watchlist_section(selected_watchlist_id),
                 selected_watchlist_id,
+                no_update_list,
+                no_update,
+            )
+
+        elif trigger_type == "watchlist-interval":
+            # Periodic price refresh. Re-render the current list only: leave
+            # the dropdown value alone so a tick can't move the user's
+            # selection, and raise no toast for a background refresh.
+            if not selected_watchlist_id:
+                return no_update, no_update, no_update_list, no_update
+            return (
+                update_watchlist_section(selected_watchlist_id),
+                no_update,
                 no_update_list,
                 no_update,
             )
@@ -1309,6 +1325,20 @@ def create_new_stock(stock_symbol):
         raise
 
 
+def _owned_watchlist(watchlist_id):
+    """The current user's watchlist with this id, or None.
+
+    Watchlist ids reach the handlers from the browser — the dropdown value and
+    the pattern-matching button indices are both client-controlled — so every
+    lookup is scoped to the owner. An id belonging to another account is
+    treated exactly like one that does not exist, so callers cannot use the
+    difference to probe for other users' watchlists.
+    """
+    if not watchlist_id or not current_user.is_authenticated:
+        return None
+    return Watchlist.query.filter_by(id=watchlist_id, user_id=current_user.id).first()
+
+
 def update_watchlist_section(watchlist_id):
     if not current_user.is_authenticated:
         return empty_state("\U0001f512", "Please log in to view your watchlists.")
@@ -1318,7 +1348,7 @@ def update_watchlist_section(watchlist_id):
         return create_empty_watchlist_section()
 
     if watchlist_id:
-        watchlist = Watchlist.query.get(watchlist_id)
+        watchlist = _owned_watchlist(watchlist_id)
         if watchlist:
             return create_watchlist_content(watchlist)
 
@@ -1337,8 +1367,45 @@ def create_empty_watchlist_section():
     )
 
 
+def _watchlist_quote_cell(quote):
+    """Price and day change for one watchlist row.
+
+    A missing quote renders as an em dash: showing $0.00 for a symbol whose
+    price could not be fetched would read as a real, catastrophic price.
+    """
+    if quote is None:
+        return html.Div(
+            html.Span("\u2014", className="watchlist-price watchlist-price--empty"),
+            className="watchlist-row-quote",
+        )
+
+    children = [html.Span(f"${quote.price:,.2f}", className="watchlist-price")]
+
+    # change is None when the prior session was unavailable — omit the chip
+    # entirely rather than implying the stock was flat.
+    if quote.change is not None and quote.change_pct is not None:
+        if quote.change > 0:
+            chip_class, arrow = "change-chip change-chip--sm change-chip--up", "\u25b2"
+        elif quote.change < 0:
+            chip_class, arrow = "change-chip change-chip--sm change-chip--down", "\u25bc"
+        else:
+            chip_class, arrow = "change-chip change-chip--sm change-chip--flat", ""
+
+        children.append(
+            html.Span(
+                ([html.Span(arrow, className="chip-arrow")] if arrow else [])
+                + [f"{quote.change:+.2f} ({quote.change_pct:+.2f}%)"],
+                className=chip_class,
+            )
+        )
+
+    return html.Div(children, className="watchlist-row-quote")
+
+
 def create_watchlist_content(watchlist):
     stocks = list(watchlist.stocks)
+    # One batched fetch for the whole list, not one request per row.
+    quotes = get_quotes([stock.symbol for stock in stocks]) if stocks else {}
 
     rows = [
         html.Div(
@@ -1350,6 +1417,7 @@ def create_watchlist_content(watchlist):
                     ],
                     className="watchlist-row-info",
                 ),
+                _watchlist_quote_cell(quotes.get(stock.symbol)),
                 html.Div(
                     [
                         dbc.Button(

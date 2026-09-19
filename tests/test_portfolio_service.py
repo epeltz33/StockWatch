@@ -1,6 +1,6 @@
 from datetime import date
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -15,6 +15,7 @@ from app.services.portfolio_services import (
     list_transactions,
     record_transaction,
 )
+from app.services.stock_services import Quote
 
 
 @pytest.fixture
@@ -26,10 +27,20 @@ def user(app):
     return u
 
 
+def quotes_for(prices):
+    """Build a get_quotes return value; symbols with no price are omitted,
+    exactly as the real batched fetch omits symbols it has no data for."""
+    return {
+        symbol: Quote(symbol=symbol, price=price)
+        for symbol, price in prices.items()
+        if price is not None
+    }
+
+
 @pytest.fixture(autouse=True)
 def no_live_prices():
     """Portfolio tests never hit the market-data API unless they patch it."""
-    with patch("app.services.portfolio_services.get_stock_price", return_value=None):
+    with patch("app.services.portfolio_services.get_quotes", return_value={}):
         with patch("app.services.portfolio_services.get_company_details", return_value=None):
             yield
 
@@ -115,7 +126,10 @@ def test_backdated_sell_that_breaks_later_sell_raises(user):
 def test_unrealized_pl_with_live_price(user):
     buy(user, "AAPL", "10", "150.00", date(2024, 1, 5))
 
-    with patch("app.services.portfolio_services.get_stock_price", return_value=175.50):
+    with patch(
+        "app.services.portfolio_services.get_quotes",
+        return_value=quotes_for({"AAPL": 175.50}),
+    ):
         p = get_positions(user.id)[0]
 
     assert p.current_price == Decimal("175.50")
@@ -129,10 +143,11 @@ def test_missing_price_degrades_gracefully(user):
     buy(user, "AAPL", "10", "150.00", date(2024, 1, 5))
     buy(user, "MSFT", "8", "310.00", date(2024, 2, 5))
 
-    def price_for(symbol):
-        return 200.00 if symbol == "AAPL" else None
-
-    with patch("app.services.portfolio_services.get_stock_price", side_effect=price_for):
+    # MSFT has no quote available from the provider
+    with patch(
+        "app.services.portfolio_services.get_quotes",
+        return_value=quotes_for({"AAPL": 200.00}),
+    ):
         summary = get_portfolio_summary(user.id)
 
     # MSFT is excluded from market value/unrealized but kept in cost basis
@@ -147,7 +162,10 @@ def test_allocation_weights_sum_to_one(user):
     buy(user, "AAPL", "10", "100.00", date(2024, 1, 5))
     buy(user, "MSFT", "10", "300.00", date(2024, 1, 5))
 
-    with patch("app.services.portfolio_services.get_stock_price", return_value=100.00):
+    with patch(
+        "app.services.portfolio_services.get_quotes",
+        return_value=quotes_for({"AAPL": 100.00, "MSFT": 100.00}),
+    ):
         summary = get_portfolio_summary(user.id)
 
     weights = [a["weight"] for a in summary["allocations"]]
@@ -217,3 +235,44 @@ def test_list_transactions_most_recent_first(user):
 
     limited = list_transactions(user.id, limit=2)
     assert len(limited) == 2
+
+
+def test_get_positions_prices_every_holding_in_one_batch(user):
+    """One batched quote call for the whole portfolio, not one call per symbol:
+    the per-symbol path trips the provider's rate limit and silently drops
+    positions out of market value and allocations."""
+    buy(user, "AAPL", "10", "150.00", date(2024, 1, 5))
+    buy(user, "MSFT", "8", "310.00", date(2024, 1, 6))
+    buy(user, "NVDA", "3", "900.00", date(2024, 1, 7))
+
+    batched = Mock(return_value=quotes_for({"AAPL": 200.0, "MSFT": 320.0, "NVDA": 950.0}))
+    with patch("app.services.portfolio_services.get_quotes", batched):
+        positions = get_positions(user.id)
+
+    assert batched.call_count == 1
+    assert set(batched.call_args[0][0]) == {"AAPL", "MSFT", "NVDA"}
+    assert [p.current_price for p in positions] == [
+        Decimal("200.0"),
+        Decimal("320.0"),
+        Decimal("950.0"),
+    ]
+
+
+def test_get_portfolio_summary_prices_every_holding_in_one_batch(user):
+    buy(user, "AAPL", "10", "150.00", date(2024, 1, 5))
+    buy(user, "MSFT", "8", "310.00", date(2024, 1, 6))
+
+    batched = Mock(return_value=quotes_for({"AAPL": 200.0, "MSFT": 320.0}))
+    with patch("app.services.portfolio_services.get_quotes", batched):
+        summary = get_portfolio_summary(user.id)
+
+    assert batched.call_count == 1
+    assert summary["market_value"] == Decimal("4560.0")
+
+
+def test_get_positions_makes_no_quote_call_for_an_empty_portfolio(user):
+    batched = Mock(return_value={})
+    with patch("app.services.portfolio_services.get_quotes", batched):
+        assert get_positions(user.id) == []
+
+    batched.assert_not_called()
