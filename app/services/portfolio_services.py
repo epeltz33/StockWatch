@@ -30,8 +30,25 @@ class PortfolioError(ValueError):
     """Base class for domain errors surfaced to the UI/API as user mistakes."""
 
 
+def _shares(value: Decimal) -> str:
+    """Decimal('4.000000') -> '4', Decimal('2.500') -> '2.5'."""
+    text = f"{Decimal(value):f}"
+    return text.rstrip("0").rstrip(".") if "." in text else text
+
+
 class InsufficientSharesError(PortfolioError):
     """Selling (or deleting a BUY) would make a position go negative."""
+
+    def __init__(self, symbol, quantity, held, executed_at, message=None):
+        self.symbol = symbol
+        self.quantity = quantity
+        self.held = held
+        self.executed_at = executed_at
+        super().__init__(
+            message
+            or f"Cannot sell {_shares(quantity)} {symbol} on {executed_at}: "
+            f"only {_shares(held)} held"
+        )
 
 
 @dataclass
@@ -84,10 +101,7 @@ def _replay(transactions: list[Transaction]) -> dict[str, _SymbolState]:
             state.quantity = new_quantity
         else:  # SELL
             if quantity > state.quantity:
-                raise InsufficientSharesError(
-                    f"Cannot sell {quantity} {symbol} on {txn.executed_at}: "
-                    f"only {state.quantity} held"
-                )
+                raise InsufficientSharesError(symbol, quantity, state.quantity, txn.executed_at)
             state.realized_pl += (price - state.avg_cost) * quantity
             state.quantity -= quantity
             if state.quantity == 0:
@@ -188,7 +202,20 @@ def delete_transaction(user_id: int, transaction_id: int) -> bool:
         return False
 
     remaining = [t for t in Transaction.query.filter_by(user_id=user_id).all() if t.id != txn.id]
-    _replay(remaining)
+    try:
+        _replay(remaining)
+    except InsufficientSharesError as exc:
+        raise InsufficientSharesError(
+            exc.symbol,
+            exc.quantity,
+            exc.held,
+            exc.executed_at,
+            message=(
+                f"Can't delete this trade: the later sale of {_shares(exc.quantity)} "
+                f"{exc.symbol} on {exc.executed_at} would no longer have enough shares. "
+                "Delete that sale first."
+            ),
+        ) from exc
 
     db.session.delete(txn)
     db.session.commit()
