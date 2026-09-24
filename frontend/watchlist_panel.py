@@ -215,8 +215,9 @@ def failed_refresh_status(last_ok_fetched=None, first_load=False):
 
 def choose_watchlist(source, saved_id):
     """The saved watchlist if it still exists and is the user's; else the first."""
-    if saved_id is not None and source.watchlist(saved_id) is not None:
-        return source.watchlist(saved_id).id
+    saved = source.watchlist(saved_id) if saved_id is not None else None
+    if saved is not None:
+        return saved.id
     watchlists = source.watchlists()
     return watchlists[0].id if watchlists else None
 

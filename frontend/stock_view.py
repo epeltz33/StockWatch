@@ -348,7 +348,11 @@ def _requested_symbol(source, trigger, value, typed, restore):
         symbol = typed.strip().upper() if isinstance(typed, str) and typed.strip() else None
         return symbol, "search"
     if trigger == "restore-request":
-        saved = (restore or {}).get("symbol")
+        # Saved state is client-controlled: anything that isn't a symbol this
+        # source can show falls back to the default view, without an error.
+        saved = _clean_symbol((restore or {}).get("symbol"))
+        if saved and source.search_symbols is not None and saved not in source.search_symbols:
+            saved = None
         return (saved or default_symbol(source)), "restore"
     if trigger == "symbol-request" and isinstance(value, dict) and value.get("symbol"):
         return value["symbol"], value.get("origin") or "click"

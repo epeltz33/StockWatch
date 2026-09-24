@@ -205,6 +205,29 @@ def test_restore_falls_back_to_a_period_the_history_can_show():
     assert values["chart-period-store.data"] == "MAX"
 
 
+@pytest.mark.parametrize("saved", ["<script>", "", 42, "TOOLONGTICKER"])
+def test_a_malformed_saved_symbol_falls_back_to_the_default_view(saved):
+    """sessionStorage is client-controlled; a bad value must not strand the
+    page on skeletons or greet the user with an error."""
+    source = FakeSource(histories={"NVDA": HISTORY})
+    source.lists = [type("W", (), {"stocks": (type("S", (), {"symbol": "NVDA"})(),)})()]
+
+    values = stock_view.handle_stock_request(
+        source, "restore-request", {}, restore={"symbol": saved}
+    )
+
+    assert values["stock-symbol-store.data"] == "NVDA"
+    assert values["search-status.children"] is None
+
+
+def test_the_demo_ignores_a_saved_symbol_outside_the_sample():
+    values = stock_view.handle_stock_request(
+        SampleSource(), "restore-request", {}, restore={"symbol": "TSLA"}
+    )
+
+    assert values["stock-symbol-store.data"] == "AAPL"
+
+
 def test_with_nothing_saved_the_first_watchlist_ticker_is_shown():
     source = FakeSource(histories={"NVDA": HISTORY})
     source.lists = [
