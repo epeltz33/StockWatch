@@ -28,9 +28,12 @@ class Watchlist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-    stocks = db.relationship(
-        "Stock", secondary="watchlist_stocks", cascade="all, delete-orphan", single_parent=True
-    )
+    # Stock rows are shared across every user's watchlists and referenced by
+    # portfolio transactions, so the collection must never cascade deletes to
+    # them: removing a ticker, or deleting the list, only removes membership
+    # rows in watchlist_stocks. (SQLAlchemy clears a deleted watchlist's
+    # secondary rows itself.)
+    stocks = db.relationship("Stock", secondary="watchlist_stocks")
 
     def __init__(self, name, user_id):
         self.name = name

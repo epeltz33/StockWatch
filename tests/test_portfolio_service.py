@@ -276,3 +276,77 @@ def test_get_positions_makes_no_quote_call_for_an_empty_portfolio(user):
         assert get_positions(user.id) == []
 
     batched.assert_not_called()
+
+
+def test_summary_counts_priced_and_unpriced_holdings(user):
+    buy(user, "AAPL", "10", "150.00", date(2024, 1, 5))
+    buy(user, "MSFT", "8", "310.00", date(2024, 2, 5))
+    buy(user, "NVDA", "3", "900.00", date(2024, 3, 5))
+
+    with patch(
+        "app.services.portfolio_services.get_quotes",
+        return_value=quotes_for({"AAPL": 200.00, "NVDA": 950.00}),
+    ):
+        summary = get_portfolio_summary(user.id)
+
+    assert summary["holding_count"] == 3
+    assert summary["priced_count"] == 2
+    assert summary["unpriced_count"] == 1
+    assert summary["is_partial"] is True
+    # Totals cover the priced holdings only, and say so via is_partial
+    assert summary["market_value"] == Decimal("4850.00")
+    assert summary["priced_cost_basis"] == Decimal("4200.00")
+    assert summary["unrealized_pl"] == Decimal("650.00")
+
+
+def test_fully_priced_summary_is_not_partial(user):
+    buy(user, "AAPL", "10", "150.00", date(2024, 1, 5))
+
+    with patch(
+        "app.services.portfolio_services.get_quotes",
+        return_value=quotes_for({"AAPL": 200.00}),
+    ):
+        summary = get_portfolio_summary(user.id)
+
+    assert (summary["priced_count"], summary["unpriced_count"]) == (1, 0)
+    assert summary["is_partial"] is False
+
+
+def test_no_priced_holdings_reports_value_and_return_as_unavailable(user):
+    """With every quote missing, $0.00 market value and a -100% return would
+    read as a total loss. They are unavailable, not zero."""
+    buy(user, "AAPL", "10", "150.00", date(2024, 1, 5))
+    buy(user, "MSFT", "8", "310.00", date(2024, 2, 5))
+    sell(user, "AAPL", "5", "200.00", date(2024, 3, 5))
+
+    summary = get_portfolio_summary(user.id)  # autouse fixture: no quotes
+
+    assert summary["holding_count"] == 2
+    assert summary["priced_count"] == 0
+    assert summary["is_partial"] is False
+    assert summary["market_value"] is None
+    assert summary["unrealized_pl"] is None
+    assert summary["unrealized_pl_pct"] is None
+    assert summary["allocations"] == []
+    # Figures that need no prices are still reported
+    assert summary["cost_basis"] == Decimal("3230.00")
+    assert summary["realized_pl"] == Decimal("250.00")
+
+
+def test_empty_portfolio_is_worth_zero_not_unavailable(user):
+    summary = get_portfolio_summary(user.id)
+
+    assert summary["holding_count"] == 0
+    assert summary["market_value"] == Decimal("0")
+    assert summary["is_partial"] is False
+
+
+def test_positions_record_the_session_of_their_price(user):
+    buy(user, "AAPL", "10", "150.00", date(2024, 1, 5))
+
+    quote = Quote(symbol="AAPL", price=200.0, session_date="2026-06-30")
+    with patch("app.services.portfolio_services.get_quotes", return_value={"AAPL": quote}):
+        summary = get_portfolio_summary(user.id)
+
+    assert summary["positions"][0].price_date == "2026-06-30"
+    assert summary["price_dates"] == ["2026-06-30"]
