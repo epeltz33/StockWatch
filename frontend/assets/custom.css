@@ -1850,14 +1850,6 @@ input[type="date"].form-control {
         flex: 1;
     }
 
-    .sample-badge {
-        order: 4;
-    }
-
-    .sw-app--demo .sw-nav {
-        width: auto;
-        flex: 1;
-    }
 
     .sw-user {
         display: none;
@@ -1887,10 +1879,29 @@ input[type="date"].form-control {
         min-width: 0;
     }
 
-    /* The header scrolls away on phones instead of pinning three rows;
-       every price on the page still carries its own sample/close label. */
+    /* The header scrolls away on phones instead of pinning its rows. No
+       backdrop blur either: it would make the header the containing block
+       for the fixed sample badge below. */
     .sw-header {
         position: static;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    /* ...while the demo's sample-data badge stays on screen, pinned to the
+       bottom edge, at every scroll position. */
+    .sample-badge {
+        position: fixed;
+        left: 50%;
+        bottom: 12px;
+        transform: translateX(-50%);
+        z-index: 1045;
+        background: #221E12;
+        box-shadow: var(--shadow-2);
+    }
+
+    .sw-app--demo .sw-main {
+        padding-bottom: 72px;
     }
 
     .stock-graph {
@@ -1907,15 +1918,8 @@ input[type="date"].form-control {
         max-width: none;
     }
 
-    .sw-app--demo .sw-nav {
-        width: 100%;
-        flex: none;
-    }
-
     .sample-badge {
-        order: 2;
-        font-size: 0.64rem;
-        padding: 3px 9px;
+        font-size: 0.66rem;
     }
 
     .sw-account .sw-link-btn {
