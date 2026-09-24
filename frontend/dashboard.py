@@ -354,7 +354,7 @@ def create_stock_chart_figure(df, symbol, period=None):
         else "<b>%{x|%b %d, %Y}</b><br>$%{y:.2f}<extra></extra>"
     )
 
-    line_color = _direction_color(df, is_intraday)
+    line_color = _direction_color(df, is_intraday) 
     price_range = _price_axis_range(df)
 
     # --- price line (kept as fig.data[0]) ---
