@@ -722,6 +722,7 @@ input[type="date"].form-control {
 }
 
 .price-caption {
+    text-wrap: balance;
     font-family: var(--font-data);
     font-size: 0.72rem;
     letter-spacing: 0.04em;
@@ -1221,6 +1222,7 @@ input[type="date"].form-control {
 }
 
 .market-status {
+    text-wrap: balance;
     margin-top: 10px;
     font-family: var(--font-data);
     font-size: 0.7rem;
