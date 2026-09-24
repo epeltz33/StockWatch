@@ -1,7 +1,7 @@
 import os
 
 import requests
-from flask import Blueprint, Response, abort, render_template
+from flask import Blueprint, Response, abort, redirect, render_template
 from flask_login import current_user, login_required
 
 from app.extensions import cache
@@ -13,14 +13,15 @@ bp = Blueprint("main", __name__)
 
 @bp.route("/")
 def landing():
-    return render_template("main/landing.html")
+    return render_template("main/landing.html", user=current_user)
 
 
 @bp.route("/dashboard")
 @login_required
 def dashboard():
-    dash_url = "/dash/"
-    return render_template("main/dashboard.html", dash_url=dash_url, user=current_user)
+    """Kept for old links and the post-login redirect; the dashboard is a
+    single Dash page at /dash/."""
+    return redirect("/dash/")
 
 
 @bp.route("/branding/<symbol>/<kind>")

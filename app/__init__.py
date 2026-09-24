@@ -47,36 +47,39 @@ def create_app(test_config=None):
     def health_check():
         return {"status": "healthy"}, 200
 
-    # The Dash app has a large import surface (plotly, dash, pandas); keep it
-    # isolated so a Dash-side failure degrades the dashboard instead of taking
-    # down auth and the rest of the site.
+    # The Dash apps have a large import surface (plotly, dash, pandas); keep
+    # them isolated so a Dash-side failure degrades the dashboard instead of
+    # taking down auth and the rest of the site.
     try:
-        from frontend.dashboard import create_dash_app
+        from frontend.dashboard import create_dash_app, create_demo_app
 
         with app.app_context():
-            create_dash_app(app)
-        # Dash posts to /dash/_dash-update-component without a CSRF token, so
-        # global CSRFProtect would break every callback. Access to /dash/ is
-        # gated by the login check below instead.
+            dash_apps = [create_dash_app(app), create_demo_app(app)]
+        app.extensions["dash_apps"] = {"app": dash_apps[0], "demo": dash_apps[1]}
+        # Dash posts to <prefix>_dash-update-component without a CSRF token,
+        # so global CSRFProtect would break every callback. /dash/ is gated
+        # by the login check below; /demo/ is read-only by construction.
+        prefixes = tuple(d.config.routes_pathname_prefix for d in dash_apps)
         for rule in app.url_map.iter_rules():
-            if rule.rule.startswith("/dash"):
+            if rule.rule.startswith(prefixes):
                 csrf.exempt(app.view_functions[rule.endpoint])
-        app.logger.info("Dash app mounted at /dash/")
+        app.logger.info("Dash apps mounted at %s", ", ".join(prefixes))
     except Exception:
-        app.logger.exception("Failed to create Dash app; continuing without it")
+        app.logger.exception("Failed to create Dash apps; continuing without them")
 
     @app.before_request
     def protect_dash():
         # The Dash app registers its own routes that bypass @login_required on
-        # /dashboard; gate them all here.
-        if request.path.startswith("/dash") and not current_user.is_authenticated:
+        # /dashboard; gate them all here. The public demo lives at /demo/.
+        if request.path.startswith("/dash/") and not current_user.is_authenticated:
             return login.unauthorized()
 
     @app.after_request
     def set_security_headers(response):
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
-        # SAMEORIGIN (not DENY): /dashboard iframes /dash/ on the same origin
-        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        # Nothing embeds these pages any more (the dashboard used to be an
+        # iframe), so refuse framing outright.
+        response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         return response
 
