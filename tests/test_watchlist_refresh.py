@@ -1,76 +1,153 @@
-"""The watchlist re-renders on the shared update interval.
+"""How watchlist and stock prices refresh.
 
-Rows carry live price and day change (see test_watchlist_quotes.py), so a
-list rendered once at page load goes stale while the tab sits open. The
-interval tick re-renders the selected watchlist and nothing else: it must not
-move the user's dropdown selection or raise a toast.
+The old dashboard rebuilt the watchlist on an unconditional 30-second timer.
+Now it loads once, re-renders after edits, refreshes on demand, and polls
+every five minutes only while the Market section is visible (never in the
+demo). A refresh updates prices in place — keeping focus and the user's
+selection — and a failed refresh leaves the last good prices on screen with
+a retry instead of blanking them.
 """
 
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
 
 import pytest
 from dash import no_update
-from flask import Flask
 
-from frontend import dashboard
-
-WATCHLIST_OUTPUT = "watchlist-section"
-INTERVAL_ID = "watchlist-interval"
+from app.services.stock_services import Quote, QuoteBatch
+from frontend import dashboard, watchlist_panel
+from tests.dash_client import DashClient
 
 
-@pytest.fixture
-def dash_app(app):
-    """A Dash app mounted on its own server, so the fixture's mounted copy is
-    left alone while we inspect and drive the callback registry."""
-    with app.app_context():
-        yield dashboard.create_dash_app(Flask(__name__))
-
-
-def _watchlist_callback(dash_app):
-    for key, entry in dash_app.callback_map.items():
-        if WATCHLIST_OUTPUT in key:
-            return entry
-    raise AssertionError(f"no callback outputs {WATCHLIST_OUTPUT}")
-
-
-def _interval_ctx():
-    return SimpleNamespace(
-        triggered_id=INTERVAL_ID,
-        triggered=[{"prop_id": f"{INTERVAL_ID}.n_intervals", "value": 3}],
+def _quote(symbol, price, fetched="2026-09-18T20:05:00+00:00"):
+    return Quote(
+        symbol=symbol,
+        price=price,
+        prev_close=price - 1,
+        change=1.0,
+        change_pct=1.0 / (price - 1) * 100,
+        session_date="2026-09-18",
+        fetched_at=fetched,
     )
 
 
-def test_watchlist_section_is_wired_to_the_update_interval(dash_app):
-    inputs = _watchlist_callback(dash_app)["inputs"]
+class StubSource:
+    is_sample = False
+    read_only = False
 
-    assert any(i.get("id") == INTERVAL_ID for i in inputs)
+    def __init__(self, batch):
+        self.batch = batch
+        self.requested = []
 
-
-def test_interval_tick_rerenders_the_selected_watchlist(dash_app):
-    raw = _watchlist_callback(dash_app)["callback"].__wrapped__
-    rendered = Mock(return_value="fresh-rows")
-
-    with patch.object(dashboard, "callback_context", _interval_ctx()):
-        with patch.object(dashboard, "update_watchlist_section", rendered):
-            section, dropdown_value, _add_labels, toast = raw(None, [], [], [], 7, 3, None, [])
-
-    rendered.assert_called_once_with(7)
-    assert section == "fresh-rows"
-    # The user's selection and any visible toast are left untouched
-    assert dropdown_value is no_update
-    assert toast is no_update
+    def quote_batch(self, symbols):
+        self.requested.append(list(symbols))
+        return self.batch
 
 
-def test_interval_tick_without_a_selected_watchlist_changes_nothing(dash_app):
-    raw = _watchlist_callback(dash_app)["callback"].__wrapped__
-    rendered = Mock()
+STOCK_META = {
+    "symbol": "AAPL",
+    "last_bar": {"date": "2026-09-18", "close": 231.48},
+    "prev_bar": {"date": "2026-09-17", "close": 231.98},
+}
 
-    with patch.object(dashboard, "callback_context", _interval_ctx()):
-        with patch.object(dashboard, "update_watchlist_section", rendered):
-            section, dropdown_value, _add_labels, toast = raw(None, [], [], [], None, 3, None, [])
 
-    rendered.assert_not_called()
-    assert section is no_update
-    assert dropdown_value is no_update
-    assert toast is no_update
+@pytest.fixture
+def live(app, client):
+    return app.extensions["dash_apps"]["app"]
+
+
+def test_refresh_is_wired_to_the_interval_a_manual_button_and_retry(app, client):
+    refresh = DashClient(client, app.extensions["dash_apps"]["app"])
+    _, entry = refresh.find("refresh_prices")
+    inputs = {i["id"] for i in entry["inputs"]}
+
+    assert inputs == {"market-refresh-interval", "refresh-watchlist", "retry-request"}
+
+
+def test_polling_is_every_five_minutes_and_only_while_market_is_visible(live):
+    assert dashboard.REFRESH_INTERVAL_MS == 5 * 60 * 1000
+    toggles = [
+        entry
+        for key, entry in live.callback_map.items()
+        if key == "market-refresh-interval.disabled"
+    ]
+    assert toggles, "nothing enables/disables polling"
+    assert [i["id"] for i in toggles[0]["inputs"]] == ["active-tab"]
+
+
+def test_edits_and_selection_rerender_the_watchlist(live):
+    _, entry = DashClient(SimpleNamespace(), live).find("render_watchlist")
+    inputs = {(i["id"], i["property"]) for i in entry["inputs"]}
+
+    assert inputs == {("watchlist-dropdown", "value"), ("watchlist-version", "data")}
+
+
+def test_refresh_updates_rows_and_the_stock_view_from_one_batch():
+    source = StubSource(
+        QuoteBatch(quotes={"AAPL": _quote("AAPL", 231.48), "MSFT": _quote("MSFT", 441.96)})
+    )
+
+    cells, price, caption, stats, status, meta = watchlist_panel.refresh_market(
+        source, ["AAPL", "MSFT"], STOCK_META, {"ok": True}
+    )
+
+    assert source.requested == [["AAPL", "MSFT"]]
+    assert len(cells) == 2
+    assert "$231.48" in str(price) and "$231.48" in str(stats)
+    assert "Closes · Sep 18, 2026" in status
+    assert meta == {"ok": True, "fetched_at": "2026-09-18T20:05:00+00:00"}
+
+
+def test_refresh_includes_the_charted_symbol_when_it_is_not_a_row():
+    source = StubSource(QuoteBatch(quotes={"AAPL": _quote("AAPL", 231.48)}))
+
+    watchlist_panel.refresh_market(source, ["MSFT"], STOCK_META, None)
+
+    assert source.requested == [["MSFT", "AAPL"]]
+
+
+def test_failed_refresh_keeps_the_last_good_view_and_offers_retry():
+    source = StubSource(QuoteBatch(quotes={}, errors={"AAPL", "MSFT"}))
+    previous = {"ok": True, "fetched_at": "2026-09-18T20:05:00+00:00"}
+
+    cells, price, caption, stats, status, meta = watchlist_panel.refresh_market(
+        source, ["AAPL", "MSFT"], STOCK_META, previous
+    )
+
+    # Nothing on screen changes...
+    assert cells == [no_update, no_update]
+    assert price is no_update and caption is no_update and stats is no_update
+    # ...and the status says so, when the kept prices are from, and offers retry
+    text = str(status)
+    assert "Couldn't refresh prices" in text
+    assert "Showing prices retrieved" in text
+    retry = status.children[-1]
+    assert retry.id == watchlist_panel.RETRY_PRICES_ID
+    assert meta["ok"] is False and meta["fetched_at"] == previous["fetched_at"]
+
+
+def test_a_partial_failure_also_keeps_the_last_view():
+    """Some quotes came back but others failed: showing a mix of fresh and
+    blanked prices would be worse than keeping the complete last view."""
+    source = StubSource(QuoteBatch(quotes={"AAPL": _quote("AAPL", 240.0)}, errors={"MSFT"}))
+
+    cells, *_rest, status, meta = watchlist_panel.refresh_market(
+        source, ["AAPL", "MSFT"], STOCK_META, {"ok": True}
+    )
+
+    assert cells == [no_update, no_update]
+    assert meta["ok"] is False
+
+
+def test_first_load_failure_shows_rows_and_a_retry():
+    watchlist = SimpleNamespace(
+        id=7, name="Tech", stocks=[SimpleNamespace(symbol="AAPL", name="Apple", id=1)]
+    )
+    source = StubSource(QuoteBatch(quotes={}, errors={"AAPL"}))
+    source.watchlist = lambda wid: watchlist if wid == 7 else None
+    source.watchlists = lambda: [watchlist]
+
+    section, status, meta = watchlist_panel.render_watchlist_section(source, 7, None)
+
+    assert "AAPL" in str(section)
+    assert "Couldn't load prices" in str(status)
+    assert meta == {"ok": False}

@@ -8,7 +8,7 @@ from flask_caching import Cache
 from app.services import stock_services
 from app.services.stock_services import get_company_details, get_stock_data
 from app.utils.cache_manager import StockCache
-from frontend import dashboard
+from frontend import stock_view
 
 
 @pytest.fixture
@@ -97,11 +97,11 @@ def test_company_details_keeps_full_trimmed_description_and_versions_cache():
 
 
 def test_about_section_starts_as_a_two_line_preview_with_accessible_toggle():
-    section = dashboard.create_about_section("EXMP", "A complete company description.")
+    section = stock_view.create_about_section("EXMP", "A complete company description.")
     _, description, toggle = section.children
 
     assert description.id == {"type": "about-text", "index": "EXMP"}
-    assert description.className == dashboard.ABOUT_TEXT_COLLAPSED_CLASS
+    assert description.className == stock_view.ABOUT_TEXT_COLLAPSED_CLASS
     assert description.children == "A complete company description."
     assert toggle.id == {"type": "about-toggle", "index": "EXMP"}
     assert toggle.children == "Show full description"
@@ -109,13 +109,13 @@ def test_about_section_starts_as_a_two_line_preview_with_accessible_toggle():
 
 
 def test_about_display_state_expands_and_collapses_again():
-    assert dashboard.about_display_state(expanded=True) == (
-        dashboard.ABOUT_TEXT_EXPANDED_CLASS,
+    assert stock_view.about_display_state(expanded=True) == (
+        stock_view.ABOUT_TEXT_EXPANDED_CLASS,
         "Show less",
         "true",
     )
-    assert dashboard.about_display_state(expanded=False) == (
-        dashboard.ABOUT_TEXT_COLLAPSED_CLASS,
+    assert stock_view.about_display_state(expanded=False) == (
+        stock_view.ABOUT_TEXT_COLLAPSED_CLASS,
         "Show full description",
         "false",
     )

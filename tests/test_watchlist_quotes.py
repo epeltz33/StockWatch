@@ -1,17 +1,15 @@
-"""Watchlist rows carry live price and day change.
+"""Watchlist rows carry closing price and day change.
 
 The rows previously showed ticker and company name only, which made the
 watchlist unable to answer the one question it exists for. Prices for the
-whole list are fetched in a single batched call.
+whole list are fetched in a single batched call, and a missing price or
+change reads as unavailable — never as $0.00 or a flat day.
 """
 
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
 
-import pytest
-
-from app.services.stock_services import Quote
-from frontend import dashboard
+from app.services.stock_services import Quote, QuoteBatch
+from frontend import watchlist_panel
 
 
 def _stock(symbol, name, stock_id):
@@ -32,48 +30,83 @@ def _texts(component):
     return _texts(children) if children is not None else []
 
 
-@pytest.fixture
-def quotes():
-    with patch.object(dashboard, "get_quotes") as batched:
-        yield batched
+def _find(component, predicate):
+    """Every component in the tree matching predicate."""
+    found = []
+    if isinstance(component, (list, tuple)):
+        for child in component:
+            found += _find(child, predicate)
+        return found
+    if component is None or isinstance(component, str):
+        return found
+    if predicate(component):
+        found.append(component)
+    return found + _find(getattr(component, "children", None), predicate)
 
 
-def test_watchlist_row_shows_price_and_positive_day_change(quotes):
-    quotes.return_value = {
+class CountingSource:
+    """Just enough of a data source for rendering, counting quote batches."""
+
+    is_sample = False
+    read_only = False
+
+    def __init__(self, watchlist, quotes):
+        self._watchlist = watchlist
+        self._quotes = quotes
+        self.batches = []
+
+    def watchlist(self, watchlist_id):
+        return self._watchlist if watchlist_id == self._watchlist.id else None
+
+    def watchlists(self):
+        return [self._watchlist]
+
+    def quote_batch(self, symbols):
+        self.batches.append(list(symbols))
+        return QuoteBatch(quotes={s: q for s, q in self._quotes.items() if s in symbols})
+
+
+def test_watchlist_row_shows_price_and_positive_day_change():
+    quotes = {
         "AAPL": Quote(symbol="AAPL", price=150.0, prev_close=145.0, change=5.0, change_pct=3.4483)
     }
 
-    rendered = _texts(dashboard.create_watchlist_content(_watchlist(_stock("AAPL", "Apple", 1))))
+    rendered = _texts(
+        watchlist_panel.create_watchlist_content(_watchlist(_stock("AAPL", "Apple", 1)), quotes)
+    )
 
     assert "$150.00" in rendered
     assert "+5.00 (+3.45%)" in rendered
 
 
-def test_watchlist_row_shows_negative_day_change(quotes):
-    quotes.return_value = {
+def test_watchlist_row_shows_negative_day_change():
+    quotes = {
         "TSLA": Quote(symbol="TSLA", price=90.0, prev_close=100.0, change=-10.0, change_pct=-10.0)
     }
 
-    rendered = _texts(dashboard.create_watchlist_content(_watchlist(_stock("TSLA", "Tesla", 2))))
+    rendered = _texts(
+        watchlist_panel.create_watchlist_content(_watchlist(_stock("TSLA", "Tesla", 2)), quotes)
+    )
 
     assert "$90.00" in rendered
     assert "-10.00 (-10.00%)" in rendered
 
 
-def test_watchlist_row_renders_price_without_change_when_change_unavailable(quotes):
-    quotes.return_value = {"AAPL": Quote(symbol="AAPL", price=150.0)}
+def test_watchlist_row_renders_price_without_change_when_change_unavailable():
+    quotes = {"AAPL": Quote(symbol="AAPL", price=150.0)}
 
-    content = dashboard.create_watchlist_content(_watchlist(_stock("AAPL", "Apple", 1)))
-    rendered = _texts(content)
+    rendered = _texts(
+        watchlist_panel.create_watchlist_content(_watchlist(_stock("AAPL", "Apple", 1)), quotes)
+    )
 
     assert "$150.00" in rendered
     assert not any("%" in text for text in rendered)
 
 
-def test_watchlist_row_degrades_when_no_quote_is_available(quotes):
-    quotes.return_value = {}
-
-    rendered = _texts(dashboard.create_watchlist_content(_watchlist(_stock("AAPL", "Apple", 1))))
+def test_watchlist_row_degrades_when_no_quote_is_available():
+    rendered = _texts(
+        watchlist_panel.create_watchlist_content(_watchlist(_stock("AAPL", "Apple", 1)), {})
+    )
 
     # Still renders the row; price reads as unavailable rather than as zero
     assert "AAPL" in rendered
@@ -81,19 +114,68 @@ def test_watchlist_row_degrades_when_no_quote_is_available(quotes):
     assert "—" in rendered
 
 
-def test_watchlist_prices_every_row_in_a_single_batched_call(quotes):
-    quotes.return_value = {}
+def test_a_row_closing_on_a_different_session_is_dated():
+    quotes = {
+        "AAPL": Quote(symbol="AAPL", price=150.0, session_date="2026-09-18"),
+        "MSFT": Quote(symbol="MSFT", price=400.0, session_date="2026-09-18"),
+        "OTC": Quote(symbol="OTC", price=4.0, session_date="2026-09-17"),
+    }
+    watchlist = _watchlist(
+        _stock("AAPL", "Apple", 1), _stock("MSFT", "Microsoft", 2), _stock("OTC", "Otc Co", 3)
+    )
+
+    rendered = _texts(watchlist_panel.create_watchlist_content(watchlist, quotes))
+
+    assert rendered.count("Sep 17") == 1
+
+
+def test_each_ticker_is_a_selection_control_marking_the_active_one():
+    watchlist = _watchlist(_stock("AAPL", "Apple", 1), _stock("MSFT", "Microsoft", 2))
+
+    content = watchlist_panel.create_watchlist_content(watchlist, {}, active_symbol="MSFT")
+    buttons = _find(
+        content,
+        lambda c: (
+            isinstance(getattr(c, "id", None), dict) and c.id.get("type") == "load-watchlist-stock"
+        ),
+    )
+
+    assert [b.id["index"] for b in buttons] == ["AAPL", "MSFT"]
+    active = [b for b in buttons if "watchlist-select--active" in b.className]
+    assert [b.id["index"] for b in active] == ["MSFT"]
+    assert active[0].to_plotly_json()["props"]["aria-current"] == "true"
+
+
+def test_read_only_rows_have_no_edit_controls():
+    watchlist = _watchlist(_stock("AAPL", "Apple", 1))
+
+    content = watchlist_panel.create_watchlist_content(watchlist, {}, editable=False)
+    editing = _find(
+        content,
+        lambda c: (
+            isinstance(getattr(c, "id", None), dict)
+            and c.id.get("type") in ("remove-from-watchlist", "delete-watchlist")
+        ),
+    )
+
+    assert editing == []
+
+
+def test_watchlist_prices_every_row_in_a_single_batched_call():
     watchlist = _watchlist(
         _stock("AAPL", "Apple", 1), _stock("MSFT", "Microsoft", 2), _stock("NVDA", "Nvidia", 3)
     )
+    source = CountingSource(watchlist, {})
 
-    dashboard.create_watchlist_content(watchlist)
+    watchlist_panel.render_watchlist_section(source, watchlist.id, None)
 
-    assert quotes.call_count == 1
-    assert set(quotes.call_args[0][0]) == {"AAPL", "MSFT", "NVDA"}
+    assert len(source.batches) == 1
+    assert set(source.batches[0]) == {"AAPL", "MSFT", "NVDA"}
 
 
 def test_empty_watchlist_makes_no_quote_call():
-    with patch.object(dashboard, "get_quotes", Mock()) as batched:
-        dashboard.create_watchlist_content(_watchlist())
-        batched.assert_not_called()
+    source = CountingSource(_watchlist(), {})
+
+    watchlist_panel.render_watchlist_section(source, 1, None)
+
+    assert source.batches == []

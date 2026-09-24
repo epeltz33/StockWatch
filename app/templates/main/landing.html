@@ -1,13 +1,29 @@
 {% extends "base.html" %}
 
+{% block title %}StockWatch — charts, watchlists, and portfolio P/L{% endblock %}
+
 {% block content %}
 <div class="landing-container">
-  <div class="landing-eyebrow"><span class="tick">▲</span> Live market data · Charts · Watchlists</div>
+  <div class="landing-eyebrow"><span class="tick" aria-hidden="true">▲</span> Charts · Watchlists · Portfolio P/L</div>
   <h1>StockWatch</h1>
-  <p>Track prices, interactive charts, and personal watchlists for the tickers you care about — in one place.</p>
+  <p class="landing-lede">Price charts, personal watchlists, and average-cost portfolio tracking for the tickers you follow — in one dashboard.</p>
+
   <div class="cta-buttons">
-    <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Log in</a>
+    {% if user.is_authenticated %}
+    <a href="/dash/" class="btn btn-primary btn-lg-cta">Open your dashboard</a>
+    <a href="/demo/" class="btn btn-secondary">Explore the demo</a>
+    {% else %}
+    <a href="/demo/" class="btn btn-primary btn-lg-cta">Explore demo</a>
+    <a href="{{ url_for('auth.login') }}" class="btn btn-secondary">Log in</a>
     <a href="{{ url_for('auth.register') }}" class="btn btn-secondary">Create account</a>
+    {% endif %}
   </div>
+  <p class="landing-note">No sign-up needed: the demo opens a populated dashboard with sample data — three stocks, a watchlist, and a portfolio. Sample prices are not live.</p>
+
+  <ul class="landing-features" aria-label="What's inside">
+    <li><span class="feature-title">Charts</span><span class="feature-copy">Intraday and daily history from 1D to MAX, with volume.</span></li>
+    <li><span class="feature-title">Watchlists</span><span class="feature-copy">Closing prices and day change for every ticker, one click to chart.</span></li>
+    <li><span class="feature-title">Portfolio</span><span class="feature-copy">A trade ledger with average-cost basis, realized and unrealized P/L.</span></li>
+  </ul>
 </div>
 {% endblock %}
