@@ -1436,10 +1436,13 @@ input[type="date"].form-control {
     pointer-events: none;
 }
 
+/* Top centre: the one spot every card leaves free (titles sit left,
+   actions right) */
 .updating-pill {
     position: absolute;
     top: 10px;
-    right: 12px;
+    left: 50%;
+    transform: translateX(-50%);
     display: inline-flex;
     align-items: center;
     gap: 7px;
@@ -1470,8 +1473,11 @@ input[type="date"].form-control {
     50% { opacity: 1; }
 }
 
-/* A first load already shows skeletons; don't stack a pill on them */
-.sw-loading:has(.skeleton) .updating-pill {
+/* A first load already shows skeletons; don't stack a pill on them. The
+   chart's skeleton block always exists (hidden once loaded), so the chart
+   card goes by its own first-load state instead. */
+.sw-loading:has(.skeleton:not(.chart-skeleton)) .updating-pill,
+.chart-card--initial .updating-pill {
     display: none;
 }
 
