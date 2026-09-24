@@ -3,44 +3,50 @@
 [![CI](https://github.com/epeltz33/StockWatch/actions/workflows/ci.yml/badge.svg)](https://github.com/epeltz33/StockWatch/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**A production-deployed stock monitoring app with live market data, interactive charts, and per-user watchlists.** Built with **Flask** and **Plotly Dash**, backed by the [Massive.com](https://massive.com/) market API and **PostgreSQL**.
+**A deployed stock dashboard with interactive charts, per-user watchlists, and portfolio P/L tracking.** Built with **Flask** and **Plotly Dash**, backed by the [Massive.com](https://massive.com/) market API and **PostgreSQL**.
 
 ### What this project demonstrates
 
-A full-stack web app taken end to end — designed, built, deployed, and running live with a public demo. It shows real third-party API integration, response caching, authentication, schema migrations, and a modular Flask architecture, all wired together and shipped to production.
+A full-stack web app taken end to end — designed, built, deployed, and running with a public, no-sign-up demo. It shows third-party API integration under rate limits, caching, authentication, schema migrations, a modular Flask + Dash architecture, and a test suite that drives the dashboard's callbacks over HTTP.
 
 ---
 
-## 🔗 Live Demo
+## 🔗 Try it
 
 | | |
 |---|---|
-| **URL** | **[stockwatch-cqzs.onrender.com](https://stockwatch-cqzs.onrender.com)** |
-| **Demo login** | `demo@stockwatch.dev` / `Demo123!` |
+| **Demo (no sign-up)** | **[stockwatch-cqzs.onrender.com/demo/](https://stockwatch-cqzs.onrender.com/demo/)** |
+| **App** | [stockwatch-cqzs.onrender.com](https://stockwatch-cqzs.onrender.com) — create an account, or use `demo@stockwatch.dev` / `Demo123!` |
 
-> ⏱️ Hosted on Render's free tier — the first visit after idle may take ~30s to cold-start, then responds normally. The demo account is shared for evaluation and can be reset safely.
+The demo opens a populated dashboard straight away: three stocks with price history, a watchlist, and a portfolio, all from fixed sample data labelled **Sample data · Not live prices**. It is read-only and never calls the market-data API.
+
+> ⏱️ Hosted on Render's free tier — the first visit after idle may take ~30s to cold-start, then responds normally.
 
 ---
 
 ## 🖼️ Screenshots
 
-| Stock dashboard |
+| Market view (demo) |
 |---|
-| ![Stock dashboard](docs/screenshots/dashboard-search.png) |
+| ![Market view with chart, watchlist, and details](docs/screenshots/demo-market.png) |
 
-| Watchlist management |
+| Portfolio (demo) |
 |---|
-| ![Watchlist management](docs/screenshots/watchlist-management.png) |
+| ![Portfolio with positions, allocation, and trade ledger](docs/screenshots/demo-portfolio.png) |
+
+| Landing page | Watchlist management | Phone (390px) |
+|---|---|---|
+| ![Landing page with Explore demo](docs/screenshots/landing.png) | ![Creating a watchlist](docs/screenshots/watchlist-management.png) | ![Demo on a phone](docs/screenshots/demo-mobile.png) |
 
 ---
 
 ## ⭐ Highlights — why this matters
 
-- **Shipped to production, not just localhost** — live URL, demo credentials, and a `/health` endpoint for monitoring.
-- **Real API integration under cost constraints** — a 5-minute price cache and 24-hour company-details cache cut redundant Massive.com calls and keep the app responsive.
-- **Production-grade data practices** — schema changes are versioned with Alembic migrations rather than hand-edited, with SQLite locally and PostgreSQL in production.
-- **Modular, testable architecture** — a Flask application factory with blueprints keeps routes, services, and models cleanly separated.
-- **One-click deploys** — `render.yaml` and `app.yaml` blueprints provision the database and web service automatically.
+- **A demo that works in the first minute** — `/demo/` mounts the same dashboard on fixed synthetic data, so visitors explore charts, watchlists, and a portfolio with no account and no API dependency. The demo registers no editing callbacks, and the server rejects any other callback request with 403.
+- **Honest numbers** — prices are labelled with the trading session they close (computed in New York time) and when they were retrieved; nothing claims to be live. Missing data reads as unavailable, never as a $0.00 price or a 0.00% day change. Header, details, watchlist, and portfolio use the same quote.
+- **Real API integration under cost constraints** — one whole-market call per trading session prices every watchlist, chart, and portfolio symbol; responses are cached, a reload costs zero API calls, and a failed refresh keeps the last good prices with a retry.
+- **Production-grade data practices** — Alembic migrations, SQLite locally and PostgreSQL in production, `Decimal` money math with an average-cost trade ledger.
+- **Tested like it's used** — 220+ tests, including ones that post real Dash callback requests to prove the demo can't reach the provider, the database, or anyone's account.
 
 ---
 
@@ -48,12 +54,18 @@ A full-stack web app taken end to end — designed, built, deployed, and running
 
 | Feature | Description |
 |---|---|
-| 🔐 **Authentication** | Registration and login via Flask-Login with hashed passwords |
-| 📊 **Live market data** | Current prices and company details from the Massive.com REST API |
-| 📈 **Watchlist management** | Create and delete multiple watchlists; add or remove tickers |
-| 📉 **Interactive charts** | Line charts with volume overlays — **Today** shows intraday session bars; 5D–MAX use daily history |
-| 🏢 **Company fundamentals** | Logo, market cap, exchange, website, description, and day-over-day price change |
-| ⚡ **Response caching** | 5-minute price cache and 24-hour company-details cache |
+| 🧪 **Sample demo** | Read-only dashboard at `/demo/` on deterministic sample data — opens on AAPL with its chart, a watchlist, and a portfolio |
+| 🔐 **Authentication** | Registration and login via Flask-Login with hashed passwords, CSRF protection, and rate limiting |
+| 📉 **Interactive charts** | Intraday bars for the latest session (1D) and daily history from 5D to MAX, with volume; periods the history can't cover are disabled |
+| 📈 **Watchlists** | Multiple lists per user; each row shows closing price and day change, and the ticker itself selects the chart |
+| 💼 **Portfolio tracking** | Buy/sell ledger with average-cost basis, realized and unrealized P/L, allocation, and priced/unpriced holding counts |
+| 🏢 **Company details** | Last and previous close, day change, 52-week range, market cap, exchange, website, and description |
+| 🕒 **Dated prices** | Each price names its session close and retrieval time; history-close fallbacks are labelled |
+| ♻️ **Considerate refreshing** | Loads once, refreshes after edits or on demand, and every five minutes only while the Market view is open |
+| 💾 **Remembers your view** | Ticker, watchlist, and chart period are kept for the browser session |
+| ♿ **Accessible** | Keyboard operable with visible focus, labelled controls, confirmation before deletes, and WCAG AA text contrast |
+| 📱 **Responsive** | Chart and details beside the watchlist on desktop; one column on tablet and phone, with no sideways scrolling |
+| ⚡ **Caching** | 5-minute quotes, per-session market data, 1-hour history, 24-hour company details and logos |
 | 🗄️ **Database migrations** | Schema versioning with Flask-Migrate / Alembic |
 
 ---
@@ -73,44 +85,53 @@ A full-stack web app taken end to end — designed, built, deployed, and running
 ## 🏗️ Architecture
 
 ```text
-┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-│   Browser    │◄────►│  Flask App   │◄────►│  PostgreSQL  │
-│              │      │  + Dash UI   │      │              │
-└──────────────┘      └──────┬───────┘      └──────────────┘
-                             │
-                             ▼
-                      ┌──────────────┐
-                      │Massive.com   │
-                      │ REST API     │
-                      └──────────────┘
+┌──────────────┐      ┌───────────────────────────────┐      ┌──────────────┐
+│   Browser    │◄────►│  Flask app                    │◄────►│  PostgreSQL  │
+│              │      │   /       landing, auth       │      │              │
+│              │      │   /dash/  Dash · LiveSource   │      └──────────────┘
+│              │      │   /demo/  Dash · SampleSource │
+└──────────────┘      └───────────────┬───────────────┘
+                                      │ (LiveSource only)
+                                      ▼
+                              ┌───────────────┐
+                              │ Massive.com   │
+                              │ REST API      │
+                              └───────────────┘
 ```
 
 ### Design decisions
 
-- **Flask application factory + blueprints** for modularity — routes, services, and models stay decoupled and independently testable.
-- **Dash embedded at `/dash/`** for interactive charts without a separate JS build step or frontend toolchain to maintain.
-- **Alembic migrations** for schema versioning, so database changes are reproducible across SQLite (dev) and PostgreSQL (prod).
+- **One Dash page, mounted twice.** The dashboard's layout and callbacks are built from a *data source*: `/dash/` gets `LiveSource` (the signed-in user's account, priced by the API) and `/demo/` gets `SampleSource` (fixed sample data). The source is fixed on the server when each app is mounted, so nothing a browser sends can move the demo onto live or account data.
+- **Deterministic sample data.** Sample prices are seeded Brownian bridges generated at import time; every demo figure — quotes, market caps, trade fills, portfolio P/L — derives from the same bars and runs through the real portfolio accounting.
+- **Flask application factory + blueprints** keep routes, services, and models decoupled and independently testable.
+- **Dash embedded in Flask** gives interactive charts without a separate JS build step. A few small clientside callbacks handle navigation, session storage, and click routing without server round trips.
+- **Alembic migrations** keep schema changes reproducible across SQLite (dev) and PostgreSQL (prod).
 
 ### Project layout
 
 ```text
 StockWatch/
 ├── app/
-│   ├── blueprints/      # auth · main · stock · user route handlers
-│   ├── services/        # stock_services · user_services (business logic)
-│   ├── utils/           # cache_manager · cache_monitor
-│   ├── models.py        # User, Watchlist, Stock ORM models
-│   ├── extensions.py    # db, migrate, login, cache instances
-│   └── templates/       # Jinja2 HTML templates
+│   ├── blueprints/        # auth (login/register) · main (landing, redirects, logo proxy)
+│   ├── services/          # stock_services (quotes, history, caching) · portfolio_services
+│   │                      # (average-cost ledger) · sample_data (demo fixtures)
+│   ├── utils/             # cache_manager
+│   ├── models.py          # User, Watchlist, Stock, Transaction
+│   └── templates/         # landing and auth pages (Jinja2)
 ├── frontend/
-│   └── dashboard.py     # Plotly Dash interactive dashboard
-├── migrations/          # Alembic database migrations
-├── tests/               # pytest test suite
-├── config.py            # App configuration
-├── wsgi.py              # WSGI entry point
-├── docker-compose.yml   # Local PostgreSQL via Docker
-├── Pipfile              # Pipenv dependencies
-└── requirements.txt     # pip dependencies
+│   ├── dashboard.py       # Dash layout, callbacks, and mounting at /dash/ and /demo/
+│   ├── data_sources.py    # LiveSource / SampleSource
+│   ├── charts.py          # chart periods and the price figure
+│   ├── stock_view.py      # stock header, quote, and details
+│   ├── watchlist_panel.py # watchlist rows, status, refresh
+│   ├── portfolio_tab.py   # portfolio section
+│   ├── actions.py         # edits and confirmed deletes
+│   ├── shell.py           # header, skeletons, dialog, page template
+│   └── assets/            # stylesheet and clientside callbacks
+├── migrations/            # Alembic database migrations
+├── tests/                 # pytest suite (incl. HTTP-level Dash callback tests)
+├── config.py              # App configuration
+└── wsgi.py                # WSGI entry point
 ```
 
 ---
@@ -156,7 +177,7 @@ This creates `app.db` with all tables. `FLASK_APP` is already set in `.flaskenv`
 pipenv run flask seed-demo-user
 ```
 
-Creates the demo account (`demo@stockwatch.dev` / `Demo123!`) with a pre-populated watchlist, so you can log in and see data right away.
+Creates the demo account (`demo@stockwatch.dev` / `Demo123!`) with a pre-populated watchlist, so you can log in and see data right away. (The sample demo at `/demo/` needs neither this account nor an API key.)
 
 ### 5. Run the app
 
@@ -164,7 +185,7 @@ Creates the demo account (`demo@stockwatch.dev` / `Demo123!`) with a pre-populat
 pipenv run flask run --port 8080
 ```
 
-The app is available at **http://localhost:8080**.
+The app is available at **http://localhost:8080**, and the sample demo at **http://localhost:8080/demo/**.
 
 > For a production-style server, use Gunicorn: `pipenv run gunicorn wsgi:app --bind 0.0.0.0:8080`
 
@@ -219,6 +240,7 @@ StockWatch ships with a [`render.yaml`](render.yaml) blueprint for one-click dep
 5. **Seed the demo account** — after the first deploy, open the Render **Shell** for the web service and run `flask seed-demo-user`.
 6. **Verify:**
    - `https://your-app.onrender.com/health` → `{"status": "healthy"}`
+   - Open `/demo/` without logging in: AAPL's chart, the sample watchlist, and the portfolio load
    - Log in with `demo@stockwatch.dev` / `Demo123!`
    - Search a ticker and confirm chart data loads
 
@@ -239,6 +261,8 @@ Use [`app.yaml`](app.yaml) instead:
 ```bash
 pipenv run pytest
 ```
+
+CI runs `ruff check`, `ruff format --check`, and the suite with a coverage gate. Besides unit tests, the suite drives the dashboard's callbacks over HTTP (`tests/dash_client.py`) against a counting fake of the market-data client (`tests/fake_market.py`), which is how it checks that the demo never reaches the provider, the database, or an account, and how many API calls each interaction costs.
 
 ---
 
