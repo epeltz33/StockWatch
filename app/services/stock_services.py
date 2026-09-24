@@ -1,8 +1,8 @@
 import logging
 import os
 from collections.abc import Iterable
-from dataclasses import asdict, dataclass
-from datetime import datetime, time, timedelta
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime, time, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -42,11 +42,18 @@ def _get_client() -> RESTClient:
 
 @dataclass
 class Quote:
-    """Latest close for a symbol plus its change against the prior session.
+    """Latest session close for a symbol plus its change against the prior session.
 
     ``prev_close``/``change``/``change_pct`` are None when the prior session
     could not be fetched — the price is still usable, so callers must render
     the change as unavailable rather than as zero.
+
+    These are closing prices, never live ticks: ``session_date`` names the
+    New York trading session the price closed ('YYYY-MM-DD'),
+    ``price_timestamp`` is the provider's own timestamp for that bar when it
+    sends one, and ``fetched_at`` is when the value came back from the
+    provider. A cached quote keeps its original ``fetched_at``, so the UI can
+    show how old the data really is rather than when the page last redrew.
     """
 
     symbol: str
@@ -54,6 +61,36 @@ class Quote:
     prev_close: float | None = None
     change: float | None = None
     change_pct: float | None = None
+    session_date: str | None = None
+    price_timestamp: str | None = None
+    fetched_at: str | None = None
+
+
+@dataclass
+class QuoteBatch:
+    """Quotes for a batch plus the symbols the provider failed to answer for.
+
+    ``errors`` holds symbols that are missing because a provider call failed
+    (network, rate limit, plan), as opposed to symbols the provider simply has
+    no data for. The UI uses the difference to keep the last good view and
+    offer a retry instead of blanking prices that are merely unreachable.
+    """
+
+    quotes: dict[str, Quote] = field(default_factory=dict)
+    errors: set[str] = field(default_factory=set)
+
+    @property
+    def failed(self) -> bool:
+        return bool(self.errors)
+
+
+# Key for whole-market entries in StockCache (not a real ticker)
+MARKET_CACHE_KEY = "__market__"
+# Latest completed session plus earlier weekdays to try when a session has no
+# data yet: an exchange holiday, or a close the provider hasn't published.
+SESSION_LOOKBACK = 3
+# Weekdays to step back when the session before the latest one is a holiday
+PRIOR_SESSION_LOOKBACK = 2
 
 
 def _normalize_symbols(symbols: Iterable[str]) -> list[str]:
@@ -68,53 +105,132 @@ def _normalize_symbols(symbols: Iterable[str]) -> list[str]:
     return normalized
 
 
+def _utc_now_iso() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+def _timestamp_iso(value: Any) -> str | None:
+    """Provider epoch milliseconds -> ISO 8601 in New York time, or None."""
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
+    try:
+        return datetime.fromtimestamp(value / 1000, tz=EASTERN_TZ).isoformat()
+    except (OverflowError, OSError, ValueError):
+        return None
+
+
+def _is_not_found(error: Exception) -> bool:
+    """True when the provider answered that it has no data (HTTP 404 body).
+
+    Polygon raises BadResponse carrying the JSON body; NOT_FOUND means "no bar
+    for that symbol/date" (unknown ticker, holiday), which is an answer rather
+    than a failure. Everything else — rate limits, auth, network — is a failure.
+    """
+    return "NOT_FOUND" in str(error)
+
+
 def _previous_trading_day(date_str: str) -> str:
-    """The weekday before date_str. Holidays are not modelled; a holiday just
-    yields an empty grouped response, which degrades to change=None."""
+    """The weekday before date_str. Holidays are not modelled here; callers
+    that get no data for a date step back again (see _recent_sessions)."""
     day = datetime.strptime(date_str, "%Y-%m-%d").date() - timedelta(days=1)
     while day.weekday() >= 5:
         day -= timedelta(days=1)
     return day.strftime("%Y-%m-%d")
 
 
-def _grouped_closes(date_str: str, wanted: set[str]) -> dict[str, float]:
-    """Closes for `wanted` from one whole-market grouped daily call.
+def _recent_sessions(count: int = SESSION_LOOKBACK) -> list[str]:
+    """Most recent completed session first, then the weekdays before it."""
+    sessions = [get_most_recent_trading_day()]
+    while len(sessions) < count:
+        sessions.append(_previous_trading_day(sessions[-1]))
+    return sessions
 
-    Returns {} on any failure; the grouped endpoint is not available on every
-    API plan, and callers fall back to per-symbol fetches.
+
+def _grouped_session(date_str: str) -> dict[str, Any] | None:
+    """Whole-market closes for one session from a single grouped-daily call.
+
+    Returns ``{"closes": {ticker: close}, "timestamp": ms | None,
+    "fetched_at": iso}``, or None when the provider call fails (the grouped
+    endpoint is not on every API plan; callers fall back to per-symbol
+    fetches). A session with no closes means the provider has no data for that
+    date: an exchange holiday, or a close it hasn't published yet.
+
+    Non-empty sessions are cached as one entry per date — not one entry per
+    ticker, which would evict the rest of the bounded in-process cache — so a
+    watchlist, chart, and portfolio priced a minute apart share one call.
+    Empty sessions are not cached, so a close published a few minutes after
+    4:00 PM ET is picked up on the next request.
     """
-    closes: dict[str, float] = {}
+    stock_cache = StockCache(cache)
+    cached = stock_cache.get_cached_data(MARKET_CACHE_KEY, "grouped", date=date_str)
+    if isinstance(cached, dict):
+        return cached
+
     try:
         client = _get_client()
         aggs = client.get_grouped_daily_aggs(date_str, adjusted=True)
-        for agg in aggs or []:
-            ticker = getattr(agg, "ticker", None)
-            close = getattr(agg, "close", None)
-            if ticker in wanted and isinstance(close, (int, float)):
-                closes[ticker] = float(close)
     except Exception as e:
         logger.warning(f"Grouped daily aggregates unavailable for {date_str}: {str(e)}")
-        return {}
-    return closes
+        return None
+
+    closes: dict[str, float] = {}
+    timestamp = None
+    for agg in aggs or []:
+        ticker = getattr(agg, "ticker", None)
+        close = getattr(agg, "close", None)
+        if isinstance(ticker, str) and isinstance(close, (int, float)):
+            closes[ticker] = float(close)
+            if timestamp is None:
+                raw_ts = getattr(agg, "timestamp", None)
+                if isinstance(raw_ts, (int, float)) and not isinstance(raw_ts, bool):
+                    timestamp = raw_ts
+
+    session = {"closes": closes, "timestamp": timestamp, "fetched_at": _utc_now_iso()}
+    if closes:
+        stock_cache.set_cached_data(MARKET_CACHE_KEY, "grouped", session, date=date_str)
+    return session
 
 
-def _fetch_grouped_quotes(symbols: list[str]) -> dict[str, Quote]:
+def _fetch_grouped_quotes(symbols: list[str]) -> tuple[dict[str, Quote], bool, str | None]:
     """Quotes for as many of `symbols` as the grouped endpoint knows about.
 
-    Costs two API calls total — latest session and prior session — regardless
-    of how many symbols are requested.
+    Returns (quotes, reachable, session_date). reachable is False when a
+    grouped call for the latest session failed, which sends every symbol to the
+    per-symbol path; session_date is the session the quotes close, if any.
+    Normally two calls in total — latest session and prior session — however
+    many symbols are requested, and none while those sessions are cached.
+    Sessions with no data are stepped over, so a holiday never turns into a
+    zero day change: if no prior session can be found the change stays None.
     """
-    wanted = set(symbols)
-    date_str = get_most_recent_trading_day()
-    latest = _grouped_closes(date_str, wanted)
-    if not latest:
-        return {}
+    latest = latest_date = None
+    for date_str in _recent_sessions():
+        session = _grouped_session(date_str)
+        if session is None:
+            return {}, False, None
+        if session["closes"]:
+            latest, latest_date = session, date_str
+            break
+    if latest is None:
+        return {}, True, None
 
-    previous = _grouped_closes(_previous_trading_day(date_str), wanted)
+    previous = None
+    prior_date = latest_date
+    for _ in range(PRIOR_SESSION_LOOKBACK):
+        prior_date = _previous_trading_day(prior_date)
+        session = _grouped_session(prior_date)
+        if session is None:
+            break
+        if session["closes"]:
+            previous = session
+            break
+    previous_closes = previous["closes"] if previous else {}
 
     quotes: dict[str, Quote] = {}
-    for symbol, price in latest.items():
-        prev_close = previous.get(symbol)
+    for symbol in symbols:
+        price = latest["closes"].get(symbol)
+        if price is None:
+            continue
+        prev_close = previous_closes.get(symbol)
         change = change_pct = None
         if prev_close:
             change = price - prev_close
@@ -125,24 +241,111 @@ def _fetch_grouped_quotes(symbols: list[str]) -> dict[str, Quote]:
             prev_close=prev_close,
             change=change,
             change_pct=change_pct,
+            session_date=latest_date,
+            price_timestamp=_timestamp_iso(latest.get("timestamp")),
+            fetched_at=latest.get("fetched_at"),
         )
-    return quotes
+    return quotes, True, latest_date
 
 
-def _fetch_single_quote(symbol: str) -> Quote | None:
-    """One-symbol fallback. Price only: the day change would cost a second
-    call per symbol, which is exactly what the batched path exists to avoid.
+def _fetch_single_quote(symbol: str, sessions: list[str]) -> tuple[Quote | None, bool]:
+    """One-symbol fallback: (quote, ok). ok is False when a call failed.
+
+    Price only: the day change would cost a second call per symbol, which is
+    exactly what the batched path exists to avoid. Steps back over sessions the
+    provider has no bar for (holiday, unpublished close), one call each.
     """
-    try:
-        client = _get_client()
-        resp = client.get_daily_open_close_agg(symbol, get_most_recent_trading_day())
+    for date_str in sessions:
+        try:
+            client = _get_client()
+            resp = client.get_daily_open_close_agg(symbol, date_str)
+        except Exception as e:
+            if _is_not_found(e):
+                continue
+            logger.error(f"Error fetching stock price for {symbol}: {str(e)}")
+            return None, False
         price = getattr(resp, "close", None) if resp else None
         if not isinstance(price, (int, float)):
-            return None
-        return Quote(symbol=symbol, price=float(price))
-    except Exception as e:
-        logger.error(f"Error fetching stock price for {symbol}: {str(e)}")
+            continue
+        session_date = getattr(resp, "from_", None)
+        return (
+            Quote(
+                symbol=symbol,
+                price=float(price),
+                session_date=session_date if isinstance(session_date, str) else date_str,
+                fetched_at=_utc_now_iso(),
+            ),
+            True,
+        )
+    return None, True
+
+
+def _cached_quote(stock_cache: StockCache, symbol: str) -> Quote | None:
+    cached = stock_cache.get_cached_data(symbol, "quote")
+    if not isinstance(cached, dict):
         return None
+    try:
+        return Quote(**cached)
+    except TypeError:
+        # Written by an incompatible release; treat as a miss and refetch
+        return None
+
+
+def get_quote_batch(symbols: Iterable[str]) -> QuoteBatch:
+    """Price and day change for many symbols in one batch (cached 5 minutes).
+
+    Symbols the provider has no data for are omitted from ``quotes``; symbols
+    lost to a provider failure are also listed in ``errors``.
+    """
+    wanted = _normalize_symbols(symbols)
+    batch = QuoteBatch()
+    if not wanted:
+        return batch
+
+    stock_cache = StockCache(cache)
+    missing: list[str] = []
+    for symbol in wanted:
+        quote = _cached_quote(stock_cache, symbol)
+        if quote is None:
+            missing.append(symbol)
+        else:
+            batch.quotes[symbol] = quote
+
+    if not missing:
+        return batch
+
+    # Only cache what was asked for per symbol; the whole-market response is
+    # cached once per session inside _grouped_session.
+    grouped, reachable, session_date = _fetch_grouped_quotes(missing)
+    still_missing = []
+    for symbol in missing:
+        quote = grouped.get(symbol)
+        if quote is None:
+            still_missing.append(symbol)
+            continue
+        batch.quotes[symbol] = quote
+        stock_cache.set_cached_data(symbol, "quote", asdict(quote))
+
+    if still_missing:
+        # A symbol absent from a successful grouped response gets one call for
+        # that session (OTC tickers are not in grouped results); when grouped
+        # failed, step back over sessions the provider has no bar for.
+        if session_date:
+            sessions = [session_date]
+        elif reachable:
+            # Grouped works but has nothing recent; one call each is plenty
+            sessions = _recent_sessions(1)
+        else:
+            sessions = _recent_sessions()
+        for symbol in still_missing:
+            quote, ok = _fetch_single_quote(symbol, sessions)
+            if not ok:
+                batch.errors.add(symbol)
+            if quote is not None:
+                batch.quotes[symbol] = quote
+                stock_cache.set_cached_data(symbol, "quote", asdict(quote))
+
+    return batch
 
 
 def get_quotes(symbols: Iterable[str]) -> dict[str, Quote]:
@@ -151,46 +354,11 @@ def get_quotes(symbols: Iterable[str]) -> dict[str, Quote]:
     Symbols the provider has no data for are omitted from the result, so
     callers should use .get(symbol) rather than assuming every input is keyed.
     """
-    wanted = _normalize_symbols(symbols)
-    if not wanted:
-        return {}
-
-    stock_cache = StockCache(cache)
-    quotes: dict[str, Quote] = {}
-    missing: list[str] = []
-    for symbol in wanted:
-        cached = stock_cache.get_cached_data(symbol, "quote")
-        if isinstance(cached, dict):
-            quotes[symbol] = Quote(**cached)
-        else:
-            missing.append(symbol)
-
-    if not missing:
-        return quotes
-
-    # Only cache what was asked for: a grouped response covers the whole US
-    # market, and writing all of it would evict every other cache entry.
-    grouped = _fetch_grouped_quotes(missing)
-    still_missing = []
-    for symbol in missing:
-        quote = grouped.get(symbol)
-        if quote is None:
-            still_missing.append(symbol)
-            continue
-        quotes[symbol] = quote
-        stock_cache.set_cached_data(symbol, "quote", asdict(quote))
-
-    for symbol in still_missing:
-        quote = _fetch_single_quote(symbol)
-        if quote is not None:
-            quotes[symbol] = quote
-            stock_cache.set_cached_data(symbol, "quote", asdict(quote))
-
-    return quotes
+    return get_quote_batch(symbols).quotes
 
 
 def get_stock_price(symbol: str) -> float | None:
-    """Get current stock price (cached for 5 minutes).
+    """Get the latest session close (cached for 5 minutes).
 
     Thin wrapper over get_quotes; prefer get_quotes directly when pricing more
     than one symbol so the fetch stays a single batched call.
@@ -225,7 +393,12 @@ def get_stock_data(symbol: str, from_date: str, to_date: str) -> list[dict[str, 
         for agg in aggs or []:
             historical_data.append(
                 {
-                    "date": datetime.fromtimestamp(agg.timestamp / 1000).strftime("%Y-%m-%d"),
+                    # Daily bars are stamped at midnight New York time; read
+                    # them in that zone, not the server's, or a US/Pacific
+                    # host would shift every bar back a day.
+                    "date": datetime.fromtimestamp(agg.timestamp / 1000, tz=EASTERN_TZ).strftime(
+                        "%Y-%m-%d"
+                    ),
                     "open": agg.open,
                     "high": agg.high,
                     "low": agg.low,
@@ -436,27 +609,32 @@ def get_company_details(symbol: str) -> dict[str, Any] | None:
         return None
 
 
-def get_most_recent_trading_day() -> str:
-    """Calculate the most recent trading day."""
-    now = datetime.now()
-    market_close_time = now.replace(hour=16, minute=0, second=0, microsecond=0)
+def get_most_recent_trading_day(now: datetime | None = None) -> str:
+    """The latest weekday whose regular session has closed, in New York time.
 
-    if now <= market_close_time and now.weekday() < 5:
-        most_recent_trading_day = now - timedelta(days=1) if now.weekday() > 0 else now
+    The market closes at 4:00 PM America/New_York, whatever the server's own
+    timezone (Render runs in UTC). Before the close a weekday's session is still
+    in progress, so the answer is the previous weekday — Monday morning gives
+    Friday. From the close onward it is that same day. Weekends roll back to
+    Friday. Exchange holidays aren't modelled: the provider has no data for
+    them, and callers step back a session (see _recent_sessions) rather than
+    report a price or change for a day that never traded.
+
+    ``now`` is for tests; a naive value is taken as New York time.
+    """
+    if now is None:
+        now = datetime.now(EASTERN_TZ)
+    elif now.tzinfo is None:
+        now = now.replace(tzinfo=EASTERN_TZ)
     else:
-        days_to_subtract = 1
-        if now.weekday() == 5:
-            days_to_subtract = 1
-        elif now.weekday() == 6:
-            days_to_subtract = 2
-        most_recent_trading_day = now - timedelta(days=days_to_subtract)
+        now = now.astimezone(EASTERN_TZ)
 
-    if most_recent_trading_day.weekday() == 5:
-        most_recent_trading_day -= timedelta(days=1)
-    elif most_recent_trading_day.weekday() == 6:
-        most_recent_trading_day -= timedelta(days=2)
-
-    return most_recent_trading_day.strftime("%Y-%m-%d")
+    day = now.date()
+    if now.time() < MARKET_CLOSE_ET:
+        day -= timedelta(days=1)
+    while day.weekday() >= 5:
+        day -= timedelta(days=1)
+    return day.strftime("%Y-%m-%d")
 
 
 def get_stock_by_symbol(symbol: str) -> Stock | None:

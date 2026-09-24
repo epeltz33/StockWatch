@@ -27,8 +27,56 @@ def test_dash_routes_require_login(client):
 def test_security_headers_present(client):
     response = client.get("/")
     assert response.headers["X-Content-Type-Options"] == "nosniff"
-    assert response.headers["X-Frame-Options"] == "SAMEORIGIN"
+    # The dashboard is no longer embedded in an iframe, so nothing may frame us
+    assert response.headers["X-Frame-Options"] == "DENY"
     assert response.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+
+
+def test_landing_leads_with_the_demo(client):
+    html = client.get("/").get_data(as_text=True)
+    ctas = html[html.index('class="cta-buttons"') :]
+    # First (primary) action is the demo; login and registration follow
+    assert ctas.index('href="/demo/"') < ctas.index("/auth/login")
+    assert ctas.index('href="/demo/"') < ctas.index("/auth/register")
+    assert 'href="/demo/" class="btn btn-primary' in html
+    assert "Live market data" not in html
+
+
+def test_landing_offers_the_dashboard_to_signed_in_users(client):
+    register_and_login(client)
+    html = client.get("/").get_data(as_text=True)
+    assert 'href="/dash/" class="btn btn-primary' in html
+
+
+def test_dashboard_redirects_signed_in_users_to_the_dash_page(client):
+    register_and_login(client)
+    response = client.get("/dashboard", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/dash/")
+    assert client.get("/dash/").status_code == 200
+
+
+def test_dash_callbacks_require_login_but_demo_callbacks_do_not(client):
+    assert client.post("/dash/_dash-update-component", json={}).status_code in (302, 401)
+    assert client.get("/demo/_dash-dependencies").status_code == 200
+
+
+def test_auth_pages_link_to_the_demo(client):
+    for page in ("/auth/login", "/auth/register"):
+        assert 'href="/demo/"' in client.get(page).get_data(as_text=True)
+
+
+def register_and_login(client):
+    client.post(
+        "/auth/register",
+        data={
+            "username": "visitor",
+            "email": "visitor@example.com",
+            "password": "password123",
+            "confirm_password": "password123",
+        },
+    )
+    client.post("/auth/login", data={"email": "visitor@example.com", "password": "password123"})
 
 
 def test_branding_rejects_unknown_kind(client):

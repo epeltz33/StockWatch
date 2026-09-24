@@ -8,6 +8,7 @@ non-tax-lot portfolio trackers.
 """
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -29,8 +30,25 @@ class PortfolioError(ValueError):
     """Base class for domain errors surfaced to the UI/API as user mistakes."""
 
 
+def _shares(value: Decimal) -> str:
+    """Decimal('4.000000') -> '4', Decimal('2.500') -> '2.5'."""
+    text = f"{Decimal(value):f}"
+    return text.rstrip("0").rstrip(".") if "." in text else text
+
+
 class InsufficientSharesError(PortfolioError):
     """Selling (or deleting a BUY) would make a position go negative."""
+
+    def __init__(self, symbol, quantity, held, executed_at, message=None):
+        self.symbol = symbol
+        self.quantity = quantity
+        self.held = held
+        self.executed_at = executed_at
+        super().__init__(
+            message
+            or f"Cannot sell {_shares(quantity)} {symbol} on {executed_at}: "
+            f"only {_shares(held)} held"
+        )
 
 
 @dataclass
@@ -45,6 +63,8 @@ class Position:
     market_value: Decimal | None = None
     unrealized_pl: Decimal | None = None
     unrealized_pl_pct: Decimal | None = None
+    # Session ('YYYY-MM-DD') of the close current_price comes from
+    price_date: str | None = None
 
 
 @dataclass
@@ -81,10 +101,7 @@ def _replay(transactions: list[Transaction]) -> dict[str, _SymbolState]:
             state.quantity = new_quantity
         else:  # SELL
             if quantity > state.quantity:
-                raise InsufficientSharesError(
-                    f"Cannot sell {quantity} {symbol} on {txn.executed_at}: "
-                    f"only {state.quantity} held"
-                )
+                raise InsufficientSharesError(symbol, quantity, state.quantity, txn.executed_at)
             state.realized_pl += (price - state.avg_cost) * quantity
             state.quantity -= quantity
             if state.quantity == 0:
@@ -185,7 +202,20 @@ def delete_transaction(user_id: int, transaction_id: int) -> bool:
         return False
 
     remaining = [t for t in Transaction.query.filter_by(user_id=user_id).all() if t.id != txn.id]
-    _replay(remaining)
+    try:
+        _replay(remaining)
+    except InsufficientSharesError as exc:
+        raise InsufficientSharesError(
+            exc.symbol,
+            exc.quantity,
+            exc.held,
+            exc.executed_at,
+            message=(
+                f"Can't delete this trade: the later sale of {_shares(exc.quantity)} "
+                f"{exc.symbol} on {exc.executed_at} would no longer have enough shares. "
+                "Delete that sale first."
+            ),
+        ) from exc
 
     db.session.delete(txn)
     db.session.commit()
@@ -197,14 +227,20 @@ def _load_states(user_id: int) -> dict[str, _SymbolState]:
     return _replay(Transaction.query.filter_by(user_id=user_id).all())
 
 
-def _positions_from_states(states: dict[str, _SymbolState]) -> list[Position]:
-    """Open positions (quantity > 0) with live pricing where available.
+def _positions_from_states(
+    states: dict[str, _SymbolState], quote_fn: Callable | None = None
+) -> list[Position]:
+    """Open positions (quantity > 0) with closing prices where available.
 
     Prices for every holding are fetched in a single batched call. Fetching
     them one symbol at a time trips the market-data provider's rate limit on
     portfolios past a handful of names, and a rate-limited fetch reports an
     unavailable price, which silently drops the position out of market value
     and allocations.
+
+    ``quote_fn`` takes a list of symbols and returns {symbol: Quote}; it
+    defaults to the live batched fetch. The sample demo passes its own fixed
+    quotes so it shares this accounting without touching the provider.
     """
     positions = [
         Position(
@@ -221,13 +257,14 @@ def _positions_from_states(states: dict[str, _SymbolState]) -> list[Position]:
     if not positions:
         return []
 
-    quotes = get_quotes([p.symbol for p in positions])
+    quotes = (quote_fn or get_quotes)([p.symbol for p in positions])
     for position in positions:
         quote = quotes.get(position.symbol)
         if quote is None:
             continue
         price = Decimal(str(quote.price))
         position.current_price = price
+        position.price_date = quote.session_date
         position.market_value = position.quantity * price
         position.unrealized_pl = position.market_value - position.cost_basis
         if position.cost_basis != 0:
@@ -237,19 +274,26 @@ def _positions_from_states(states: dict[str, _SymbolState]) -> list[Position]:
 
 
 def get_positions(user_id: int) -> list[Position]:
-    """Open positions (quantity > 0) with live pricing where available."""
+    """Open positions (quantity > 0) with closing prices where available."""
     return _positions_from_states(_load_states(user_id))
 
 
-def get_portfolio_summary(user_id: int) -> dict:
-    """Totals across the portfolio plus allocation weights for charting.
+def summarize_transactions(transactions: list, quote_fn: Callable | None = None) -> dict:
+    """Totals, allocations, and positions for a list of ledger rows.
+
+    Pure apart from the quote fetch: rows only need the attributes _replay
+    reads, so the sample demo feeds fixed rows and fixed quotes through the
+    exact accounting real portfolios use.
 
     Positions with no available price are excluded from market-value totals
-    and allocations but still counted in cost basis. Realized P/L includes
-    fully closed positions.
+    and allocations but still counted in cost basis. ``priced_count`` and
+    ``unpriced_count`` say how many open holdings the value covers:
+    ``is_partial`` is set when some but not all are priced, and when none are,
+    market value and unrealized P/L are None (unavailable) rather than $0.
+    Realized P/L includes fully closed positions and needs no prices.
     """
-    states = _load_states(user_id)
-    positions = _positions_from_states(states)
+    states = _replay(list(transactions))
+    positions = _positions_from_states(states, quote_fn)
 
     total_realized = sum((s.realized_pl for s in states.values()), Decimal(0))
     total_cost_basis = sum((p.cost_basis for p in positions), Decimal(0))
@@ -257,6 +301,10 @@ def get_portfolio_summary(user_id: int) -> dict:
     total_market_value = sum((p.market_value for p in priced), Decimal(0))
     priced_cost_basis = sum((p.cost_basis for p in priced), Decimal(0))
     total_unrealized = total_market_value - priced_cost_basis
+
+    priced_count = len(priced)
+    unpriced_count = len(positions) - priced_count
+    nothing_priced = bool(positions) and priced_count == 0
 
     allocations = []
     if total_market_value > 0:
@@ -271,15 +319,27 @@ def get_portfolio_summary(user_id: int) -> dict:
 
     return {
         "positions": positions,
-        "market_value": total_market_value,
+        "market_value": None if nothing_priced else total_market_value,
         "cost_basis": total_cost_basis,
-        "unrealized_pl": total_unrealized,
+        "priced_cost_basis": priced_cost_basis,
+        "unrealized_pl": None if nothing_priced else total_unrealized,
         "unrealized_pl_pct": (
             total_unrealized / priced_cost_basis * 100 if priced_cost_basis > 0 else None
         ),
         "realized_pl": total_realized,
         "allocations": allocations,
+        "holding_count": len(positions),
+        "priced_count": priced_count,
+        "unpriced_count": unpriced_count,
+        "is_partial": priced_count > 0 and unpriced_count > 0,
+        # Sessions whose closes value the portfolio, oldest first
+        "price_dates": sorted({p.price_date for p in priced if p.price_date}),
     }
+
+
+def get_portfolio_summary(user_id: int) -> dict:
+    """Totals across the user's portfolio; see summarize_transactions."""
+    return summarize_transactions(Transaction.query.filter_by(user_id=user_id).all())
 
 
 def list_transactions(user_id: int, limit: int = 50, offset: int = 0) -> list[Transaction]:

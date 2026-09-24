@@ -134,11 +134,23 @@ def test_get_quotes_serves_cached_symbols_without_touching_the_api(polygon):
     polygon.get_daily_open_close_agg.assert_not_called()
 
 
+def _evict_cached_sessions():
+    """Drop the whole-market session entries, leaving per-symbol quotes cached."""
+    stock_cache = StockCache(cache)
+    for date in (TODAY, PREV):
+        cache.delete(
+            stock_cache._get_cache_key(stock_services.MARKET_CACHE_KEY, "grouped", date=date)
+        )
+
+
 def test_get_quotes_merges_cached_and_freshly_fetched_symbols(polygon):
     polygon.get_grouped_daily_aggs.side_effect = _grouped_by_date(
         {TODAY: [_grouped("AAPL", 150.0)], PREV: [_grouped("AAPL", 145.0)]}
     )
     get_quotes(["AAPL"])
+    # A cached session answers for every ticker in it, so force a fresh
+    # grouped fetch to show that MSFT is fetched while AAPL stays cached.
+    _evict_cached_sessions()
 
     polygon.get_grouped_daily_aggs.side_effect = _grouped_by_date(
         {
@@ -151,6 +163,26 @@ def test_get_quotes_merges_cached_and_freshly_fetched_symbols(polygon):
     # AAPL comes from cache (150.0, not the fresh 999.0); MSFT from the API
     assert quotes["AAPL"].price == 150.0
     assert quotes["MSFT"].price == 400.0
+
+
+def test_symbols_priced_later_reuse_the_cached_session_without_another_call(polygon):
+    """The chart, watchlist, and portfolio each ask for different symbols a
+    moment apart; the second batch must not download the whole market again."""
+    polygon.get_grouped_daily_aggs.side_effect = _grouped_by_date(
+        {
+            TODAY: [_grouped("AAPL", 150.0), _grouped("MSFT", 400.0)],
+            PREV: [_grouped("AAPL", 145.0), _grouped("MSFT", 390.0)],
+        }
+    )
+    get_quotes(["AAPL"])
+    polygon.reset_mock()
+
+    quote = get_quotes(["MSFT"])["MSFT"]
+
+    assert quote.price == 400.0
+    assert quote.change == pytest.approx(10.0)
+    polygon.get_grouped_daily_aggs.assert_not_called()
+    polygon.get_daily_open_close_agg.assert_not_called()
 
 
 def test_get_quotes_does_not_cache_symbols_nobody_asked_for(polygon):
