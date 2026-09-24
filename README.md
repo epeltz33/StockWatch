@@ -244,6 +244,12 @@ StockWatch ships with a [`render.yaml`](render.yaml) blueprint for one-click dep
    - Log in with `demo@stockwatch.dev` / `Demo123!`
    - Search a ticker and confirm chart data loads
 
+   Or run the scripted smoke test, which covers demo access, authenticated access, and a failed load:
+
+   ```bash
+   python scripts/smoke_test.py https://your-app.onrender.com --email demo@stockwatch.dev --password 'Demo123!'
+   ```
+
 > **Note:** Migrations run in the **start command**, not the build command — Render's internal database hostname is only reachable at runtime.
 
 ### DigitalOcean App Platform (alternative)
