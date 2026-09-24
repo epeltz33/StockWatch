@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from app.services import stock_services
-from frontend import dashboard
+from frontend import charts
 
 
 def _agg(timestamp, open_, high, low, close, volume):
@@ -28,7 +28,7 @@ def test_filter_data_for_period_leaves_1d_daily_data_unsliced():
         }
     )
 
-    filtered = dashboard.filter_data_for_period(df, "1D")
+    filtered = charts.filter_data_for_period(df, "1D")
 
     pd.testing.assert_frame_equal(filtered, df)
 
@@ -62,10 +62,10 @@ def test_filter_data_for_period_returns_expected_daily_slices(period, expected_d
         }
     )
 
-    with patch.object(dashboard, "datetime") as mock_datetime:
+    with patch.object(charts, "datetime") as mock_datetime:
         mock_datetime.now.return_value = datetime(2026, 5, 18, 12, 0)
         mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
-        filtered = dashboard.filter_data_for_period(df, period)
+        filtered = charts.filter_data_for_period(df, period)
 
     assert filtered["date"].tolist() == expected_dates
 
@@ -78,7 +78,7 @@ def test_calculate_intraday_period_change_uses_session_open():
         }
     )
 
-    assert dashboard.calculate_intraday_period_change(df) == 5.0
+    assert charts.calculate_intraday_period_change(df) == 5.0
 
 
 def test_create_stock_chart_figure_uses_intraday_datetimes_for_1d():
@@ -95,7 +95,7 @@ def test_create_stock_chart_figure_uses_intraday_datetimes_for_1d():
         }
     )
 
-    fig = dashboard.create_stock_chart_figure(df, "AAPL", period="1D")
+    fig = charts.create_stock_chart_figure(df, "AAPL", period="1D")
 
     assert list(fig.data[0].x) == df["datetime"].tolist()
     assert fig.layout.xaxis2.tickformat == "%I:%M %p"
@@ -117,7 +117,7 @@ def test_create_stock_chart_figure_uses_tight_intraday_y_axis_range():
         }
     )
 
-    fig = dashboard.create_stock_chart_figure(df, "AAPL", period="1D")
+    fig = charts.create_stock_chart_figure(df, "AAPL", period="1D")
 
     y_range = fig.layout.yaxis.range
     assert y_range[0] > 295
@@ -136,7 +136,7 @@ def test_create_stock_chart_figure_uses_readable_daily_y_axis_range(period):
         }
     )
 
-    fig = dashboard.create_stock_chart_figure(df, "AAPL", period=period)
+    fig = charts.create_stock_chart_figure(df, "AAPL", period=period)
 
     y_range = fig.layout.yaxis.range
     assert y_range[0] > 290
@@ -165,7 +165,7 @@ def test_create_stock_chart_figure_formats_daily_x_axis_by_period(period, tickfo
         }
     )
 
-    fig = dashboard.create_stock_chart_figure(df, "AAPL", period=period)
+    fig = charts.create_stock_chart_figure(df, "AAPL", period=period)
 
     assert fig.layout.xaxis2.type == "date"
     assert fig.layout.xaxis2.tickformat == tickformat
@@ -174,7 +174,7 @@ def test_create_stock_chart_figure_formats_daily_x_axis_by_period(period, tickfo
 
 
 def test_create_stock_chart_figure_handles_empty_intraday_data():
-    fig = dashboard.create_stock_chart_figure(pd.DataFrame(), "AAPL", period="1D")
+    fig = charts.create_stock_chart_figure(pd.DataFrame(), "AAPL", period="1D")
 
     assert len(fig.data) == 0
     assert fig.layout.annotations[0].text == "No intraday data available for AAPL"
@@ -299,17 +299,31 @@ def test_calculate_fifty_two_week_range_uses_last_year_not_full_history():
         }
     )
 
-    with patch.object(dashboard, "datetime") as mock_datetime:
+    with patch.object(charts, "datetime") as mock_datetime:
         mock_datetime.now.return_value = datetime(2026, 5, 18)
         mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
-        result = dashboard.calculate_fifty_two_week_range(df)
+        result = charts.calculate_fifty_two_week_range(df)
 
     assert result == "$85.00 - $110.00"
     assert result != "$9.00 - $110.00"
 
 
 def test_period_display_label_clarifies_intraday_button():
-    assert dashboard.period_display_label("1D") == "Today"
-    assert dashboard.period_display_label("1Y") == "1Y"
-    assert "Intraday" in dashboard.period_button_title("1D")
-    assert "Daily bars" in dashboard.period_button_title("1Y")
+    # "1D", not "Today": the intraday chart shows the latest regular session,
+    # which on weekends, before the open, and in the sample demo isn't today.
+    assert charts.period_display_label("1D") == "1D"
+    assert charts.period_display_label("1Y") == "1Y"
+    assert "Intraday" in charts.period_button_title("1D")
+    assert "latest regular session" in charts.period_button_title("1D")
+    assert "Daily bars" in charts.period_button_title("1Y")
+
+
+def test_intraday_readout_names_the_session_it_shows():
+    readout = charts.build_change_readout(1.5, 0.8, "1D", session_date="2026-09-18")
+    assert readout[-1].children == "Sep 18 session"
+
+
+def test_intraday_readout_without_bars_is_unavailable_not_zero():
+    readout = charts.build_change_readout(None, None, "1D")
+    assert "change-chip--na" in readout[0].className
+    assert "0.00" not in str(readout[0].children)
