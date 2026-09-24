@@ -5,6 +5,9 @@ from flask_caching import Cache
 DEFAULT_TIMEOUTS: dict[str, int] = {
     "price": 300,  # 5 minutes
     "quote": 300,  # 5 minutes (price + day change, fetched in batches)
+    # 1 hour: one whole-market grouped response per closed session. A closed
+    # session's closes don't change, and the next session gets its own key.
+    "grouped": 3600,
     "details": 86400,  # 24 hours
     "historical": 3600,  # 1 hour
     "intraday": 300,  # 5 minutes
