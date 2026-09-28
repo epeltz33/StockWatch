@@ -32,9 +32,9 @@ def _configure_environment() -> None:
             )
         return
 
+    # No DATABASE_URL: config.py falls back to <project root>/app.db.
     if "DATABASE_URL" not in os.environ:
-        print("WARNING: DATABASE_URL not set, using SQLite")
-        os.environ["DATABASE_URL"] = "sqlite:///app.db"
+        print("WARNING: DATABASE_URL not set, using SQLite app.db in the project root")
 
     if "SECRET_KEY" not in os.environ:
         print("WARNING: SECRET_KEY not set, using development key")

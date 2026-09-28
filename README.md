@@ -157,7 +157,7 @@ pipenv install
 
 ### 2. Configure environment variables
 
-Create a `.env` file in the project root. For the SQLite quickstart, **leave `DATABASE_URL` out** — the app falls back to a local SQLite file (`instance/app.db`):
+Create a `.env` file in the project root. For the SQLite quickstart, **leave `DATABASE_URL` out** — the app falls back to a local SQLite file (`app.db` in the project root):
 
 ```dotenv
 SECRET_KEY=any-random-string
@@ -170,7 +170,7 @@ POLYGON_API_KEY=your_massive_api_key
 pipenv run flask db upgrade
 ```
 
-This creates `instance/app.db` with all tables. `FLASK_APP` is already set in `.flaskenv`, so no extra flags are needed.
+This creates `app.db` in the project root with all tables — the same file `flask run` and `python app.py` use. `FLASK_APP` is already set in `.flaskenv`, so no extra flags are needed.
 
 ### 4. (Optional) Seed the demo account
 
