@@ -151,11 +151,26 @@ def run(base, email=None, password=None):
                 "password": password,
                 **({"csrf_token": token.group(1)} if token else {}),
             },
+            # Over HTTPS, Flask-WTF's CSRF check also wants a same-origin
+            # Referer, which a browser sends with the form
+            headers={"Referer": f"{s.base}/auth/login"},
             allow_redirects=False,
             timeout=TIMEOUT,
         )
-        s.check("log in", login.status_code == 302, login.headers.get("Location", ""))
-        s.check("dashboard opens after login", s.get("/dash/").status_code == 200)
+        logged_in = s.check(
+            "log in",
+            login.status_code == 302,
+            login.headers.get("Location") or f"HTTP {login.status_code}",
+        )
+        # Not following redirects: signed out, /dash/ redirects to the login page
+        dashboard = s.get("/dash/", allow_redirects=False)
+        if not s.check(
+            "dashboard opens after login",
+            logged_in and dashboard.status_code == 200,
+            f"HTTP {dashboard.status_code}",
+        ):
+            print("SKIP  remaining authenticated checks (not signed in)")
+            return finish(s)
 
         loader = s.callback("/dash/", "stock-symbol-store.data", "restore-request.data")
         restored = props(
@@ -191,6 +206,10 @@ def run(base, email=None, password=None):
     else:
         print("SKIP  authenticated checks (pass --email and --password)")
 
+    return finish(s)
+
+
+def finish(s):
     print(f"\n{'All checks passed.' if not s.failures else f'{s.failures} check(s) failed.'}")
     return 1 if s.failures else 0
 
