@@ -43,13 +43,16 @@ def _configure_environment() -> None:
 
 try:
     _configure_environment()
+    from sqlalchemy.engine import make_url
+
     from app import create_app
 
     application = create_app()
     app = application
 
+    db_url = make_url(application.config["SQLALCHEMY_DATABASE_URI"])
     print("✓ Flask application created successfully")
-    print(f"✓ Database URL: {os.environ.get('DATABASE_URL', 'Not set')[:50]}...")
+    print(f"✓ Database URL: {db_url.render_as_string(hide_password=True)}")
     print(f"✓ Polygon API Key: {'Set' if os.environ.get('POLYGON_API_KEY') else 'Not set'}")
 
 except Exception as e:
