@@ -46,7 +46,7 @@ The demo opens a populated dashboard straight away: three stocks with price hist
 - **Honest numbers** — prices are labelled with the trading session they close (computed in New York time) and when they were retrieved; nothing claims to be live. Missing data reads as unavailable, never as a $0.00 price or a 0.00% day change. Header, details, watchlist, and portfolio use the same quote.
 - **Real API integration under cost constraints** — one whole-market call per trading session prices every watchlist, chart, and portfolio symbol; responses are cached, a reload costs zero API calls, and a failed refresh keeps the last good prices with a retry.
 - **Production-grade data practices** — Alembic migrations, SQLite locally and PostgreSQL in production, `Decimal` money math with an average-cost trade ledger.
-- **Tested like it's used** — 220+ tests, including ones that post real Dash callback requests to prove the demo can't reach the provider, the database, or anyone's account.
+- **Tested like it's used** — 240+ tests, including ones that post real Dash callback requests to prove the demo can't reach the provider, the database, or anyone's account.
 
 ---
 
@@ -130,6 +130,7 @@ StockWatch/
 │   └── assets/            # stylesheet and clientside callbacks
 ├── migrations/            # Alembic database migrations
 ├── tests/                 # pytest suite (incl. HTTP-level Dash callback tests)
+├── scripts/               # smoke_test.py (post-deploy check)
 ├── config.py              # App configuration
 └── wsgi.py                # WSGI entry point
 ```
@@ -156,7 +157,7 @@ pipenv install
 
 ### 2. Configure environment variables
 
-Create a `.env` file in the project root. For the SQLite quickstart, **leave `DATABASE_URL` out** — the app falls back to a local SQLite file (`app.db`):
+Create a `.env` file in the project root. For the SQLite quickstart, **leave `DATABASE_URL` out** — the app falls back to a local SQLite file (`instance/app.db`):
 
 ```dotenv
 SECRET_KEY=any-random-string
@@ -169,7 +170,7 @@ POLYGON_API_KEY=your_massive_api_key
 pipenv run flask db upgrade
 ```
 
-This creates `app.db` with all tables. `FLASK_APP` is already set in `.flaskenv`, so no extra flags are needed.
+This creates `instance/app.db` with all tables. `FLASK_APP` is already set in `.flaskenv`, so no extra flags are needed.
 
 ### 4. (Optional) Seed the demo account
 
@@ -234,11 +235,10 @@ StockWatch ships with a [`render.yaml`](render.yaml) blueprint for one-click dep
 1. **Push to GitHub** — Render deploys from Git.
 2. **Create a Render account** at [render.com](https://render.com) and connect GitHub.
 3. **Create a Blueprint** — go to **Dashboard → New → Blueprint** and select the `StockWatch` repo. Render detects `render.yaml` and provisions:
-   - A **PostgreSQL** database (`stockwatch-db`, ~$7/mo)
+   - A **PostgreSQL** database (`stockwatch-db`, `plan: free` — Render's free databases expire, so choose a paid plan for a long-lived deploy)
    - A **web service** (`stockwatch`, free tier with cold starts)
 4. **Set secrets** — when prompted, set `POLYGON_API_KEY` to your [Massive.com](https://massive.com/) key. `SECRET_KEY` and `DATABASE_URL` are generated automatically.
-5. **Seed the demo account** — after the first deploy, open the Render **Shell** for the web service and run `flask seed-demo-user`.
-6. **Verify:**
+5. **Verify:**
    - `https://your-app.onrender.com/health` → `{"status": "healthy"}`
    - Open `/demo/` without logging in: AAPL's chart, the sample watchlist, and the portfolio load
    - Log in with `demo@stockwatch.dev` / `Demo123!`
@@ -250,7 +250,7 @@ StockWatch ships with a [`render.yaml`](render.yaml) blueprint for one-click dep
    python scripts/smoke_test.py https://your-app.onrender.com --email demo@stockwatch.dev --password 'Demo123!'
    ```
 
-> **Note:** Migrations run in the **start command**, not the build command — Render's internal database hostname is only reachable at runtime.
+> **Note:** Migrations and the (idempotent) demo-account seed run in the **start command**, not the build command — Render's internal database hostname is only reachable at runtime.
 
 ### DigitalOcean App Platform (alternative)
 
@@ -265,7 +265,10 @@ Use [`app.yaml`](app.yaml) instead:
 ## 🧪 Running Tests
 
 ```bash
+pipenv install --dev
 pipenv run pytest
+pipenv run ruff check .
+pipenv run ruff format --check .
 ```
 
 CI runs `ruff check`, `ruff format --check`, and the suite with a coverage gate. Besides unit tests, the suite drives the dashboard's callbacks over HTTP (`tests/dash_client.py`) against a counting fake of the market-data client (`tests/fake_market.py`), which is how it checks that the demo never reaches the provider, the database, or an account, and how many API calls each interaction costs.
