@@ -260,7 +260,7 @@ Use [`app.yaml`](app.yaml) instead:
 2. Set `DATABASE_URL`, `SECRET_KEY`, and `POLYGON_API_KEY` as encrypted env vars.
 3. Connect the GitHub repo — migrations run automatically on build.
 
-> `render.yaml` is the primary deploy path. `app.yaml`/`build.sh` (DigitalOcean) and `Procfile` (Heroku-style) are kept as alternatives; `run.sh` starts the app locally with Gunicorn.
+> `render.yaml` is the primary deploy path. `app.yaml` (DigitalOcean) and `Procfile` (Heroku-style) are kept as alternatives.
 
 ---
 

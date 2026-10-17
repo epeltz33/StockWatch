@@ -16,8 +16,9 @@ from dash import Input, Output, State, callback_context, dcc, html, no_update
 from dash.exceptions import PreventUpdate
 
 from app.services.portfolio_services import PortfolioError
+from frontend.charts import format_bar_date
 from frontend.data_sources import ReadOnlyDemoError
-from frontend.shell import list_skeleton, loading, stat_skeleton
+from frontend.shell import empty_state, list_skeleton, loading, stat_skeleton, toast
 
 logger = logging.getLogger(__name__)
 
@@ -64,23 +65,6 @@ def _stat_cell(label, value_children, value_class="stat-value", note=None):
     if note:
         children.append(html.Div(note, className="stat-note"))
     return html.Div(children, className="stat-cell")
-
-
-def _format_date(value):
-    day = date.fromisoformat(value) if isinstance(value, str) else value
-    return f"{day:%b} {day.day}, {day.year}"
-
-
-def _empty_state(icon, message, sub=None, action=None):
-    children = [
-        html.Div(icon, className="empty-state-icon", **{"aria-hidden": "true"}),
-        html.Div(message, className="empty-state-title"),
-    ]
-    if sub:
-        children.append(html.Div(sub, className="empty-state-sub"))
-    if action is not None:
-        children.append(html.Div(action, className="empty-state-action"))
-    return html.Div(children, className="empty-state")
 
 
 def _field(label, control, control_id):
@@ -256,9 +240,9 @@ def _coverage_note(summary, is_sample):
     dates = summary.get("price_dates") or []
     if dates:
         closes = (
-            _format_date(dates[-1])
+            format_bar_date(dates[-1])
             if len(dates) == 1
-            else (f"{_format_date(dates[0])} – {_format_date(dates[-1])}")
+            else (f"{format_bar_date(dates[0])} – {format_bar_date(dates[-1])}")
         )
         when = f"{'Sample closes' if is_sample else 'Closes'} as of {closes}"
     else:
@@ -324,7 +308,7 @@ def build_summary_cards(summary, is_sample=False):
 
 def build_positions_table(positions, editable=True):
     if not positions:
-        return _empty_state(
+        return empty_state(
             "\U0001f4bc",
             "No open positions",
             "Record your first trade to start tracking P/L." if editable else None,
@@ -367,7 +351,7 @@ def build_positions_table(positions, editable=True):
                         "—" if p.current_price is None else _money(p.current_price),
                         className="num",
                         title=unpriced_title
-                        or (f"Close of {_format_date(p.price_date)}" if p.price_date else None),
+                        or (f"Close of {format_bar_date(p.price_date)}" if p.price_date else None),
                     ),
                     html.Td(
                         "—" if p.market_value is None else _money(p.market_value),
@@ -392,7 +376,7 @@ def build_positions_table(positions, editable=True):
 def build_allocation_chart(summary):
     allocations = summary["allocations"]
     if not allocations:
-        return _empty_state(
+        return empty_state(
             "\U0001f4ca",
             "Nothing to chart yet",
             "Allocation needs at least one priced holding."
@@ -442,13 +426,13 @@ def build_allocation_chart(summary):
 def transaction_label(txn):
     return (
         f"{txn.side} {format_quantity(txn.quantity)} {txn.stock.symbol} @ {_money(txn.price)} "
-        f"on {_format_date(txn.executed_at)}"
+        f"on {format_bar_date(txn.executed_at)}"
     )
 
 
 def build_transactions_list(transactions, editable=True):
     if not transactions:
-        return _empty_state("\U0001f9fe", "No transactions recorded")
+        return empty_state("\U0001f9fe", "No transactions recorded")
 
     rows = []
     for txn in transactions:
@@ -463,7 +447,7 @@ def build_transactions_list(transactions, editable=True):
                         className="txn-detail",
                     ),
                     html.Time(
-                        _format_date(txn.executed_at),
+                        format_bar_date(txn.executed_at),
                         dateTime=txn.executed_at.isoformat(),
                         className="txn-date",
                     ),
@@ -491,7 +475,7 @@ def render_portfolio_section(source):
     editable = not source.read_only
     summary = source.portfolio_summary()
     if summary is None:
-        locked = _empty_state("\U0001f512", "Log in to view your portfolio.")
+        locked = empty_state("\U0001f512", "Log in to view your portfolio.")
         return locked, None, None, None
     transactions = source.transactions(limit=25)
     return (
@@ -549,13 +533,12 @@ def register_portfolio_callbacks(dash_app, source):
 
 
 def record_trade(source, side, symbol, quantity, price, date_str, refresh):
-    def toast(message, kind):
-        return {"message": message, "type": kind, "n": (refresh or 0) + 1}
+    nonce = (refresh or 0) + 1
 
     if not symbol or quantity is None or price is None or not date_str:
         return (
             no_update,
-            toast("Fill in ticker, quantity, price, and date.", "danger"),
+            toast("Fill in ticker, quantity, price, and date.", "danger", nonce),
             no_update,
             no_update,
             no_update,
@@ -567,11 +550,11 @@ def record_trade(source, side, symbol, quantity, price, date_str, refresh):
             raise PortfolioError("Trade date can't be in the future.")
         txn = source.record_transaction(symbol, side, str(quantity), str(price), executed_at)
     except (PortfolioError, ReadOnlyDemoError) as exc:
-        return no_update, toast(str(exc), "danger"), no_update, no_update, no_update
+        return no_update, toast(str(exc), "danger", nonce), no_update, no_update, no_update
     except ValueError:
         return (
             no_update,
-            toast("Enter the date as YYYY-MM-DD.", "danger"),
+            toast("Enter the date as YYYY-MM-DD.", "danger", nonce),
             no_update,
             no_update,
             no_update,
@@ -580,16 +563,18 @@ def record_trade(source, side, symbol, quantity, price, date_str, refresh):
         logger.exception("Failed to record transaction")
         return (
             no_update,
-            toast("Could not record the transaction.", "danger"),
+            toast("Could not record the transaction.", "danger", nonce),
             no_update,
             no_update,
             no_update,
         )
 
     return (
-        (refresh or 0) + 1,
+        nonce,
         toast(
-            f"Recorded {txn.side} {format_quantity(txn.quantity)} {txn.stock.symbol}.", "success"
+            f"Recorded {txn.side} {format_quantity(txn.quantity)} {txn.stock.symbol}.",
+            "success",
+            nonce,
         ),
         "",
         None,

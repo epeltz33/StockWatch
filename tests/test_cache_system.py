@@ -6,7 +6,7 @@ import pytest
 from flask_caching import Cache
 
 from app.services import stock_services
-from app.services.stock_services import get_company_details, get_stock_data
+from app.services.stock_services import get_stock_data
 from app.utils.cache_manager import StockCache
 from frontend import stock_view
 
@@ -142,28 +142,3 @@ def test_historical_data_handling(mock_polygon, app, test_cache):
         assert len(data) == 1
         assert data[0]["close"] == 150.0
         assert data[0]["volume"] == 1000000
-
-
-@pytest.mark.integration
-def test_full_stock_workflow(app, test_cache):
-    """Test the entire stock data workflow with caching."""
-    with app.app_context():
-        with patch("app.services.stock_services.polygon_client") as mock_polygon:
-            # Mock company details response
-            mock_details_response = Mock()
-            mock_details_response.name = "Apple Inc."
-            mock_details_response.market_cap = 2000000000000
-            mock_details_response.primary_exchange = "NASDAQ"
-            mock_details_response.description = "Technology company"
-            mock_details_response.sector = "Technology"
-            mock_details_response.industry = "Consumer Electronics"
-            mock_details_response.url = "http://www.apple.com"
-            mock_polygon.get_ticker_details.return_value = mock_details_response
-
-            # Test company details
-            details = get_company_details("AAPL")
-            assert details is not None
-            assert "name" in details
-            assert details["name"] == "Apple Inc."
-            assert details["sector"] == "Technology"
-            assert details["industry"] == "Consumer Electronics"

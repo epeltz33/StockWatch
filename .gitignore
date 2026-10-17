@@ -2,10 +2,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
-*.pyc
-repomix-output.txt
-
-# C extensions
 *.so
 
 # Distribution / packaging
@@ -21,18 +17,14 @@ venv.bak/
 *.egg
 dist/
 build/
-*.pyo
-*.pyd
 
 # Flask specific
 instance/
 *.db
 *.sqlite3
 
-# VS Code
+# Editors & IDEs
 .vscode/
-
-# PyCharm / DataGrip specific
 .idea/
 
 # Environments
@@ -60,7 +52,6 @@ dmypy.json
 
 # AWS specific
 *.pem
-plan.md
 
 # Logs and databases
 *.log
@@ -71,11 +62,13 @@ plan.md
 .DS_Store
 Thumbs.db
 
-# Agent / tooling local state
+# Local agent / tool artifacts
+repomix-output.txt
+plan.md
+CLAUDE.md
 .claude/
 .cursor/
 .cursorrules
-CLAUDE.md
 
 # impeccable-ignore-start
 # Ephemeral output, runtime state, and per-dev overrides.

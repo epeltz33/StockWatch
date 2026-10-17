@@ -505,6 +505,29 @@ def _as_number(value: Any) -> float | None:
     return value if isinstance(value, (int, float)) else None
 
 
+def _detail_attr(ticker_details: Any, attr: str) -> Any:
+    val = getattr(ticker_details, attr, None)
+    if val is None and hasattr(ticker_details, "results"):
+        val = getattr(ticker_details.results, attr, None)
+    return val
+
+
+def _extract_branding_urls(obj: Any) -> tuple[str | None, str | None]:
+    branding = getattr(obj, "branding", None)
+    if isinstance(branding, dict):
+        icon_url = branding.get("icon_url")
+        logo_url = branding.get("logo_url")
+    elif branding is not None:
+        icon_url = getattr(branding, "icon_url", None)
+        logo_url = getattr(branding, "logo_url", None)
+    else:
+        return None, None
+    return (
+        icon_url if isinstance(icon_url, str) else None,
+        logo_url if isinstance(logo_url, str) else None,
+    )
+
+
 def get_company_details(symbol: str) -> dict[str, Any] | None:
     """Get company details from Polygon API (cached for 24 hours)."""
     stock_cache = StockCache(cache)
@@ -520,74 +543,23 @@ def get_company_details(symbol: str) -> dict[str, Any] | None:
         if not ticker_details:
             return None
 
-        icon_url = None
-        logo_url = None
-
-        if hasattr(ticker_details, "branding"):
-            branding = ticker_details.branding
-            if isinstance(branding, dict):
-                icon_url = branding.get("icon_url")
-                logo_url = branding.get("logo_url")
-            elif branding is not None:
-                icon_url = getattr(branding, "icon_url", None)
-                logo_url = getattr(branding, "logo_url", None)
-                if icon_url is not None and not isinstance(icon_url, str):
-                    icon_url = None
-                if logo_url is not None and not isinstance(logo_url, str):
-                    logo_url = None
-
+        icon_url, logo_url = _extract_branding_urls(ticker_details)
         if not icon_url and hasattr(ticker_details, "results"):
-            results = ticker_details.results
-            if hasattr(results, "branding"):
-                branding = results.branding
-                if isinstance(branding, dict):
-                    icon_url = branding.get("icon_url")
-                    logo_url = branding.get("logo_url")
-                elif branding is not None:
-                    icon_url = getattr(branding, "icon_url", None)
-                    logo_url = getattr(branding, "logo_url", None)
-                    if icon_url is not None and not isinstance(icon_url, str):
-                        icon_url = None
-                    if logo_url is not None and not isinstance(logo_url, str):
-                        logo_url = None
+            icon_url, logo_url = _extract_branding_urls(ticker_details.results)
 
         # icon_url/logo_url are stored WITHOUT the API key; the /branding/
         # proxy route fetches them server-side so the key never reaches the
         # client.
-        name = symbol
-        if hasattr(ticker_details, "name"):
-            name = ticker_details.name
-        elif hasattr(ticker_details, "results") and hasattr(ticker_details.results, "name"):
-            name = ticker_details.results.name
+        name = _as_text(_detail_attr(ticker_details, "name"), symbol)
+        market_cap = _as_number(_detail_attr(ticker_details, "market_cap"))
+        website = _as_text(_detail_attr(ticker_details, "homepage_url"), "") or None
+        list_date = _as_text(_detail_attr(ticker_details, "list_date"), "") or None
+        exchange = _as_text(_detail_attr(ticker_details, "primary_exchange"), "") or None
 
-        market_cap = getattr(ticker_details, "market_cap", None)
-        if market_cap is None and hasattr(ticker_details, "results"):
-            market_cap = getattr(ticker_details.results, "market_cap", None)
-
-        website = getattr(ticker_details, "homepage_url", None)
-        if website is None and hasattr(ticker_details, "results"):
-            website = getattr(ticker_details.results, "homepage_url", None)
-
-        list_date = getattr(ticker_details, "list_date", None)
-        if list_date is None and hasattr(ticker_details, "results"):
-            list_date = getattr(ticker_details.results, "list_date", None)
-
-        exchange = getattr(ticker_details, "primary_exchange", None)
-        if exchange is None and hasattr(ticker_details, "results"):
-            exchange = getattr(ticker_details.results, "primary_exchange", None)
-
-        description = ""
         raw_description = getattr(ticker_details, "description", None)
         if not isinstance(raw_description, str) and hasattr(ticker_details, "results"):
             raw_description = getattr(ticker_details.results, "description", None)
-        if isinstance(raw_description, str):
-            description = raw_description.strip()
-
-        name = _as_text(name, symbol)
-        market_cap = _as_number(market_cap)
-        website = _as_text(website, "") or None
-        list_date = _as_text(list_date, "") or None
-        exchange = _as_text(exchange, "") or None
+        description = raw_description.strip() if isinstance(raw_description, str) else ""
 
         details = {
             "name": name,
