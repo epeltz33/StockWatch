@@ -3,7 +3,7 @@
 from dash import html, no_update
 from dash.exceptions import PreventUpdate
 
-from frontend.charts import format_bar_date, format_fetch_time, format_short_date
+from frontend.charts import _change_chip, format_bar_date, format_fetch_time, format_short_date
 from frontend.shell import empty_state
 from frontend.stock_view import (
     build_quote_caption,
@@ -40,24 +40,7 @@ def _watchlist_quote_cell(quote, list_session=None):
     # change is None when the prior session was unavailable — omit the chip
     # entirely rather than implying the stock was flat.
     if quote.change is not None and quote.change_pct is not None:
-        if quote.change > 0:
-            chip_class, arrow = "change-chip change-chip--sm change-chip--up", "▲"
-        elif quote.change < 0:
-            chip_class, arrow = "change-chip change-chip--sm change-chip--down", "▼"
-        else:
-            chip_class, arrow = "change-chip change-chip--sm change-chip--flat", ""
-
-        children.append(
-            html.Span(
-                (
-                    [html.Span(arrow, className="chip-arrow", **{"aria-hidden": "true"})]
-                    if arrow
-                    else []
-                )
-                + [f"{quote.change:+.2f} ({quote.change_pct:+.2f}%)"],
-                className=chip_class,
-            )
-        )
+        children.append(_change_chip(quote.change, quote.change_pct, small=True, money=False))
 
     if list_session and quote.session_date and quote.session_date != list_session:
         children.append(

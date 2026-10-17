@@ -41,11 +41,6 @@ FONT_DATA = "'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace"
 
 PERIODS = ["1D", "5D", "1M", "6M", "YTD", "1Y", "5Y", "10Y", "MAX"]
 
-# "1D" rather than "Today": the intraday chart shows the latest regular
-# session, which on weekends, holidays, before the open, and in the sample
-# demo is not today. The readout names the session's date instead.
-PERIOD_DISPLAY_LABELS: dict[str, str] = {}
-
 PERIOD_LOOKBACK_DAYS = {
     "5D": 7,
     "1M": 30,
@@ -100,7 +95,7 @@ GRAPH_CONFIG = {
 
 def period_display_label(period):
     """Return the user-facing label for a chart period button."""
-    return PERIOD_DISPLAY_LABELS.get(period, period)
+    return period
 
 
 def period_button_title(period):
@@ -225,17 +220,6 @@ def initial_chart_period(df):
     return "1Y" if is_period_available(df, "1Y") else "MAX"
 
 
-def calculate_period_change(df):
-    """(last_close - first_close) / first_close * 100 over the filtered range."""
-    if df.empty or len(df) < 1:
-        return 0.0
-    first_close = df["close"].iloc[0]
-    last_close = df["close"].iloc[-1]
-    if first_close == 0:
-        return 0.0
-    return ((last_close - first_close) / first_close) * 100
-
-
 def calculate_fifty_two_week_range(df):
     """Return formatted 52-week low/high from the last year of daily bars."""
     filtered = filter_data_for_period(df, "1Y")
@@ -254,13 +238,7 @@ def calculate_fifty_two_week_range(df):
 
 def calculate_intraday_period_change(df):
     """Return regular-session 1D performance from first bar open to latest close."""
-    if df.empty or len(df) < 1 or "open" not in df.columns or "close" not in df.columns:
-        return 0.0
-    session_open = df["open"].iloc[0]
-    latest_close = df["close"].iloc[-1]
-    if session_open == 0:
-        return 0.0
-    return ((latest_close - session_open) / session_open) * 100
+    return period_price_change(df, is_intraday=True)[1]
 
 
 def period_price_change(df, is_intraday=False):

@@ -25,6 +25,7 @@ from frontend.charts import (
     initial_chart_period,
     is_period_available,
 )
+from frontend.data_sources import normalize_symbol
 from frontend.shell import empty_state
 
 logger = logging.getLogger(__name__)
@@ -305,15 +306,6 @@ def load_stock_view(source, symbol, period=None):
     )
 
 
-def _clean_symbol(raw):
-    if not isinstance(raw, str):
-        return None
-    symbol = raw.strip().upper()
-    if not symbol or len(symbol) > 10 or not symbol.replace(".", "").isalnum():
-        return None
-    return symbol
-
-
 def search_error(message, retry=False):
     children = [html.Span("⚠", className="status-icon", **{"aria-hidden": "true"}), message]
     if retry:
@@ -350,7 +342,7 @@ def _requested_symbol(source, trigger, value, typed, restore):
     if trigger == "restore-request":
         # Saved state is client-controlled: anything that isn't a symbol this
         # source can show falls back to the default view, without an error.
-        saved = _clean_symbol((restore or {}).get("symbol"))
+        saved = normalize_symbol((restore or {}).get("symbol"))
         if saved and source.search_symbols is not None and saved not in source.search_symbols:
             saved = None
         return (saved or default_symbol(source)), "restore"
@@ -396,7 +388,7 @@ def handle_stock_request(source, trigger, value, typed=None, period=None, shown=
         return _empty_view(source) if origin == "restore" else {}
 
     keep_note = f" Still showing {shown}." if shown and shown != symbol else ""
-    clean = _clean_symbol(symbol)
+    clean = normalize_symbol(symbol)
     if clean is None:
         return {
             "search-status.children": search_error(
