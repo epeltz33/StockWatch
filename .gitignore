@@ -2,12 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
-*.pyc
-repomix-output.txt
-.cursor/
-# C extensions
 *.so
-.github/
+
 # Distribution / packaging
 .Python
 env/
@@ -15,29 +11,20 @@ venv/
 .venv/
 ENV/
 env.bak/
-.env
 venv.bak/
 *.egg-info/
 .installed.cfg
 *.egg
 dist/
 build/
-*.pyo
-*.pyd
 
 # Flask specific
 instance/
 *.db
 *.sqlite3
-__pycache__/
 
-# VS Code
+# Editors & IDEs
 .vscode/
-
-# PyCharm specific
-.idea/
-
-# DataGrip specific
 .idea/
 
 # Environments
@@ -64,7 +51,7 @@ dmypy.json
 
 # AWS specific
 *.pem
-plan.md
+
 # Logs and databases
 *.log
 *.sql
@@ -73,9 +60,15 @@ plan.md
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Local agent / tool artifacts
+repomix-output.txt
+plan.md
+CLAUDE.md
 .claude/
 .cursor/
 .cursorrules
+
 # impeccable-ignore-start
 # Ephemeral output, runtime state, and per-dev overrides.
 # Unanchored: .impeccable may sit at the repo root or under a nested
@@ -98,9 +91,7 @@ Thumbs.db
 .impeccable/live/deferred-svelte-component-accepts.json
 .impeccable/live/*.png
 # impeccable-ignore-end
+
 # Coverage artifacts
 .coverage
 coverage.xml
-CLAUDE.md
-.claude/
-.gitignore

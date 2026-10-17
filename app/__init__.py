@@ -21,14 +21,13 @@ def create_app(test_config=None):
     db.init_app(app)
     migrate.init_app(app, db)
     login.init_app(app)
-    login.login_view = "auth.login"
     cache.init_app(app)
     csrf.init_app(app)
     limiter.init_app(app)
 
     @login.user_loader
     def load_user(user_id):
-        return User.query.get(int(user_id))
+        return db.session.get(User, int(user_id))
 
     # Register blueprints. These are core to the app: a failure here should
     # crash startup loudly rather than serve a partially working site.

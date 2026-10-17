@@ -70,7 +70,7 @@ def _coerce_id(value) -> int | None:
     return None
 
 
-def _normalize_symbol(symbol) -> str | None:
+def normalize_symbol(symbol) -> str | None:
     if not isinstance(symbol, str):
         return None
     symbol = symbol.strip().upper()
@@ -188,7 +188,7 @@ class LiveSource:
         watchlist = self._owned(watchlist_id)
         if watchlist is None:
             raise WatchlistError("Watchlist not found.")
-        symbol = _normalize_symbol(symbol)
+        symbol = normalize_symbol(symbol)
         if symbol is None:
             raise WatchlistError("That isn't a valid ticker.")
 
