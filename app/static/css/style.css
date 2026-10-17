@@ -293,9 +293,17 @@ a:hover {
 .preview-price span { color: var(--gain); font-size: 12px; font-weight: 500; }
 .preview-date { font-size: 12px; color: var(--text-3); margin: 8px 0 16px; }
 .preview-chart { display: block; width: 100%; height: auto; overflow: visible; }
-.preview-grid path { fill: none; stroke: var(--hairline); stroke-width: 1; }
-.preview-line { fill: none; stroke: var(--gain); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
-.preview-axis { display: flex; justify-content: space-between; font: 11px var(--font-data); color: var(--text-3); margin: 8px 0 24px; }
+.preview-chart { margin: 20px 0 24px; color: var(--gain); }
+.preview-chart--loss { color: var(--loss); }
+.preview-grid { fill: none; stroke: var(--hairline); stroke-width: 1; }
+.preview-line { fill: none; stroke: currentColor; stroke-width: 1.75; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.preview-endpoint { fill: currentColor; stroke: var(--surface); stroke-width: 2; }
+.preview-axis-label { fill: var(--text-3); font: 12px var(--font-data); }
+.preview-price .preview-return--loss { color: var(--loss); }
+.preview-price small { color: var(--text-3); font: 12px var(--font-ui); }
+@media (max-width: 575px) {
+  .preview-axis-label { font-size: 19px; }
+}
 .preview-watchlist { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; border-top: 1px solid var(--hairline); padding-top: 16px; }
 .preview-watchlist strong, .preview-watchlist span { display: block; font: 500 13px var(--font-data); }
 .preview-watchlist span { margin: 8px 0 4px; font-variant-numeric: tabular-nums; }

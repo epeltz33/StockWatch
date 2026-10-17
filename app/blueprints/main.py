@@ -5,6 +5,8 @@ from flask import Blueprint, Response, abort, redirect, render_template
 from flask_login import current_user, login_required
 
 from app.extensions import cache
+from app.services.landing_preview import build_price_preview
+from app.services.sample_data import history
 from app.services.stock_services import get_company_details
 from app.utils.cache_manager import StockCache
 
@@ -13,7 +15,9 @@ bp = Blueprint("main", __name__)
 
 @bp.route("/")
 def landing():
-    return render_template("main/landing.html", user=current_user)
+    return render_template(
+        "main/landing.html", user=current_user, preview=build_price_preview(history("AAPL"))
+    )
 
 
 @bp.route("/dashboard")

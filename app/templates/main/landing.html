@@ -31,20 +31,31 @@
     <figure class="product-preview" aria-labelledby="preview-caption">
       <div class="preview-toolbar"><span>Market overview</span><span class="preview-sample">Sample data · Not live prices</span></div>
       <div class="preview-stock"><div><strong>AAPL</strong><span>Apple Inc.</span></div><span class="preview-period">1Y</span></div>
-      <div class="preview-price">$231.48 <span>+17.74% over 1Y</span></div>
-      <p class="preview-date">Sample close · Sep 18, 2026</p>
-      <svg class="preview-chart" viewBox="0 0 600 200" role="img" aria-labelledby="preview-chart-title">
-        <title id="preview-chart-title">Illustrative price chart, not historical market data</title>
-        <g class="preview-grid"><path d="M0 30H600 M0 90H600 M0 150H600"/></g>
-        <path class="preview-line" d="M0 162 L18 148 L33 155 L48 128 L64 138 L79 118 L95 126 L110 104 L127 132 L144 119 L160 145 L176 153 L193 129 L210 112 L226 119 L243 91 L260 106 L277 81 L295 96 L312 68 L328 83 L344 56 L362 73 L378 42 L396 65 L412 52 L429 78 L446 63 L463 92 L480 72 L497 86 L514 58 L531 70 L548 40 L565 54 L582 36 L600 47"/>
+      {% if preview %}
+      <div class="preview-price">{{ preview.price }} <span class="preview-return--{{ preview.direction }}">{{ preview.change }} <small>past year</small></span></div>
+      <p class="preview-date">Sample close · {{ preview.date }}</p>
+      <svg class="preview-chart preview-chart--{{ preview.direction }}" viewBox="0 0 600 280" role="img" aria-labelledby="preview-chart-title preview-chart-description">
+        <title id="preview-chart-title">AAPL · One year of sample closing prices</title>
+        <desc id="preview-chart-description">Fixed synthetic demo prices from {{ preview.start_date }} to {{ preview.end_date }}. Closing value {{ preview.price }}, change {{ preview.change }}. These are not live market prices.</desc>
+        {% for tick in preview.ticks %}
+        <path class="preview-grid" d="M8 {{ tick.y }}H518"/>
+        <text class="preview-axis-label" x="540" y="{{ tick.y }}" dominant-baseline="middle">{{ tick.label }}</text>
+        {% endfor %}
+        <path class="preview-line" d="{{ preview.path }}"/>
+        <circle class="preview-endpoint" cx="518" cy="{{ preview.last_y }}" r="3.5"/>
+        {% for tick in preview.dates %}
+        <text class="preview-axis-label" x="{{ tick.x }}" y="270" text-anchor="middle">{{ tick.label }}</text>
+        {% endfor %}
       </svg>
-      <div class="preview-axis" aria-hidden="true"><span>Oct</span><span>Jan</span><span>Apr</span><span>Jul</span><span>Sep</span></div>
+      {% else %}
+      <p class="preview-date">Explore the demo to view sample price history.</p>
+      {% endif %}
       <div class="preview-watchlist" aria-label="Sample watchlist closing prices">
         <div><strong>AAPL</strong><span>$231.48</span><small>Apple Inc.</small></div>
         <div><strong>MSFT</strong><span>$441.96</span><small>Microsoft</small></div>
         <div><strong>NVDA</strong><span>$132.75</span><small>NVIDIA</small></div>
       </div>
-      <figcaption id="preview-caption">A preview of your workspace. Illustrative chart; explore the demo for interactive sample history.</figcaption>
+      <figcaption id="preview-caption">The same sample history you’ll find in the demo. Explore it with interactive charts and period controls.</figcaption>
     </figure>
   </div>
   <ul class="landing-features" aria-label="What's inside">
