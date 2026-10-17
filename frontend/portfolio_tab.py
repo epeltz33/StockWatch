@@ -24,11 +24,11 @@ logger = logging.getLogger(__name__)
 
 # Mirrors the figure palette in dashboard.py / custom.css tokens
 GAIN = "#2FBF71"
-LOSS = "#F0544F"
-TEXT = "#E8ECF4"
-TEXT_MUTED = "#8B97AE"
-SURFACE = "#121826"
-PIE_PALETTE = ["#5B8DEF", "#2FBF71", "#E0B84C", "#B57BEE", "#4CC3E0", "#F0885E", "#7CA5F5"]
+LOSS = "#FF6B66"
+TEXT = "#F2EFE5"
+TEXT_MUTED = "#A1A693"
+SURFACE = "#1B1D18"
+PIE_PALETTE = ["#E4A47C", "#A1B293", "#D6C9A3", "#AC9182", "#7F9990", "#C7AA87", "#E3DED0"]
 UNAVAILABLE = "Unavailable"
 
 
@@ -284,7 +284,7 @@ def build_summary_cards(summary, is_sample=False):
                     _stat_cell(
                         "Market value",
                         value_children,
-                        "stat-value stat-value--lg"
+                        "stat-value stat-value--lg portfolio-total"
                         + (" stat-value--na" if market_value is None else ""),
                     ),
                     _stat_cell("Cost basis", _money(summary["cost_basis"])),
@@ -391,7 +391,7 @@ def build_allocation_chart(summary):
             hole=0.55,
             marker={"colors": PIE_PALETTE, "line": {"color": SURFACE, "width": 2}},
             textinfo="label+percent",
-            textfont={"color": TEXT, "size": 12},
+            textfont={"color": "#121310", "size": 12},
             hovertemplate="%{label}: $%{value:,.2f} (%{percent})<extra></extra>",
             sort=False,
         )
@@ -580,3 +580,4 @@ def record_trade(source, side, symbol, quantity, price, date_str, refresh):
         None,
         None,
     )
+
