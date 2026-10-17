@@ -273,7 +273,9 @@ pipenv run ruff check .
 pipenv run ruff format --check .
 ```
 
-CI runs `ruff check`, `ruff format --check`, and the suite with a coverage gate. Besides unit tests, the suite drives the dashboard's callbacks over HTTP (`tests/dash_client.py`) against a counting fake of the market-data client (`tests/fake_market.py`), which is how it checks that the demo never reaches the provider, the database, or an account, and how many API calls each interaction costs.
+CI runs `ruff check`, `ruff format --check`, and the suite with a coverage gate.
+
+Dependencies are declared in the `Pipfile` (direct deps only); `Pipfile.lock` is the source of truth and `requirements.txt` is generated from it with `pipenv requirements --dev > requirements.txt` — regenerate it after changing the `Pipfile`, don't edit it by hand. Besides unit tests, the suite drives the dashboard's callbacks over HTTP (`tests/dash_client.py`) against a counting fake of the market-data client (`tests/fake_market.py`), which is how it checks that the demo never reaches the provider, the database, or an account, and how many API calls each interaction costs.
 
 ---
 
