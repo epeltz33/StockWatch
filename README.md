@@ -3,11 +3,9 @@
 [![CI](https://github.com/epeltz33/StockWatch/actions/workflows/ci.yml/badge.svg)](https://github.com/epeltz33/StockWatch/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**A deployed stock dashboard with interactive charts, per-user watchlists, and portfolio P/L tracking.** Built with **Flask** and **Plotly Dash**, backed by the [Massive.com](https://massive.com/) market API and **PostgreSQL**.
+**A deployed stock dashboard with interactive charts, per-user watchlists, and portfolio P/L tracking.** Built with **Flask** and **Plotly Dash**, backed by the [Massive.com](https://massive.com/) market API and **PostgreSQL** — designed, built, deployed, and running end to end, with third-party API integration under rate limits, caching, authentication, schema migrations, and a test suite that drives the dashboard's callbacks over HTTP.
 
-### What this project demonstrates
-
-A full-stack web app taken end to end — designed, built, deployed, and running with a public, no-sign-up demo. It shows third-party API integration under rate limits, caching, authentication, schema migrations, a modular Flask + Dash architecture, and a test suite that drives the dashboard's callbacks over HTTP.
+**Contents:** [Try it](#try-it) · [Screenshots](#screenshots) · [Highlights](#highlights--why-this-matters) · [Features](#features) · [Tech Stack](#tech-stack) · [Architecture](#architecture) · [Getting Started](#getting-started) · [Deployment](#deployment) · [Running Tests](#running-tests) · [Limitations](#limitations) · [License](#license)
 
 ---
 
@@ -157,12 +155,14 @@ pipenv install
 
 ### 2. Configure environment variables
 
-Create a `.env` file in the project root. For the SQLite quickstart, **leave `DATABASE_URL` out** — the app falls back to a local SQLite file (`app.db` in the project root):
+Create a `.env` file in the project root — `cp .env.example .env` gives you the template. For the SQLite quickstart, **leave `DATABASE_URL` out** — the app falls back to a local SQLite file (`app.db` in the project root):
 
 ```dotenv
 SECRET_KEY=any-random-string
 POLYGON_API_KEY=your_massive_api_key
 ```
+
+> `POLYGON_API_KEY` is the legacy name (Massive.com was formerly Polygon.io); it's the environment variable the code reads, so keep that exact name.
 
 ### 3. Create the database schema
 
@@ -260,6 +260,8 @@ Use [`app.yaml`](app.yaml) instead:
 2. Set `DATABASE_URL`, `SECRET_KEY`, and `POLYGON_API_KEY` as encrypted env vars.
 3. Connect the GitHub repo — migrations run automatically on build.
 
+> `render.yaml` is the primary deploy path. `app.yaml` (DigitalOcean) and `Procfile` (Heroku-style) are kept as alternatives.
+
 ---
 
 ## 🧪 Running Tests
@@ -271,7 +273,17 @@ pipenv run ruff check .
 pipenv run ruff format --check .
 ```
 
-CI runs `ruff check`, `ruff format --check`, and the suite with a coverage gate. Besides unit tests, the suite drives the dashboard's callbacks over HTTP (`tests/dash_client.py`) against a counting fake of the market-data client (`tests/fake_market.py`), which is how it checks that the demo never reaches the provider, the database, or an account, and how many API calls each interaction costs.
+CI runs `ruff check`, `ruff format --check`, and the suite with a coverage gate.
+
+Dependencies are declared in the `Pipfile` (direct deps only); `Pipfile.lock` is the source of truth and `requirements.txt` is generated from it with `pipenv requirements --dev > requirements.txt` — regenerate it after changing the `Pipfile`, don't edit it by hand. Besides unit tests, the suite drives the dashboard's callbacks over HTTP (`tests/dash_client.py`) against a counting fake of the market-data client (`tests/fake_market.py`), which is how it checks that the demo never reaches the provider, the database, or an account, and how many API calls each interaction costs.
+
+---
+
+## ⚠️ Limitations
+
+- **Free-tier hosting** — the Render demo cold-starts after ~15 minutes idle (~30s first load) and its free PostgreSQL database expires after 30 days; use a paid plan for a long-lived deploy.
+- **Single-worker caching** — the default cache is in-process (`SimpleCache`), so the app runs one Gunicorn worker. Set `CACHE_TYPE=RedisCache` with `CACHE_REDIS_URL` before scaling workers (see `config.py`).
+- **Delayed, not live, prices** — figures are session closes from Massive.com, labelled with their session and retrieval time; nothing here is real-time or financial advice.
 
 ---
 
