@@ -1,32 +1,32 @@
 /* ============================================================
-   StockWatch design system — dark graphite, flat layered depth
+   StockWatch design system — warm ink, flat layered depth
    Surfaces: --bg (page) < --well (inset) < --surface (card)
    Data typography: IBM Plex Mono for tickers, prices, labels
    Direction color (gain/loss) is reserved for market data only;
-   blue accent is reserved for interactive UI.
+   copper accent is reserved for interactive UI.
    ============================================================ */
 
 :root {
     /* Surfaces */
-    --bg: #0B0F17;
-    --surface: #121826;
-    --surface-2: #161E30;
-    --well: #0D1320;
-    --hairline: #232D3F;
-    --hairline-strong: #31405C;
+    --bg: #121310;
+    --surface: #1B1D18;
+    --surface-2: #24271F;
+    --well: #151712;
+    --hairline: #34382E;
+    --hairline-strong: #505746;
 
     /* Text — every tier clears WCAG AA (4.5:1) on every surface */
-    --text: #E8ECF4;
-    --text-2: #A9B2C3;
-    --text-3: #8B97AE;
+    --text: #F2EFE5;
+    --text-2: #C4C5B8;
+    --text-3: #A1A693;
 
     /* Market semantics */
     --gain: #2FBF71;
     --gain-bg: rgba(47, 191, 113, 0.12);
     --gain-border: rgba(47, 191, 113, 0.35);
-    --loss: #F0544F;
-    --loss-bg: rgba(240, 84, 79, 0.12);
-    --loss-border: rgba(240, 84, 79, 0.35);
+    --loss: #FF6B66;
+    --loss-bg: rgba(255, 107, 102, 0.12);
+    --loss-border: rgba(255, 107, 102, 0.35);
 
     /* Notices (sample data, partial totals, warnings) */
     --notice: #F5C451;
@@ -34,10 +34,10 @@
     --notice-border: rgba(245, 196, 81, 0.35);
 
     /* Interactive accent (UI only, never data) */
-    --accent: #5B8DEF;
-    --accent-bright: #7CA5F5;
-    --accent-bg: rgba(91, 141, 239, 0.12);
-    --accent-border: rgba(91, 141, 239, 0.35);
+    --accent: #E4A47C;
+    --accent-bright: #F0BA97;
+    --accent-bg: rgba(228, 164, 124, 0.12);
+    --accent-border: rgba(228, 164, 124, 0.35);
     --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-bright);
 
     /* Geometry */
@@ -100,7 +100,7 @@ a:hover {
     z-index: 2000;
     padding: 10px 16px;
     background: var(--accent);
-    color: #0B0F17;
+    color: #121310;
     font-weight: 600;
     border-radius: var(--radius-md);
     text-decoration: none;
@@ -109,7 +109,7 @@ a:hover {
 
 .skip-link:focus {
     top: 12px;
-    color: #0B0F17;
+    color: #121310;
 }
 
 /* Visible keyboard focus everywhere; the mouse never draws it */
@@ -142,7 +142,7 @@ a:hover {
     flex-wrap: wrap;
     min-height: var(--header-height);
     padding: 8px var(--gutter);
-    background: rgba(18, 24, 38, 0.94);
+    background: rgba(27, 29, 24, 0.94);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--hairline);
@@ -383,9 +383,9 @@ a:hover {
     font-size: 0.8rem;
     font-weight: 600;
     letter-spacing: 0.03em;
-    color: var(--accent-bright);
-    background: var(--accent-bg);
-    border: 1px solid var(--accent-border);
+    color: var(--text-2);
+    background: transparent;
+    border: 1px solid var(--hairline-strong);
     border-radius: 999px;
     padding: 5px 13px;
     cursor: pointer;
@@ -393,7 +393,7 @@ a:hover {
 }
 
 .suggestion-chip:hover {
-    background: rgba(91, 141, 239, 0.22);
+    background: var(--surface-2);
     color: var(--text);
 }
 
@@ -437,7 +437,7 @@ a:hover {
 .form-control:focus,
 .form-select:focus {
     border-color: var(--accent) !important;
-    box-shadow: 0 0 0 3px rgba(91, 141, 239, 0.35) !important;
+    box-shadow: 0 0 0 3px rgba(228, 164, 124, 0.35) !important;
     background-color: var(--well) !important;
     outline: none !important;
 }
@@ -509,7 +509,7 @@ input[type="date"].form-control {
 .sw-btn--primary,
 .btn-primary {
     background: var(--accent) !important;
-    color: #0B0F17 !important;
+    color: #121310 !important;
     border: 1px solid var(--accent) !important;
     font-weight: 600;
 }
@@ -518,7 +518,7 @@ input[type="date"].form-control {
 .btn-primary:hover {
     background: var(--accent-bright) !important;
     border-color: var(--accent-bright) !important;
-    color: #0B0F17 !important;
+    color: #121310 !important;
 }
 
 .sw-btn--ghost {
@@ -548,7 +548,7 @@ input[type="date"].form-control {
 /* The destructive choice in a confirmation dialog */
 .sw-btn--destructive {
     background: var(--loss) !important;
-    color: #0B0F17 !important;
+    color: #121310 !important;
     border: 1px solid var(--loss) !important;
     font-weight: 600;
 }
@@ -785,7 +785,7 @@ input[type="date"].form-control {
 
 .change-chip--flat {
     color: var(--text-2);
-    background: rgba(139, 151, 174, 0.12);
+    background: rgba(161, 166, 147, 0.12);
 }
 
 /* Missing data is not a zero change */
@@ -1060,10 +1060,8 @@ input[type="date"].form-control {
 }
 
 .watchlist-panel {
-    border: 1px solid var(--hairline);
-    border-radius: var(--radius-md);
-    background: var(--well);
-    overflow: hidden;
+    border: 0;
+    background: transparent;
 }
 
 .watchlist-panel-header {
@@ -1071,7 +1069,7 @@ input[type="date"].form-control {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: 10px 12px 10px 14px;
+    padding: 0 0 12px;
     border-bottom: 1px solid var(--hairline);
     background: var(--surface);
 }
@@ -1091,7 +1089,7 @@ input[type="date"].form-control {
 }
 
 .watchlist-name::before {
-    content: '';
+    content: none;
     width: 3px;
     height: 16px;
     flex: none;
@@ -1102,7 +1100,7 @@ input[type="date"].form-control {
 .watchlist-rows {
     list-style: none;
     margin: 0;
-    padding: 4px;
+    padding: 4px 0;
 }
 
 .watchlist-row {
@@ -1112,7 +1110,7 @@ input[type="date"].form-control {
 }
 
 .watchlist-row + .watchlist-row {
-    margin-top: 2px;
+    border-top: 1px solid var(--hairline);
 }
 
 /* The ticker row itself is the selection control */
@@ -1140,12 +1138,12 @@ input[type="date"].form-control {
 
 .watchlist-select--active {
     background: var(--accent-bg);
-    border-color: var(--accent-border);
-    box-shadow: inset 3px 0 0 var(--accent);
+    border-color: transparent;
+    box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .watchlist-select--active:hover {
-    background: rgba(91, 141, 239, 0.18);
+    background: rgba(228, 164, 124, 0.18);
 }
 
 .watchlist-row-info {
@@ -1277,7 +1275,7 @@ input[type="date"].form-control {
 
 .is-focused:not(.is-open) > .Select-control {
     border-color: var(--accent) !important;
-    box-shadow: 0 0 0 3px rgba(91, 141, 239, 0.35) !important;
+    box-shadow: 0 0 0 3px rgba(228, 164, 124, 0.35) !important;
 }
 
 .Select--single > .Select-control .Select-value,
@@ -1385,7 +1383,7 @@ input[type="date"].form-control {
 .skeleton {
     display: block;
     border-radius: var(--radius-sm);
-    background: linear-gradient(90deg, var(--surface-2) 0%, #1D2740 50%, var(--surface-2) 100%);
+    background: linear-gradient(90deg, var(--surface-2) 0%, #34382E 50%, var(--surface-2) 100%);
     background-size: 480px 100%;
     animation: sw-shimmer 1.4s ease-in-out infinite;
 }
@@ -1455,7 +1453,7 @@ input[type="date"].form-control {
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--accent-bright);
-    background: rgba(13, 19, 32, 0.92);
+    background: rgba(21, 23, 18, 0.92);
     border: 1px solid var(--accent-border);
     border-radius: 999px;
     box-shadow: var(--shadow-2);
@@ -1794,8 +1792,72 @@ input[type="date"].form-control {
 }
 
 ::selection {
-    background: rgba(91, 141, 239, 0.35);
+    background: rgba(228, 164, 124, 0.35);
     color: var(--text);
+}
+
+/* Financial hierarchy: one lead total, quieter supporting facts. */
+.portfolio-stat-grid {
+    grid-template-columns: minmax(0, 1.65fr) repeat(3, minmax(0, 1fr));
+    gap: 0;
+    align-items: start;
+}
+.portfolio-stat-grid .stat-cell {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 8px 20px;
+}
+.portfolio-stat-grid .stat-cell:first-child { padding-left: 0; }
+.portfolio-stat-grid .stat-cell + .stat-cell { border-left: 1px solid var(--hairline); }
+.portfolio-stat-grid .stat-value {
+    white-space: normal;
+    overflow: visible;
+    overflow-wrap: anywhere;
+}
+.portfolio-stat-grid .portfolio-total {
+    font-size: clamp(2rem, 3vw, 2.75rem);
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.04em;
+}
+.portfolio-summary-card .coverage-note { margin-top: 20px; }
+.details-card .stat-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px 24px;
+}
+.details-card .stat-cell {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+.details-card .stat-value { white-space: normal; overflow-wrap: anywhere; }
+.details-card .stat-cell--metadata {
+    grid-column: span 2;
+    padding-top: 14px;
+    border-top: 1px solid var(--hairline);
+}
+.details-card .stat-cell--metadata .stat-value {
+    font-family: var(--font-ui);
+    font-size: 0.88rem;
+    font-weight: 400;
+}
+@media (max-width: 1199.98px) {
+    .portfolio-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .portfolio-stat-grid .stat-cell:first-child { grid-column: 1 / -1; padding-bottom: 24px; }
+    .portfolio-stat-grid .stat-cell:nth-child(2) { border-left: 0; padding-left: 0; }
+    .details-card .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .details-card .stat-cell--metadata { grid-column: auto; }
+}
+@media (max-width: 575.98px) {
+    .portfolio-stat-grid .stat-cell { padding: 12px 0; }
+    .portfolio-stat-grid .stat-cell + .stat-cell {
+        border-left: 0;
+        border-top: 1px solid var(--hairline);
+    }
+    .details-card .stat-grid { grid-template-columns: minmax(0, 1fr); }
+    .details-card .stat-cell--metadata { grid-column: auto; }
 }
 
 /* ============================================================
@@ -1997,3 +2059,4 @@ input[type="date"].form-control {
         scroll-behavior: auto !important;
     }
 }
+

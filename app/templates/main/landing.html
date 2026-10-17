@@ -4,26 +4,53 @@
 
 {% block content %}
 <div class="landing-container">
-  <div class="landing-eyebrow"><span class="tick" aria-hidden="true">▲</span> Charts · Watchlists · Portfolio P/L</div>
-  <h1>StockWatch</h1>
-  <p class="landing-lede">Price charts, personal watchlists, and average-cost portfolio tracking for the tickers you follow — in one dashboard.</p>
-
-  <div class="cta-buttons">
+  <header class="landing-header">
+    <a class="landing-brand" href="/" aria-label="StockWatch home"><span aria-hidden="true">▲</span> StockWatch</a>
     {% if user.is_authenticated %}
-    <a href="/dash/" class="btn btn-primary btn-lg-cta">Open your dashboard</a>
-    <a href="/demo/" class="btn btn-secondary">Explore the demo</a>
+    <a href="/dash/">Open dashboard</a>
     {% else %}
-    <a href="/demo/" class="btn btn-primary btn-lg-cta">Explore demo</a>
-    <a href="{{ url_for('auth.login') }}" class="btn btn-secondary">Log in</a>
-    <a href="{{ url_for('auth.register') }}" class="btn btn-secondary">Create account</a>
+    <a href="{{ url_for('auth.login') }}">Log in</a>
     {% endif %}
+  </header>
+  <div class="landing-hero">
+    <section class="landing-intro" aria-labelledby="landing-title">
+      <div class="landing-eyebrow">A clearer view of your holdings</div>
+      <h1 id="landing-title">Your watchlist.<br>Your cost basis.<br>One clear view.</h1>
+      <p class="landing-lede">Follow the tickers that matter to you. Explore price history and understand your portfolio’s realized and unrealized P/L.</p>
+      <div class="cta-buttons">
+        {% if user.is_authenticated %}
+        <a href="/dash/" class="btn btn-primary btn-lg-cta">Open your dashboard</a>
+        <a href="/demo/" class="btn btn-secondary">Explore demo</a>
+        {% else %}
+        <a href="/demo/" class="btn btn-primary btn-lg-cta">Explore demo</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-secondary">Create account</a>
+        {% endif %}
+      </div>
+      <p class="landing-note">No sign-up needed. Explore a populated dashboard with sample data, not live prices.</p>
+    </section>
+    <figure class="product-preview" aria-labelledby="preview-caption">
+      <div class="preview-toolbar"><span>Market overview</span><span class="preview-sample">Sample data · Not live prices</span></div>
+      <div class="preview-stock"><div><strong>AAPL</strong><span>Apple Inc.</span></div><span class="preview-period">1Y</span></div>
+      <div class="preview-price">$231.48 <span>+17.74% over 1Y</span></div>
+      <p class="preview-date">Sample close · Sep 18, 2026</p>
+      <svg class="preview-chart" viewBox="0 0 600 200" role="img" aria-labelledby="preview-chart-title">
+        <title id="preview-chart-title">Illustrative price chart, not historical market data</title>
+        <g class="preview-grid"><path d="M0 30H600 M0 90H600 M0 150H600"/></g>
+        <path class="preview-line" d="M0 162 L18 148 L33 155 L48 128 L64 138 L79 118 L95 126 L110 104 L127 132 L144 119 L160 145 L176 153 L193 129 L210 112 L226 119 L243 91 L260 106 L277 81 L295 96 L312 68 L328 83 L344 56 L362 73 L378 42 L396 65 L412 52 L429 78 L446 63 L463 92 L480 72 L497 86 L514 58 L531 70 L548 40 L565 54 L582 36 L600 47"/>
+      </svg>
+      <div class="preview-axis" aria-hidden="true"><span>Oct</span><span>Jan</span><span>Apr</span><span>Jul</span><span>Sep</span></div>
+      <div class="preview-watchlist" aria-label="Sample watchlist closing prices">
+        <div><strong>AAPL</strong><span>$231.48</span><small>Apple Inc.</small></div>
+        <div><strong>MSFT</strong><span>$441.96</span><small>Microsoft</small></div>
+        <div><strong>NVDA</strong><span>$132.75</span><small>NVIDIA</small></div>
+      </div>
+      <figcaption id="preview-caption">A preview of your workspace. Illustrative chart; explore the demo for interactive sample history.</figcaption>
+    </figure>
   </div>
-  <p class="landing-note">No sign-up needed: the demo opens a populated dashboard with sample data — three stocks, a watchlist, and a portfolio. Sample prices are not live.</p>
-
   <ul class="landing-features" aria-label="What's inside">
-    <li><span class="feature-title">Charts</span><span class="feature-copy">Intraday and daily history from 1D to MAX, with volume.</span></li>
-    <li><span class="feature-title">Watchlists</span><span class="feature-copy">Closing prices and day change for every ticker, one click to chart.</span></li>
-    <li><span class="feature-title">Portfolio</span><span class="feature-copy">A trade ledger with average-cost basis, realized and unrealized P/L.</span></li>
+    <li><span class="feature-number" aria-hidden="true">01</span><div><span class="feature-title">Read the price history</span><span class="feature-copy">Intraday and daily charts from 1D to MAX, with volume.</span></div></li>
+    <li><span class="feature-number" aria-hidden="true">02</span><div><span class="feature-title">Keep your tickers close</span><span class="feature-copy">Personal watchlists with closing prices and day change.</span></div></li>
+    <li><span class="feature-number" aria-hidden="true">03</span><div><span class="feature-title">Know your cost basis</span><span class="feature-copy">A trade ledger with average-cost tracking and portfolio P/L.</span></div></li>
   </ul>
 </div>
 {% endblock %}

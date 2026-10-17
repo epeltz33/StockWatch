@@ -117,14 +117,14 @@ def build_quote_caption(display):
     return parts
 
 
-def _stat_cell(label, value_children, large=False, title=None):
+def _stat_cell(label, value_children, large=False, title=None, metadata=False):
     value_class = "stat-value stat-value--lg" if large else "stat-value"
     return html.Div(
         [
             html.Div(label, className="stat-label"),
             html.Div(value_children, className=value_class, title=title),
         ],
-        className="stat-cell",
+        className="stat-cell stat-cell--metadata" if metadata else "stat-cell",
     )
 
 
@@ -187,8 +187,8 @@ def build_profile_stats(details, df, is_sample=False):
             market_cap,
             title="Sample price × shares outstanding" if is_sample else None,
         ),
-        _stat_cell("Exchange", details.get("exchange") or "N/A"),
-        _stat_cell("Website", website_value),
+        _stat_cell("Exchange", details.get("exchange") or "N/A", metadata=True),
+        _stat_cell("Website", website_value, metadata=True),
     ]
 
 
@@ -469,3 +469,4 @@ def change_period(source, symbol, period, btn_ids):
     classes = [_period_btn_class(b["index"] == period) for b in btn_ids]
     pressed = ["true" if b["index"] == period else "false" for b in btn_ids]
     return figure, classes, pressed, readout, period
+

@@ -19,20 +19,20 @@ from app.services.stock_services import EASTERN_TZ
 # Figure palette only — UI chrome is styled by assets/custom.css classes.
 # Gain/loss color is reserved for market data; accent is UI-interactive only.
 COLORS = {
-    "text": "#E8ECF4",
-    "text_secondary": "#A9B2C3",
-    "text_muted": "#8B97AE",
+    "text": "#F2EFE5",
+    "text_secondary": "#C4C5B8",
+    "text_muted": "#A1A693",
     "gain": "#2FBF71",
-    "loss": "#F0544F",
-    "flat": "#8B97AE",
-    "accent": "#5B8DEF",
-    "grid": "rgba(49, 64, 92, 0.35)",
-    "spike": "rgba(121, 139, 169, 0.55)",
-    "hover_bg": "rgba(18, 24, 38, 0.96)",
-    "hover_border": "#31405C",
-    "volume_flat": "rgba(119, 131, 155, 0.30)",
+    "loss": "#FF6B66",
+    "flat": "#A1A693",
+    "accent": "#E4A47C",
+    "grid": "rgba(80, 87, 70, 0.35)",
+    "spike": "rgba(161, 166, 147, 0.55)",
+    "hover_bg": "rgba(27, 29, 24, 0.96)",
+    "hover_border": "#505746",
+    "volume_flat": "rgba(161, 166, 147, 0.30)",
     "volume_up": "rgba(47, 191, 113, 0.35)",
-    "volume_down": "rgba(240, 84, 79, 0.35)",
+    "volume_down": "rgba(255, 107, 102, 0.35)",
 }
 
 FONT_UI = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
@@ -682,3 +682,4 @@ def chart_for_period(symbol, period, history_df, intraday_records=None):
             abs_change, pct_change, period, since_date=data_start_date(history_df)
         )
     return create_stock_chart_figure(frame, symbol, period=period), readout
+
