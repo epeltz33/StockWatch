@@ -682,4 +682,3 @@ def chart_for_period(symbol, period, history_df, intraday_records=None):
             abs_change, pct_change, period, since_date=data_start_date(history_df)
         )
     return create_stock_chart_figure(frame, symbol, period=period), readout
-

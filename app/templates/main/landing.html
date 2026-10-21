@@ -1,39 +1,64 @@
 {% extends "base.html" %}
 
-{% block title %}StockWatch — charts, watchlists, and portfolio P/L{% endblock %}
+{% block title %}StockWatch — stock charts, watchlists, and portfolio tracking{% endblock %}
 
 {% block content %}
 <div class="landing-container">
   <header class="landing-header">
-    <a class="landing-brand" href="/" aria-label="StockWatch home"><span aria-hidden="true">▲</span> StockWatch</a>
-    {% if user.is_authenticated %}
-    <a href="/dash/">Open dashboard</a>
-    {% else %}
-    <a href="{{ url_for('auth.login') }}">Log in</a>
-    {% endif %}
+    <a class="landing-brand" href="/">
+      <svg class="landing-mark" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+        <rect x="0.75" y="0.75" width="18.5" height="18.5" rx="4.5"/>
+        <polyline points="4.5,13.5 8,10 10.5,12 15.5,6.5"/>
+      </svg>
+      StockWatch
+    </a>
+    <nav class="landing-nav" aria-label="Account">
+      {% if user.is_authenticated %}
+      <a href="/dash/" class="btn btn-secondary btn-nav">Open dashboard</a>
+      {% else %}
+      <a href="{{ url_for('auth.login') }}" class="landing-nav-link">Log in</a>
+      <a href="{{ url_for('auth.register') }}" class="btn btn-secondary btn-nav">Sign up</a>
+      {% endif %}
+    </nav>
   </header>
+
   <div class="landing-hero">
     <section class="landing-intro" aria-labelledby="landing-title">
-      <div class="landing-eyebrow">A clearer view of your holdings</div>
-      <h1 id="landing-title">Your watchlist.<br>Your cost basis.<br>One clear view.</h1>
-      <p class="landing-lede">Follow the tickers that matter to you. Explore price history and understand your portfolio’s realized and unrealized P/L.</p>
+      <h1 id="landing-title">Track the stocks you follow and the positions you hold.</h1>
+      <p class="landing-lede">StockWatch brings price charts, watchlists, and an average-cost trade ledger into one dashboard, so you can see how each holding is performing.</p>
       <div class="cta-buttons">
         {% if user.is_authenticated %}
-        <a href="/dash/" class="btn btn-primary btn-lg-cta">Open your dashboard</a>
-        <a href="/demo/" class="btn btn-secondary">Explore demo</a>
+        <a href="/dash/" class="btn btn-primary btn-lg-cta">Open dashboard</a>
+        <a href="/demo/" class="btn btn-secondary btn-lg-cta">View demo</a>
         {% else %}
-        <a href="/demo/" class="btn btn-primary btn-lg-cta">Explore demo</a>
-        <a href="{{ url_for('auth.register') }}" class="btn btn-secondary">Create account</a>
+        <a href="/demo/" class="btn btn-primary btn-lg-cta">Try the demo</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-secondary btn-lg-cta">Create an account</a>
         {% endif %}
       </div>
-      <p class="landing-note">No sign-up needed. Explore a populated dashboard with sample data, not live prices.</p>
+      {% if not user.is_authenticated %}
+      <p class="landing-note">Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+      {% endif %}
+      <p class="landing-note">The demo opens a populated dashboard with sample prices, not real market data.{% if not user.is_authenticated %} No sign-up required.{% endif %}</p>
     </section>
-    <figure class="product-preview" aria-labelledby="preview-caption">
-      <div class="preview-toolbar"><span>Market overview</span><span class="preview-sample">Sample data · Not live prices</span></div>
-      <div class="preview-stock"><div><strong>AAPL</strong><span>Apple Inc.</span></div><span class="preview-period">1Y</span></div>
+
+    <figure class="product-preview" aria-label="Preview of the StockWatch dashboard using sample data">
+      <div class="preview-header">
+        <div class="preview-symbol">
+          <strong>AAPL</strong>
+          <span>Apple Inc.</span>
+        </div>
+        <span class="landing-badge">Sample data</span>
+      </div>
       {% if preview %}
-      <div class="preview-price">{{ preview.price }} <span class="preview-return--{{ preview.direction }}">{{ preview.change }} <small>past year</small></span></div>
-      <p class="preview-date">Sample close · {{ preview.date }}</p>
+      <div class="preview-quote">
+        <span class="preview-price">{{ preview.price }}</span>
+        <span class="preview-change preview-change--{{ preview.direction }}">{{ preview.change }}</span>
+        <span class="preview-change-label">past year</span>
+      </div>
+      <p class="preview-date">Close · {{ preview.date }}</p>
+      <div class="preview-tabs" aria-hidden="true">
+        <span>1D</span><span>1M</span><span>6M</span><span class="is-active">1Y</span><span>MAX</span>
+      </div>
       <svg class="preview-chart preview-chart--{{ preview.direction }}" viewBox="0 0 600 280" role="img" aria-labelledby="preview-chart-title preview-chart-description">
         <title id="preview-chart-title">AAPL · One year of sample closing prices</title>
         <desc id="preview-chart-description">Fixed synthetic demo prices from {{ preview.start_date }} to {{ preview.end_date }}. Closing value {{ preview.price }}, change {{ preview.change }}. These are not live market prices.</desc>
@@ -48,20 +73,49 @@
         {% endfor %}
       </svg>
       {% else %}
-      <p class="preview-date">Explore the demo to view sample price history.</p>
+      <p class="preview-date">Open the demo to view sample price history.</p>
       {% endif %}
-      <div class="preview-watchlist" aria-label="Sample watchlist closing prices">
-        <div><strong>AAPL</strong><span>$231.48</span><small>Apple Inc.</small></div>
-        <div><strong>MSFT</strong><span>$441.96</span><small>Microsoft</small></div>
-        <div><strong>NVDA</strong><span>$132.75</span><small>NVIDIA</small></div>
-      </div>
-      <figcaption id="preview-caption">The same sample history you’ll find in the demo. Explore it with interactive charts and period controls.</figcaption>
+      {% if watchlist %}
+      <table class="preview-watchlist">
+        <caption>Sample watchlist</caption>
+        <thead>
+          <tr><th scope="col">Symbol</th><th scope="col">Last</th><th scope="col">Day</th></tr>
+        </thead>
+        <tbody>
+          {% for row in watchlist %}
+          <tr>
+            <th scope="row"><strong>{{ row.symbol }}</strong><span>{{ row.name }}</span></th>
+            <td>{{ row.price }}</td>
+            <td class="preview-change--{{ row.direction }}">{{ row.change }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
     </figure>
   </div>
-  <ul class="landing-features" aria-label="What's inside">
-    <li><span class="feature-number" aria-hidden="true">01</span><div><span class="feature-title">Read the price history</span><span class="feature-copy">Intraday and daily charts from 1D to MAX, with volume.</span></div></li>
-    <li><span class="feature-number" aria-hidden="true">02</span><div><span class="feature-title">Keep your tickers close</span><span class="feature-copy">Personal watchlists with closing prices and day change.</span></div></li>
-    <li><span class="feature-number" aria-hidden="true">03</span><div><span class="feature-title">Know your cost basis</span><span class="feature-copy">A trade ledger with average-cost tracking and portfolio P/L.</span></div></li>
-  </ul>
+
+  <section class="landing-features" aria-labelledby="features-title">
+    <h2 id="features-title">What's included</h2>
+    <div class="feature-grid">
+      <div class="feature">
+        <h3>Price charts</h3>
+        <p>Intraday and daily history from 1D to MAX, with volume.</p>
+      </div>
+      <div class="feature">
+        <h3>Watchlists</h3>
+        <p>Keep the tickers you follow in one list, with the latest close and day change for each.</p>
+      </div>
+      <div class="feature">
+        <h3>Portfolio tracking</h3>
+        <p>Record buys and sells to see average cost, market value, and realized and unrealized P/L.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="landing-footer">
+    <span>© StockWatch</span>
+    <span>Market data from <a href="https://massive.com/" rel="noopener">Massive.com</a> (formerly Polygon.io). Demo prices are synthetic. Not financial advice.</span>
+  </footer>
 </div>
 {% endblock %}

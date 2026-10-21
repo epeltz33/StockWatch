@@ -30,8 +30,7 @@ def build_price_preview(bars):
     points = [(x(date.fromisoformat(bar["date"])), y(bar["close"])) for bar in bars]
     path = "M" + " L".join(f"{px:.2f},{py:.2f}" for px, py in points)
     ticks = [
-        {"y": round(y(value), 2), "label": f"${value:,.0f}"}
-        for value in range(low, high + 1, 20)
+        {"y": round(y(value), 2), "label": f"${value:,.0f}"} for value in range(low, high + 1, 20)
     ]
     dates = []
     for year in range(first.year, end.year + 1):
@@ -52,3 +51,22 @@ def build_price_preview(bars):
         "start_date": first.isoformat(),
         "end_date": end.isoformat(),
     }
+
+
+def build_watchlist_preview(companies, quotes):
+    """Rows for the landing watchlist table, from the demo's sample quotes."""
+    rows = []
+    for company in companies:
+        quote = quotes.get(company.symbol)
+        if quote is None:
+            continue
+        rows.append(
+            {
+                "symbol": company.symbol,
+                "name": company.name,
+                "price": f"${quote.price:,.2f}",
+                "change": f"{quote.change_pct:+.2f}%",
+                "direction": "gain" if quote.change >= 0 else "loss",
+            }
+        )
+    return rows

@@ -469,4 +469,3 @@ def change_period(source, symbol, period, btn_ids):
     classes = [_period_btn_class(b["index"] == period) for b in btn_ids]
     pressed = ["true" if b["index"] == period else "false" for b in btn_ids]
     return figure, classes, pressed, readout, period
-
