@@ -30,8 +30,7 @@ def build_price_preview(bars):
     points = [(x(date.fromisoformat(bar["date"])), y(bar["close"])) for bar in bars]
     path = "M" + " L".join(f"{px:.2f},{py:.2f}" for px, py in points)
     ticks = [
-        {"y": round(y(value), 2), "label": f"${value:,.0f}"}
-        for value in range(low, high + 1, 20)
+        {"y": round(y(value), 2), "label": f"${value:,.0f}"} for value in range(low, high + 1, 20)
     ]
     dates = []
     for year in range(first.year, end.year + 1):
