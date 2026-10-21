@@ -580,4 +580,3 @@ def record_trade(source, side, symbol, quantity, price, date_str, refresh):
         None,
         None,
     )
-
