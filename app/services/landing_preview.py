@@ -52,3 +52,22 @@ def build_price_preview(bars):
         "start_date": first.isoformat(),
         "end_date": end.isoformat(),
     }
+
+
+def build_watchlist_preview(companies, quotes):
+    """Rows for the landing watchlist table, from the demo's sample quotes."""
+    rows = []
+    for company in companies:
+        quote = quotes.get(company.symbol)
+        if quote is None:
+            continue
+        rows.append(
+            {
+                "symbol": company.symbol,
+                "name": company.name,
+                "price": f"${quote.price:,.2f}",
+                "change": f"{quote.change_pct:+.2f}%",
+                "direction": "gain" if quote.change >= 0 else "loss",
+            }
+        )
+    return rows
