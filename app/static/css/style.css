@@ -572,14 +572,24 @@ a:hover {
 
 /* Features */
 .landing-features {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(24px, 4vw, 48px);
   padding: 40px 0 56px;
   border-top: 1px solid var(--hairline);
 }
 
 .landing-features h2 {
+  margin: 0 0 24px;
+  color: var(--text-3);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(24px, 4vw, 48px);
+}
+
+.landing-features h3 {
   margin: 0 0 8px;
   font-size: 1rem;
   font-weight: 600;
@@ -619,7 +629,7 @@ a:hover {
     max-width: 640px;
   }
 
-  .landing-features {
+  .feature-grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 24px;
   }

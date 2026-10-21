@@ -38,7 +38,7 @@
       {% if not user.is_authenticated %}
       <p class="landing-note">Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
       {% endif %}
-      <p class="landing-note">The demo opens a populated dashboard with sample prices, not real market data. No sign-up required.</p>
+      <p class="landing-note">The demo opens a populated dashboard with sample prices, not real market data.{% if not user.is_authenticated %} No sign-up required.{% endif %}</p>
     </section>
 
     <figure class="product-preview" aria-label="Preview of the StockWatch dashboard using sample data">
@@ -95,24 +95,27 @@
     </figure>
   </div>
 
-  <section class="landing-features" aria-label="Features">
-    <div class="feature">
-      <h2>Price charts</h2>
-      <p>Intraday and daily history from 1D to MAX, with volume.</p>
-    </div>
-    <div class="feature">
-      <h2>Watchlists</h2>
-      <p>Keep the tickers you follow in one list, with the latest close and day change for each.</p>
-    </div>
-    <div class="feature">
-      <h2>Portfolio tracking</h2>
-      <p>Record buys and sells to see average cost, market value, and realized and unrealized P/L.</p>
+  <section class="landing-features" aria-labelledby="features-title">
+    <h2 id="features-title">What's included</h2>
+    <div class="feature-grid">
+      <div class="feature">
+        <h3>Price charts</h3>
+        <p>Intraday and daily history from 1D to MAX, with volume.</p>
+      </div>
+      <div class="feature">
+        <h3>Watchlists</h3>
+        <p>Keep the tickers you follow in one list, with the latest close and day change for each.</p>
+      </div>
+      <div class="feature">
+        <h3>Portfolio tracking</h3>
+        <p>Record buys and sells to see average cost, market value, and realized and unrealized P/L.</p>
+      </div>
     </div>
   </section>
 
   <footer class="landing-footer">
-    <span>StockWatch</span>
-    <span>Market data from <a href="https://massive.com/" rel="noopener">Massive.com</a>. Prices are delayed, not real-time. Not financial advice.</span>
+    <span>© StockWatch</span>
+    <span>Market data from <a href="https://massive.com/" rel="noopener">Massive.com</a> (formerly Polygon.io). Demo prices are synthetic. Not financial advice.</span>
   </footer>
 </div>
 {% endblock %}
